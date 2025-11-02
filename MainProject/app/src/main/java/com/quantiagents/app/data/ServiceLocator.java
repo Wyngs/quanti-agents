@@ -2,6 +2,7 @@ package com.quantiagents.app.data;
 
 import android.content.Context;
 
+import com.quantiagents.app.domain.AdminService;
 import com.quantiagents.app.domain.DeviceIdManager;
 import com.quantiagents.app.domain.LoginService;
 import com.quantiagents.app.domain.UserService;
@@ -13,6 +14,14 @@ public class ServiceLocator {
     private UserRepository userRepository;
     private UserService userService;
     private LoginService loginService;
+
+
+    //admin-related dependencies
+    private EventRepository eventRepository;
+    private ImageRepository imageRepository;
+    private ProfilesRepository profilesRepository;
+    private AdminLogRepository adminLogRepository;
+    private AdminService adminService;
 
     public ServiceLocator(Context context) {
         // Stick with the app context to avoid leaks.
@@ -49,5 +58,53 @@ public class ServiceLocator {
             loginService = new LoginService(userService());
         }
         return loginService;
+    }
+//=== admin graph ===
+
+    public synchronized EventRepository eventRepository() {
+        if (eventRepository == null) {
+            //stores a lightweight event catalog for admin
+            eventRepository = new EventRepository(appContext);
+        }
+        return eventRepository;
+    }
+
+    public synchronized ImageRepository imageRepository() {
+        if (imageRepository == null) {
+            //stores image metadata for admin
+            imageRepository = new ImageRepository(appContext);
+        }
+        return imageRepository;
+    }
+
+    public synchronized ProfilesRepository profilesRepository() {
+        if (profilesRepository == null) {
+            //stores minimal profile index for admin
+            profilesRepository = new ProfilesRepository(appContext);
+        }
+        return profilesRepository;
+    }
+
+    public synchronized AdminLogRepository adminLogRepository() {
+        if (adminLogRepository == null) {
+            //append-only audit log of admin deletions
+            adminLogRepository = new AdminLogRepository(appContext);
+        }
+        return adminLogRepository;
+    }
+
+    public synchronized AdminService adminService() {
+        if (adminService == null) {
+            //compose admin service from repos and identity
+            adminService = new AdminService(
+                    eventRepository(),
+                    imageRepository(),
+                    profilesRepository(),
+                    adminLogRepository(),
+                    deviceIdManager(),
+                    userRepository()
+            );
+        }
+        return adminService;
     }
 }
