@@ -24,23 +24,10 @@
 
 ---
 
-## 📋 Agenda
-
-| # | Topic                               | Presenter      | Time Allocated | Notes |
-|---|-------------------------------------|----------------|----------------|------|
-| 1 | Branch hygiene & workflow reminder  | Dotun / Adnan  | —              | Avoid committing to `main`; verify branch with `git status`. |
-| 2 | Status update: feature branches     | Hannan         | —              | Hannan finished branches; can apply Part 2 feedback to UML. |
-| 3 | Standards: UML & method docs        | Hetang         | —              | Add structural changes to UML; document methods (desc/params/returns). |
-| 4 | AI usage guideline                  | Hetang         | —              | Use AI mainly for debugging and XML formatting. |
-| 5 | Timeline & file structure changes   | Hetang         | —              | User stories due night before Nov 6; Hetang to adjust file structure. |
-
----
-
 ## ✅ What Went Well
 
 - Branches progressing; Hannan completed his tasks.
 - Clear reminders on workflow reduced risk of future merge mistakes.
-- 
 ---
 
 ## ⚙️ What Can Be Improved
