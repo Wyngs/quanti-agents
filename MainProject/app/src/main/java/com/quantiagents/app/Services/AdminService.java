@@ -1,12 +1,18 @@
-package com.quantiagents.app.domain;
+package com.quantiagents.app.Services;
 
 import androidx.annotation.Nullable;
 
-import com.quantiagents.app.data.AdminLogRepository;
-import com.quantiagents.app.data.EventRepository;
-import com.quantiagents.app.data.ImageRepository;
-import com.quantiagents.app.data.ProfilesRepository;
-import com.quantiagents.app.data.UserRepository;
+import com.quantiagents.app.Repository.AdminLogRepository;
+import com.quantiagents.app.Repository.EventRepository;
+import com.quantiagents.app.Repository.ImageRepository;
+import com.quantiagents.app.Repository.ProfilesRepository;
+import com.quantiagents.app.Repository.UserRepository;
+import com.quantiagents.app.models.AdminActionLog;
+import com.quantiagents.app.models.DeviceIdManager;
+import com.quantiagents.app.models.Event;
+import com.quantiagents.app.models.StoredImage;
+import com.quantiagents.app.models.User;
+import com.quantiagents.app.models.UserSummary;
 
 import java.util.List;
 

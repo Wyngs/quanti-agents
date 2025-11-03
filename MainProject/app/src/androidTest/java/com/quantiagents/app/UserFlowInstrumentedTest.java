@@ -12,11 +12,11 @@ import android.text.TextUtils;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
-import com.quantiagents.app.data.ServiceLocator;
-import com.quantiagents.app.domain.DeviceIdManager;
-import com.quantiagents.app.domain.LoginService;
-import com.quantiagents.app.domain.User;
-import com.quantiagents.app.domain.UserService;
+import com.quantiagents.app.Repository.ServiceLocator;
+import com.quantiagents.app.models.DeviceIdManager;
+import com.quantiagents.app.Services.LoginService;
+import com.quantiagents.app.models.User;
+import com.quantiagents.app.Services.UserService;
 
 import org.junit.After;
 import org.junit.Before;

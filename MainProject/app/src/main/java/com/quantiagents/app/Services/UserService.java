@@ -1,6 +1,8 @@
-package com.quantiagents.app.domain;
+package com.quantiagents.app.Services;
 
-import com.quantiagents.app.data.UserRepository;
+import com.quantiagents.app.Repository.UserRepository;
+import com.quantiagents.app.models.DeviceIdManager;
+import com.quantiagents.app.models.User;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

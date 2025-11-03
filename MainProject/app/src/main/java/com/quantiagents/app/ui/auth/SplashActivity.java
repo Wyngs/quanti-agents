@@ -10,9 +10,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.domain.DeviceIdManager;
-import com.quantiagents.app.domain.LoginService;
-import com.quantiagents.app.domain.UserService;
+import com.quantiagents.app.models.DeviceIdManager;
+import com.quantiagents.app.Services.LoginService;
+import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.ui.main.MainActivity;
 
 public class SplashActivity extends AppCompatActivity {

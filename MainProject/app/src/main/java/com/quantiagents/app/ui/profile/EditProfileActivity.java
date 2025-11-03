@@ -12,8 +12,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.domain.User;
-import com.quantiagents.app.domain.UserService;
+import com.quantiagents.app.models.User;
+import com.quantiagents.app.Services.UserService;
 
 public class EditProfileActivity extends AppCompatActivity {
 

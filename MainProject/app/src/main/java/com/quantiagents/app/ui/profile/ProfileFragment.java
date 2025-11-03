@@ -16,8 +16,8 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.domain.User;
-import com.quantiagents.app.domain.UserService;
+import com.quantiagents.app.models.User;
+import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.ui.auth.SignUpActivity;
 
 import java.text.DateFormat;

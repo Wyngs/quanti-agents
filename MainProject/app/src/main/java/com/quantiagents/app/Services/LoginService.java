@@ -1,6 +1,8 @@
-package com.quantiagents.app.domain;
+package com.quantiagents.app.Services;
 
 import androidx.annotation.Nullable;
+
+import com.quantiagents.app.models.User;
 
 public class LoginService {
 

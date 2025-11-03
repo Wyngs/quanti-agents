@@ -1,11 +1,11 @@
-package com.quantiagents.app.data;
+package com.quantiagents.app.Repository;
 
 import android.content.Context;
 
-import com.quantiagents.app.domain.AdminService;
-import com.quantiagents.app.domain.DeviceIdManager;
-import com.quantiagents.app.domain.LoginService;
-import com.quantiagents.app.domain.UserService;
+import com.quantiagents.app.Services.AdminService;
+import com.quantiagents.app.models.DeviceIdManager;
+import com.quantiagents.app.Services.LoginService;
+import com.quantiagents.app.Services.UserService;
 
 public class ServiceLocator {
 

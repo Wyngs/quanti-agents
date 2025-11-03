@@ -7,16 +7,16 @@ import android.content.Context;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
-import com.quantiagents.app.data.EventRepository;
-import com.quantiagents.app.data.ImageRepository;
-import com.quantiagents.app.data.ProfilesRepository;
-import com.quantiagents.app.data.ServiceLocator;
-import com.quantiagents.app.domain.AdminService;
-import com.quantiagents.app.domain.Event;
-import com.quantiagents.app.domain.StoredImage;
-import com.quantiagents.app.domain.User;
-import com.quantiagents.app.domain.UserService;
-import com.quantiagents.app.domain.UserSummary;
+import com.quantiagents.app.Repository.EventRepository;
+import com.quantiagents.app.Repository.ImageRepository;
+import com.quantiagents.app.Repository.ProfilesRepository;
+import com.quantiagents.app.Repository.ServiceLocator;
+import com.quantiagents.app.Services.AdminService;
+import com.quantiagents.app.models.Event;
+import com.quantiagents.app.models.StoredImage;
+import com.quantiagents.app.models.User;
+import com.quantiagents.app.Services.UserService;
+import com.quantiagents.app.models.UserSummary;
 
 import org.junit.After;
 import org.junit.Before;

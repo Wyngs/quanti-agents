@@ -1,4 +1,4 @@
-package com.quantiagents.app.domain;
+package com.quantiagents.app.models;
 
 import java.io.Serializable;
 
@@ -12,6 +12,7 @@ public class User implements Serializable {
     private String passwordHash;
     private boolean notificationsOn;
     private long createdOn;
+
 
     public User(String userId, String deviceId, String name, String email, String phone, String passwordHash) {
         // Capture the snapshot of my profile at creation.
