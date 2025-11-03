@@ -1,4 +1,4 @@
-# 📝 Meeting Minutes
+#  Meeting Minutes
 
 **Meeting Title:** Team Development Sync  
 **Date:** 2025-10-23  
@@ -8,7 +8,7 @@
 
 ---
 
-## 🧑‍🤝‍🧑 Attendees
+##  Attendees
 
 - Dotun Famobio (dfamobio)
 - Hetang Mehta (hmmehta)
@@ -19,7 +19,7 @@
 
 ---
 
-## 🎯 Meeting Objectives
+##  Meeting Objectives
 
 1. Review storyboard and UI mockup updates  
 2. Plan UML design and documentation responsibilities  
@@ -27,7 +27,7 @@
 
 ---
 
-## 📋 Agenda
+##  Agenda
 
 | # | Topic | Presenter | Time Allocated | Notes |
 |---|-------|------------|----------------|-------|
@@ -37,7 +37,7 @@
 
 ---
 
-## ✅ What Went Well
+##  What Went Well
 
 - StoryBoard, User Stories, and UI Mockup updates were completed and uploaded successfully.  
 - Team agreed on using **PlantUML** for UML diagram creation.  
@@ -46,7 +46,7 @@
 
 ---
 
-## ⚙️ What Can Be Improved
+##  What Can Be Improved
 
 - Improve speed of picking up and completing assigned stories.  
 - Need more clarity on Git branch naming conventions.  
@@ -54,7 +54,7 @@
 
 ---
 
-## 💬 Discussion Summary
+##  Discussion Summary
 
 ### 1. Task Updates
 
@@ -89,7 +89,7 @@
 
 ---
 
-## 🧾 Action Items
+##  Action Items
 
 | # | Action Item | Responsible | Due Date | Status |
 |---|--------------|-------------|-----------|--------|
