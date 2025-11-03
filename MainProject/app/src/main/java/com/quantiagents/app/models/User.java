@@ -1,5 +1,5 @@
 package com.quantiagents.app.models;
-
+import com.quantiagents.app.Constants.constant;
 import java.io.Serializable;
 
 public class User implements Serializable {
@@ -12,6 +12,8 @@ public class User implements Serializable {
     private String passwordHash;
     private boolean notificationsOn;
     private long createdOn;
+    private constant.UserRole role;
+    private RegistrationHistory registrationHistory;
 
 
     public User(String userId, String deviceId, String name, String email, String phone, String passwordHash) {
@@ -81,4 +83,21 @@ public class User implements Serializable {
     public void setCreatedOn(long createdOn) {
         this.createdOn = createdOn;
     }
+
+    public RegistrationHistory getRegistrationHistory() {
+        return registrationHistory;
+    }
+
+    public void setRegistrationHistory(RegistrationHistory registrationHistory) {
+        this.registrationHistory = registrationHistory;
+    }
+
+    public constant.UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(constant.UserRole role) {
+        this.role = role;
+    }
+
 }

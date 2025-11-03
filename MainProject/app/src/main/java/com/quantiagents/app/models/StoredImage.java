@@ -4,9 +4,10 @@ import java.io.Serializable;
 
 public class StoredImage implements Serializable {
 
-    private final String imageId;
-    private final String eventId; //may be null for non-event images
-    private final String uri; //could be file path or remote url
+    private String imageId;
+    private String eventId; //may be null for non-event images
+    private String uri; //could be file path or remote url
+    private int uploadedBy;
 
     public StoredImage(String imageId, String eventId, String uri) {
         //lightweight reference for admin gallery
@@ -18,4 +19,24 @@ public class StoredImage implements Serializable {
     public String getImageId() { return imageId; }
     public String getEventId() { return eventId; }
     public String getUri() { return uri; }
+
+    public int getUploadedBy() {
+        return uploadedBy;
+    }
+
+    public void setUploadedBy(int uploadedBy) {
+        this.uploadedBy = uploadedBy;
+    }
+
+    public void setImageId(String imageId) {
+        this.imageId = imageId;
+    }
+
+    public void setEventId(String eventId) {
+        this.eventId = eventId;
+    }
+
+    public void setUri(String uri) {
+        this.uri = uri;
+    }
 }
