@@ -6,7 +6,7 @@
 
 ---
 
-## 🧑‍🤝‍🧑 Attendees
+##  Attendees
 
 - Dotun Famobio (dfamobio)
 - Hetang Mehta (hmmehta)
@@ -24,7 +24,7 @@
 
 ---
 
-## ✅ What Went Well
+##  What Went Well
 
 - Branches progressing; Hannan completed his tasks.
 - Clear reminders on workflow reduced risk of future merge mistakes.
@@ -39,7 +39,7 @@
 
 ---
 
-## 💬 Discussion Summary
+##  Discussion Summary
 
 **1. Branch hygiene & workflow reminder**
 
@@ -95,7 +95,7 @@
 
 ---
 
-## ✅ Action Items
+##  Action Items
 
 | # | Action Item                                                   | Responsible | Due Date    | Status         |
 |---|---------------------------------------------------------------|-------------|-------------|----------------|
