@@ -10,6 +10,10 @@ CMPUT 301 project
 ## Link to Storyboard on Wiki:
 [Storyboard](https://github.com/CMPUT301F25quanti/quanti-agents/wiki/Storyboard)
 
+## Link to Meeting notes on wiki:
+
+[Meeting Minutes](https://github.com/CMPUT301F25quanti/quanti-agents/wiki/Meeting-Minutes)
+
 
 ## First 50% (Project Part 3)
 
