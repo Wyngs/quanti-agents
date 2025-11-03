@@ -1,4 +1,4 @@
-# 📝 October 20th Meeting
+#  October 20th Meeting
 
 **Date:** 2025-10-20  
 **Time:** 17:30 – 18:00  
@@ -6,7 +6,7 @@
 
 ---
 
-## 🧑‍🤝‍🧑 Attendees
+##  Attendees
 
 - Dotun Famobio (dfamobio)
 - Hetang Mehta (hmmehta)
@@ -21,7 +21,7 @@
 1. Overall progress check.  
 ---
 
-## ✅ What Went Well
+##  What Went Well
 
 - Clear agreement that Admin users need a few more views.  
 - Alignment on tagging GitHub issues as user stories for backlog organization.  
@@ -29,14 +29,14 @@
 
 ---
 
-## ⚙️ What Can Be Improved
+##  What Can Be Improved
 
 - UI mockups still need comments and references to relevant user stories.  
 - Milestones for Project Part 3 and Project Part 4 need to be created and applied to user stories.
 
 ---
 
-## 💬 Discussion Summary
+##  Discussion Summary
 
 **1. Admin Views**  
 - ## Key points:
