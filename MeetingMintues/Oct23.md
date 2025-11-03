@@ -1,4 +1,4 @@
-# 📝 Meeting Minutes Template
+#  Meeting Minutes Template
 
 **Date:** 2025-10-23  
 **Time:** 17:30 – 18:00  
@@ -6,7 +6,7 @@
 
 ---
 
-## 🧑‍🤝‍🧑 Attendees
+##  Attendees
 
 - Dotun Famobio (dfamobio)
 - Hetang Mehta (hmmehta)
@@ -24,13 +24,13 @@
 
 ---
 
-## ✅ What Went Well
+##  What Went Well
 
 - We had most things the TA was looking for
 
 ---
 
-## ⚙️ What Can Be Improved
+##  What Can Be Improved
 
 - UI mockup was missing a background for dark mode users
 - Storyboard flow needs text describing which button takes users between screens
@@ -42,7 +42,7 @@
 
 ---
 
-## 💬 Meeting on Friday, Oct 24 at 5:00pm
+##  Meeting on Friday, Oct 24 at 5:00pm
 
 **To discuss next steps for finishing Project Part 2 & Starting Project Part 3**
 
