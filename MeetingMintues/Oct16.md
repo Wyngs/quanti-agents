@@ -1,4 +1,4 @@
-# 📝 October 16th Meeting
+#  October 16th Meeting
 
 **Date:** 2025-10-16  
 **Time:** 18:30 – 19:00  
@@ -6,7 +6,7 @@
 
 ---
 
-## 🧑‍🤝‍🧑 Attendees
+##  Attendees
 
 - Dotun Famobio (dfamobio)
 - Hetang Mehta (hmmehta)
@@ -23,7 +23,7 @@
 ---
 
 
-## ✅ What Went Well
+##  What Went Well
 
 - Harshit liked the mockups overall.
 - The CRC formatting issue raised by Adnan was resolved successfully.
@@ -31,13 +31,13 @@
 
 ---
 
-## ⚙️ What Can Be Improved
+##  What Can Be Improved
 
 - Need to adjust roles so that regular users can both create and join events.
 
 ---
 
-## 💬 Discussion Summary
+##  Discussion Summary
 
 **1. Feedback on Roles and User Capabilities**
 
