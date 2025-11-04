@@ -9,6 +9,12 @@ public class ServiceLocator {
     private LoginService loginService;
     private AdminService adminService;
     private EventService eventService;
+    private ImageService imageService;
+    private NotificationService notificationService;
+    private RegistrationHistoryService registrationHistoryService;
+    private GeoLocationService geoLocationService;
+    private LotteryResultService lotteryResultService;
+    private QRCodeService qrCodeService;
 
     public ServiceLocator(Context context) {
         // Stick with the app context to avoid leaks.
@@ -45,5 +51,53 @@ public class ServiceLocator {
             eventService = new EventService(appContext);
         }
         return eventService;
+    }
+
+    public synchronized ImageService imageService() {
+        if (imageService == null) {
+            // ImageService instantiates its own repositories internally
+            imageService = new ImageService(appContext);
+        }
+        return imageService;
+    }
+
+    public synchronized NotificationService notificationService() {
+        if (notificationService == null) {
+            // NotificationService instantiates its own repositories internally
+            notificationService = new NotificationService(appContext);
+        }
+        return notificationService;
+    }
+
+    public synchronized RegistrationHistoryService registrationHistoryService() {
+        if (registrationHistoryService == null) {
+            // RegistrationHistoryService instantiates its own repositories internally
+            registrationHistoryService = new RegistrationHistoryService(appContext);
+        }
+        return registrationHistoryService;
+    }
+
+    public synchronized GeoLocationService geoLocationService() {
+        if (geoLocationService == null) {
+            // GeoLocationService instantiates its own repositories internally
+            geoLocationService = new GeoLocationService(appContext);
+        }
+        return geoLocationService;
+    }
+
+    public synchronized LotteryResultService lotteryResultService() {
+        if (lotteryResultService == null) {
+            // LotteryResultService instantiates its own repositories internally
+            lotteryResultService = new LotteryResultService(appContext);
+        }
+        return lotteryResultService;
+    }
+
+    public synchronized QRCodeService qrCodeService() {
+        if (qrCodeService == null) {
+            // QRCodeService instantiates its own repositories internally
+            qrCodeService = new QRCodeService(appContext);
+        }
+        return qrCodeService;
     }
 }
