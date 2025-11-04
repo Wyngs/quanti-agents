@@ -2,14 +2,14 @@ package com.quantiagents.app.models;
 
 import java.io.Serializable;
 
-public class StoredImage implements Serializable {
+public class Image implements Serializable {
 
     private String imageId;
     private String eventId; //may be null for non-event images
     private String uri; //could be file path or remote url
     private int uploadedBy;
 
-    public StoredImage(String imageId, String eventId, String uri) {
+    public Image(String imageId, String eventId, String uri) {
         //lightweight reference for admin gallery
         this.imageId = imageId;
         this.eventId = eventId;

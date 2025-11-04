@@ -3,7 +3,7 @@ package com.quantiagents.app.Repository;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import com.quantiagents.app.models.StoredImage;
+import com.quantiagents.app.models.Image;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -23,10 +23,10 @@ public class ImageRepository {
         this.preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
-    public synchronized List<StoredImage> listImages() {
+    public synchronized List<Image> listImages() {
         //return all images; tolerant of malformed json
         String raw = preferences.getString(KEY_IMAGES, "[]");
-        List<StoredImage> out = new ArrayList<>();
+        List<Image> out = new ArrayList<>();
         try {
             JSONArray arr = new JSONArray(raw);
             for (int i = 0; i < arr.length(); i++) {
@@ -37,7 +37,7 @@ public class ImageRepository {
                 String eid = o.optString("eventId", "");
                 String eventId = eid.isEmpty() ? null : eid;
                 String uri = o.optString("uri", "");
-                out.add(new StoredImage(imageId, eventId, uri));
+                out.add(new Image(imageId, eventId, uri));
             }
         } catch (JSONException ignore) {
             //swallow and return what we have
@@ -45,7 +45,7 @@ public class ImageRepository {
         return out;
     }
 
-    public synchronized boolean saveOrReplace(StoredImage img) {
+    public synchronized boolean saveOrReplace(Image img) {
         //upsert an image by id
         try {
             JSONArray arr = new JSONArray(preferences.getString(KEY_IMAGES, "[]"));
@@ -115,7 +115,7 @@ public class ImageRepository {
         }
     }
 
-    private JSONObject toJson(StoredImage img) throws JSONException {
+    private JSONObject toJson(Image img) throws JSONException {
         //serialize with null-safe fields
         JSONObject o = new JSONObject();
         o.put("imageId", img.getImageId() == null ? "" : img.getImageId());

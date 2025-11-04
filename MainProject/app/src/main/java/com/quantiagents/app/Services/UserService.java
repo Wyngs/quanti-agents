@@ -1,7 +1,9 @@
 package com.quantiagents.app.Services;
 
+import android.content.Context;
 import android.util.Log;
 
+import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.UserRepository;
 import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.models.User;
@@ -18,9 +20,11 @@ public class UserService {
     private final DeviceIdManager deviceIdManager;
     private final Pattern emailPattern = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
 
-    public UserService(UserRepository repository, DeviceIdManager deviceIdManager) {
-        this.repository = repository;
-        this.deviceIdManager = deviceIdManager;
+    public UserService(Context context) {
+        // Instantiate repositories and dependencies internally
+        FireBaseRepository fireBaseRepository = new FireBaseRepository();
+        this.repository = new UserRepository(fireBaseRepository);
+        this.deviceIdManager = new DeviceIdManager(context);
     }
 
     public User getCurrentUser() {

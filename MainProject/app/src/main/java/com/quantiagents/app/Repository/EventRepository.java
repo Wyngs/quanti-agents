@@ -1,102 +1,100 @@
 package com.quantiagents.app.Repository;
 
-import android.content.Context;
-import android.content.SharedPreferences;
+import android.util.Log;
 
+import androidx.annotation.NonNull;
+
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.SetOptions;
 import com.quantiagents.app.models.Event;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class EventRepository {
 
-    private static final String PREF_NAME = "admin_event_store";
-    private static final String KEY_EVENTS = "events_json";
-    private final SharedPreferences preferences;
+    private final CollectionReference context;
 
-    public EventRepository(Context context) {
-        //persist a lightweight event catalog for admin screens
-        this.preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+    public EventRepository(FireBaseRepository fireBaseRepository) {
+        this.context = fireBaseRepository.getEventCollectionRef();
     }
 
-    public synchronized List<Event> listEvents() {
-        //return all events; tolerant of malformed json
-        String raw = preferences.getString(KEY_EVENTS, "[]");
-        List<Event> out = new ArrayList<>();
+    public Event getEventById(int eventId) {
         try {
-            JSONArray arr = new JSONArray(raw);
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.optJSONObject(i);
-                if (o == null) continue;
-                String eventId = o.optString("eventId", "");
-                if (eventId.isEmpty()) continue;
-                String title = o.optString("title", "");
-                String poster = o.optString("posterImageId", "");
-                poster = poster.isEmpty() ? null : poster;
-                out.add(new Event(eventId, title, poster));
+            DocumentSnapshot snapshot = Tasks.await(context.document(String.valueOf(eventId)).get());
+            if (snapshot.exists()) {
+                return snapshot.toObject(Event.class);
+            } else {
+                Log.d("Firestore", "No event found for ID: " + eventId);
+                return null;
             }
-        } catch (JSONException ignore) {
-            //swallow and return what we have
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e("Firestore", "Error getting event", e);
+            return null;
         }
-        return out;
     }
 
-    public synchronized boolean saveOrReplace(Event event) {
-        //upsert an event by id
+    public List<Event> getAllEvents() {
         try {
-            JSONArray arr = new JSONArray(preferences.getString(KEY_EVENTS, "[]"));
-            JSONArray next = new JSONArray();
-            boolean replaced = false;
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.optJSONObject(i);
-                if (o == null) continue;
-                if (event.getEventId().equals(o.optString("eventId"))) {
-                    next.put(toJson(event));
-                    replaced = true;
-                } else {
-                    next.put(o);
+            QuerySnapshot snapshot = Tasks.await(context.get());
+            List<Event> events = new ArrayList<>();
+            for (QueryDocumentSnapshot document : snapshot) {
+                Event event = document.toObject(Event.class);
+                if (event != null) {
+                    events.add(event);
                 }
             }
-            if (!replaced) next.put(toJson(event));
-            preferences.edit().putString(KEY_EVENTS, next.toString()).apply();
+            return events;
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e("Firestore", "Error getting all events", e);
+            return new ArrayList<>();
+        }
+    }
+
+    public void saveEvent(Event event, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+        context.document(String.valueOf(event.getEventId()))
+                .set(event)
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void updateEvent(@NonNull Event event,
+                           @NonNull OnSuccessListener<Void> onSuccess,
+                           @NonNull OnFailureListener onFailure) {
+        context.document(String.valueOf(event.getEventId()))
+                .set(event, SetOptions.merge()) // merge only changed fields
+                .addOnSuccessListener(aVoid -> {
+                    Log.d("Firestore", "Event updated: " + event.getEventId());
+                    onSuccess.onSuccess(aVoid);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("Firestore", "Error updating event", e);
+                    onFailure.onFailure(e);
+                });
+    }
+
+    public void deleteEventById(int eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+        context.document(String.valueOf(eventId))
+                .delete()
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public boolean deleteEventById(int eventId) {
+        try {
+            Tasks.await(context.document(String.valueOf(eventId)).delete());
+            Log.d("Firestore", "Event deleted: " + eventId);
             return true;
-        } catch (JSONException e) {
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e("Firestore", "Error deleting event", e);
             return false;
         }
-    }
-
-    public synchronized boolean deleteEvent(String eventId) {
-        //remove an event by id
-        try {
-            JSONArray arr = new JSONArray(preferences.getString(KEY_EVENTS, "[]"));
-            JSONArray next = new JSONArray();
-            boolean removed = false;
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.optJSONObject(i);
-                if (o == null) continue;
-                if (eventId.equals(o.optString("eventId"))) {
-                    removed = true;
-                } else {
-                    next.put(o);
-                }
-            }
-            if (removed) preferences.edit().putString(KEY_EVENTS, next.toString()).apply();
-            return removed;
-        } catch (JSONException e) {
-            return false;
-        }
-    }
-
-    private JSONObject toJson(Event e) throws JSONException {
-        //serialize with null-safe fields
-        JSONObject o = new JSONObject();
-        o.put("eventId", e.getEventId() == null ? "" : e.getEventId());
-        o.put("title", e.getTitle() == null ? "" : e.getTitle());
-        o.putOpt("posterImageId", e.getPosterImageId()); //safe when null
-        return o;
     }
 }

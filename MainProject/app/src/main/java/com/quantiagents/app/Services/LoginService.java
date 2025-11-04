@@ -11,12 +11,10 @@ public class LoginService {
     private User current;
 
     public LoginService(UserService userService) {
-        // Hold onto user service so I can delegate checks.
         this.userService = userService;
     }
 
     public boolean login(String email, String password) {
-        // Authenticate against the cached profile.
         boolean success = userService.authenticate(email, password);
         if (success) {
             current = userService.getCurrentUser();
@@ -26,7 +24,6 @@ public class LoginService {
     }
 
     public boolean loginWithDevice(String deviceId) {
-        // Device-only login path from splash.
         boolean success = userService.authenticateDevice(deviceId);
         if (success) {
             current = userService.getCurrentUser();
@@ -35,7 +32,6 @@ public class LoginService {
     }
 
     public void logout() {
-        // Drop my in-memory pointer.
         current = null;
     }
 
