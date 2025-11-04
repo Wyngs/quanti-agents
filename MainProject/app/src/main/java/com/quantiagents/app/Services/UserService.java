@@ -47,9 +47,12 @@ public class UserService {
         String trimmedPhone = phone == null ? "" : phone.trim();
         String deviceId = deviceIdManager.ensureDeviceId();
         String passwordHash = hashPassword(password);
+        // Create user with userId -1, Firebase will auto-generate an ID when saving
         User user = new User(-1, deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
 
-        repository.saveUser(user, aVoid -> Log.d("App", "User saved!"),
+        // Save user - if userId is -1 or <= 0, Firebase will auto-generate an ID
+        // The user object will be updated with the generated ID after saving
+        repository.saveUser(user, aVoid -> Log.d("App", "User saved with ID: " + user.getUserId()),
                 e -> Log.e("App", "Failed to save", e));
 
         return user;
