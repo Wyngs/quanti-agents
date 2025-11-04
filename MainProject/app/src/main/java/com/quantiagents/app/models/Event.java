@@ -8,7 +8,7 @@ import java.util.List;
 
 public class Event implements Serializable {
 
-    private final String eventId;
+    private final int eventId;
     private String title;
     private String posterImageId;
     private String description;
@@ -30,14 +30,14 @@ public class Event implements Serializable {
     private boolean isFirstLotteryDone;
 
 
-    public Event(String eventId, String title, String posterImageId) {
+    public Event(int eventId, String title, String posterImageId) {
         //hold minimal admin-facing fields only
         this.eventId = eventId;
         this.title = title;
         this.posterImageId = posterImageId;
     }
 
-    public String getEventId() { return eventId; }
+    public int getEventId() { return eventId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getPosterImageId() { return posterImageId; }

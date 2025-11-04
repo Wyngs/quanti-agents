@@ -1,22 +1,39 @@
 package com.quantiagents.app.models;
 import com.quantiagents.app.Constants.constant;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 public class User implements Serializable {
 
-    private final String userId;
-    private final String deviceId;
+    private int userId;
+    private String deviceId;
     private String name;
     private String email;
     private String phone;
     private String passwordHash;
     private boolean notificationsOn;
-    private long createdOn;
+    private LocalDateTime createdOn;
     private constant.UserRole role;
     private RegistrationHistory registrationHistory;
 
 
-    public User(String userId, String deviceId, String name, String email, String phone, String passwordHash) {
+    public User(){
+        this.userId = -1;
+        this.deviceId = "";
+        this.name = "";
+        this.email = "";
+        this.phone = "";
+        this.passwordHash = "";
+        this.notificationsOn = true;
+        this.createdOn = LocalDateTime.now();
+    }
+
+    public User(int userId){
+        super();
+        this.userId = userId;
+    }
+
+    public User(int userId, String deviceId, String name, String email, String phone, String passwordHash) {
         // Capture the snapshot of my profile at creation.
         this.userId = userId;
         this.deviceId = deviceId;
@@ -25,15 +42,23 @@ public class User implements Serializable {
         this.phone = phone;
         this.passwordHash = passwordHash;
         this.notificationsOn = true;
-        this.createdOn = System.currentTimeMillis();
+        this.createdOn = LocalDateTime.now();
     }
 
-    public String getUserId() {
+    public int getUserId() {
         return userId;
     }
 
     public String getDeviceId() {
         return deviceId;
+    }
+
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 
     public String getName() {
@@ -76,11 +101,11 @@ public class User implements Serializable {
         this.notificationsOn = notificationsOn;
     }
 
-    public long getCreatedOn() {
+    public LocalDateTime getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(long createdOn) {
+    public void setCreatedOn(LocalDateTime createdOn) {
         this.createdOn = createdOn;
     }
 

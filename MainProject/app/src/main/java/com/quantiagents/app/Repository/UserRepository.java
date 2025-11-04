@@ -1,72 +1,79 @@
 package com.quantiagents.app.Repository;
 
+import static android.content.ContentValues.TAG;
+
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
+import androidx.annotation.NonNull;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.SetOptions;
 import com.quantiagents.app.models.User;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 public class UserRepository {
 
-    private static final String PREF_NAME = "user_profile_store";
-    private static final String KEY_USER = "user_json";
-    private final SharedPreferences preferences;
+    private final CollectionReference context;
 
-    public UserRepository(Context context) {
-        // Profile data stays in private prefs.
-        this.preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+    public UserRepository(FireBaseRepository fireBaseRepository) {
+        this.context = fireBaseRepository.getUserCollectionRef();
     }
-
-    public User getUser() {
-        // Pull and decode the cached user blob.
-        String stored = preferences.getString(KEY_USER, null);
-        if (stored == null || stored.isEmpty()) {
-            return null;
-        }
+    public User getUserById(int userId) {
         try {
-            JSONObject node = new JSONObject(stored);
-            User user = new User(
-                    node.optString("userId", UUID.randomUUID().toString()),
-                    node.optString("deviceId", ""),
-                    node.optString("name", ""),
-                    node.optString("email", ""),
-                    node.optString("phone", ""),
-                    node.optString("passwordHash", "")
-            );
-            user.setNotificationsOn(node.optBoolean("notificationsOn", true));
-            user.setCreatedOn(node.optLong("createdOn", System.currentTimeMillis()));
-            return user;
-        } catch (JSONException exception) {
-            preferences.edit().remove(KEY_USER).apply();
+            DocumentSnapshot snapshot = Tasks.await(context.document(Integer.toString(userId)).get());
+            if (snapshot.exists()) {
+                return snapshot.toObject(User.class);
+            } else {
+                Log.d("Firestore", "No user found for ID: " + userId);
+                return null;
+            }
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e("Firestore", "Error getting user", e);
             return null;
         }
     }
-
-    public boolean saveUser(User user) {
-        try {
-            // Persist user details as a single JSON string.
-            JSONObject node = new JSONObject();
-            node.put("userId", user.getUserId());
-            node.put("deviceId", user.getDeviceId());
-            node.put("name", user.getName());
-            node.put("email", user.getEmail());
-            node.put("phone", user.getPhone());
-            node.put("passwordHash", user.getPasswordHash());
-            node.put("notificationsOn", user.hasNotificationsOn());
-            node.put("createdOn", user.getCreatedOn());
-            preferences.edit().putString(KEY_USER, node.toString()).apply();
-            return true;
-        } catch (JSONException exception) {
-            return false;
-        }
+    public void saveUser(User user, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+        context.document(String.valueOf(user.getUserId()))
+                .set(user)
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
     }
-
-    public void clearUser() {
-        // Drop the cached profile.
-        preferences.edit().remove(KEY_USER).apply();
+    public void updateUser(@NonNull User user,
+                           @NonNull OnSuccessListener<Void> onSuccess,
+                           @NonNull OnFailureListener onFailure) {
+        context.document(String.valueOf(user.getUserId()))
+                .set(user, SetOptions.merge()) // merge only changed fields
+                .addOnSuccessListener(aVoid -> {
+                    Log.d("Firestore", "User updated: " + user.getUserId());
+                    onSuccess.onSuccess(aVoid);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("Firestore", "Error updating user", e);
+                    onFailure.onFailure(e);
+                });
+    }
+    public void deleteUserById(int userId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+        context.document(String.valueOf(userId))
+                .delete()
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
     }
 }

@@ -80,7 +80,7 @@ public class ProfileFragment extends Fragment {
         }
         deviceView.setText(user.getDeviceId());
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT);
-        createdView.setText(format.format(new Date(user.getCreatedOn())));
+        createdView.setText(format.format(new Date(user.getCreatedOn().toString())));
     }
 
     private void openEdit() {

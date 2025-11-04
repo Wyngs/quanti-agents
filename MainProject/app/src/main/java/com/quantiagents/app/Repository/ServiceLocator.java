@@ -10,6 +10,7 @@ import com.quantiagents.app.Services.UserService;
 public class ServiceLocator {
 
     private final Context appContext;
+    private FireBaseRepository firebaseContext;
     private DeviceIdManager deviceIdManager;
     private UserRepository userRepository;
     private UserService userService;
@@ -39,7 +40,7 @@ public class ServiceLocator {
     public synchronized UserRepository userRepository() {
         if (userRepository == null) {
             // Shared prefs store my entrant snapshot.
-            userRepository = new UserRepository(appContext);
+            userRepository = new UserRepository(firebaseContext);
         }
         return userRepository;
     }

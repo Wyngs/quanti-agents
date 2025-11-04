@@ -1,5 +1,8 @@
 package com.quantiagents.app.Services;
 
+import android.util.Log;
+
+import com.google.android.gms.tasks.Task;
 import com.quantiagents.app.Repository.UserRepository;
 import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.models.User;
@@ -21,9 +24,7 @@ public class UserService {
         this.deviceIdManager = deviceIdManager;
     }
 
-    public User getCurrentUser() {
-        return repository.getUser();
-    }
+    public User getCurrentUser() { return new User(); }
 
     public User createUser(String name, String email, String phone, String password) {
         // Validate everything once before I write to prefs.
@@ -33,8 +34,11 @@ public class UserService {
         String trimmedPhone = phone == null ? "" : phone.trim();
         String deviceId = deviceIdManager.ensureDeviceId();
         String passwordHash = hashPassword(password);
-        User user = new User(UUID.randomUUID().toString(), deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
-        repository.saveUser(user);
+        User user = new User(-1, deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
+
+        repository.saveUser(user, aVoid -> Log.d("App", "User saved!"),
+                e -> Log.e("App", "Failed to save", e));
+
         return user;
     }
 
@@ -45,13 +49,15 @@ public class UserService {
         current.setName(name.trim());
         current.setEmail(email.trim());
         current.setPhone(phone == null ? "" : phone.trim());
-        repository.saveUser(current);
+        repository.updateUser(current,
+                aVoid -> Log.d("App", "Update user"),
+                e -> Log.e("App", "Failed to update user", e));
         return current;
     }
 
     public boolean authenticate(String email, String password) {
         // Quick email/password check for manual login.
-        User user = repository.getUser();
+        User user = getUserById(-1);
         if (user == null) {
             return false;
         }
@@ -64,13 +70,13 @@ public class UserService {
 
     public boolean authenticateDevice(String deviceId) {
         // Device-only gate for auto login.
-        User user = repository.getUser();
+        User user = repository.getUserById();
         return user != null && deviceId != null && deviceId.equals(user.getDeviceId());
     }
 
     public void attachDeviceToCurrentUser() {
         // Make sure the stored profile follows the latest device id.
-        User current = repository.getUser();
+        User current = repository.getUserById();
         if (current == null) {
             return;
         }
@@ -86,32 +92,45 @@ public class UserService {
             );
             updated.setNotificationsOn(current.hasNotificationsOn());
             updated.setCreatedOn(current.getCreatedOn());
-            repository.saveUser(updated);
+            repository.updateUser(updated,
+                    aVoid -> Log.d("App", "Update user"),
+                    e -> Log.e("App", "Failed to update user", e));
         }
     }
 
-    public boolean updatePassword(String newPassword) {
+    public void updatePassword(String newPassword) {
         // Allow password refresh on demand.
         validatePassword(newPassword);
         User current = requireUser();
         current.setPasswordHash(hashPassword(newPassword));
-        return repository.saveUser(current);
+        repository.updateUser(current,
+                aVoid -> Log.d("App", "Update user"),
+                e -> Log.e("App", "Failed to update user", e));
     }
 
     public void updateNotificationPreference(boolean enabled) {
         // Keep notification toggle in sync.
         User current = requireUser();
         current.setNotificationsOn(enabled);
-        repository.saveUser(current);
+        repository.updateUser(current,
+                aVoid -> Log.d("App", "Update user"),
+                e -> Log.e("App", "Failed to update user", e));
     }
 
     public void deleteUserProfile() {
         // Hard delete wipes local profile entirely.
-        repository.clearUser();
+        repository.deleteUserById(
+                -1,
+                aVoid -> Log.d("App", "Deleted user"),
+                e -> Log.e("App", "Failed to delete user", e));
+    }
+
+    public User getUserById(int userId) {
+        return repository.getUserById(userId);
     }
 
     private User requireUser() {
-        User current = repository.getUser();
+        User current = getUserById(-1);
         if (current == null) {
             throw new IllegalStateException("Profile missing");
         }
