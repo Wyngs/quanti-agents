@@ -45,20 +45,12 @@ public class AdminService {
         if (!confirmed) {
             throw new IllegalArgumentException("confirmation required");
         }
-        // Convert String eventId to int
-        int eventIdInt;
-        try {
-            eventIdInt = Integer.parseInt(eventId);
-        } catch (NumberFormatException e) {
-            Log.e("App", "Invalid event ID: " + eventId, e);
-            return false;
-        }
         
         //cascade: delete event poster images by event id
         imageService.deleteImagesByEventId(eventId);
         
         // Delete event using EventService
-        boolean removed = eventService.deleteEvent(eventIdInt);
+        boolean removed = eventService.deleteEvent(eventId);
         
         // Log the deletion
         if (removed) {
@@ -87,16 +79,8 @@ public class AdminService {
         boolean removed = profilesRepository.deleteProfile(userId);
         //if the locally stored profile matches, clear it too
         User local = userService.getCurrentUser();
-        if (local != null) {
-            // Convert String userId to int for comparison
-            try {
-                int userIdInt = Integer.parseInt(userId);
-                if (userIdInt == local.getUserId()) {
-                    userService.deleteUserProfile();
-                }
-            } catch (NumberFormatException e) {
-                // If userId is not a valid integer, skip comparison
-            }
+        if (local != null && userId != null && userId.equals(local.getUserId())) {
+            userService.deleteUserProfile();
         }
         if (removed) {
             logRepository.append(new AdminActionLog(

@@ -23,7 +23,7 @@ public class EventService {
         this.repository = new EventRepository(fireBaseRepository);
     }
 
-    public Event getEventById(int eventId) {
+    public Event getEventById(String eventId) {
         return repository.getEventById(eventId);
     }
 
@@ -73,7 +73,7 @@ public class EventService {
                 });
     }
 
-    public void deleteEvent(int eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+    public void deleteEvent(String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         repository.deleteEventById(eventId,
                 aVoid -> {
                     Log.d("App", "Event deleted: " + eventId);
@@ -85,7 +85,7 @@ public class EventService {
                 });
     }
 
-    public boolean deleteEvent(int eventId) {
+    public boolean deleteEvent(String eventId) {
         return repository.deleteEventById(eventId);
     }
 }

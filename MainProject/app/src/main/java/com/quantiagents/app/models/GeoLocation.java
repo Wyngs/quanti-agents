@@ -1,22 +1,23 @@
 package com.quantiagents.app.models;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 
 public class GeoLocation {
     private double latitude;
     private double longitude;
-    private LocalDateTime timeStamp;
-    private int userId;
-    private int eventId;
+    private Date timeStamp;
+    private String userId;
+    private String eventId;
 
-    public GeoLocation(double latitude, double longitude, int userId, int eventId) {
+    public GeoLocation(){}
+    public GeoLocation(double latitude, double longitude, String userId, String eventId) {
         this.latitude = latitude;
         this.longitude = longitude;
-        this.timeStamp = LocalDateTime.now();
+        this.timeStamp = new Date();
         this.userId = userId;
         this.eventId = eventId;
     }
-    public GeoLocation(double latitude, double longitude, LocalDateTime timeStamp, int userId, int eventId) {
+    public GeoLocation(double latitude, double longitude, Date timeStamp, String userId, String eventId) {
         this.latitude = latitude;
         this.longitude = longitude;
         this.timeStamp = timeStamp;
@@ -40,27 +41,27 @@ public class GeoLocation {
         this.longitude = longitude;
     }
 
-    public LocalDateTime getTimeStamp() {
+    public Date getTimeStamp() {
         return timeStamp;
     }
 
-    public void setTimeStamp(LocalDateTime timeStamp) {
+    public void setTimeStamp(Date timeStamp) {
         this.timeStamp = timeStamp;
     }
 
-    public int getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(int userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 
-    public int getEventId() {
+    public String getEventId() {
         return eventId;
     }
 
-    public void setEventId(int eventId) {
+    public void setEventId(String eventId) {
         this.eventId = eventId;
     }
 }

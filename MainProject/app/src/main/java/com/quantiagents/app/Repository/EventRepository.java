@@ -26,9 +26,9 @@ public class EventRepository {
         this.context = fireBaseRepository.getEventCollectionRef();
     }
 
-    public Event getEventById(int eventId) {
+    public Event getEventById(String eventId) {
         try {
-            DocumentSnapshot snapshot = Tasks.await(context.document(String.valueOf(eventId)).get());
+            DocumentSnapshot snapshot = Tasks.await(context.document(eventId).get());
             if (snapshot.exists()) {
                 return snapshot.toObject(Event.class);
             } else {
@@ -59,7 +59,7 @@ public class EventRepository {
     }
 
     public void saveEvent(Event event, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        context.document(String.valueOf(event.getEventId()))
+        context.document(event.getEventId())
                 .set(event)
                 .addOnSuccessListener(onSuccess)
                 .addOnFailureListener(onFailure);
@@ -68,7 +68,7 @@ public class EventRepository {
     public void updateEvent(@NonNull Event event,
                            @NonNull OnSuccessListener<Void> onSuccess,
                            @NonNull OnFailureListener onFailure) {
-        context.document(String.valueOf(event.getEventId()))
+        context.document(event.getEventId())
                 .set(event, SetOptions.merge()) // merge only changed fields
                 .addOnSuccessListener(aVoid -> {
                     Log.d("Firestore", "Event updated: " + event.getEventId());
@@ -80,16 +80,16 @@ public class EventRepository {
                 });
     }
 
-    public void deleteEventById(int eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        context.document(String.valueOf(eventId))
+    public void deleteEventById(String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+        context.document(eventId)
                 .delete()
                 .addOnSuccessListener(onSuccess)
                 .addOnFailureListener(onFailure);
     }
 
-    public boolean deleteEventById(int eventId) {
+    public boolean deleteEventById(String eventId) {
         try {
-            Tasks.await(context.document(String.valueOf(eventId)).delete());
+            Tasks.await(context.document(eventId).delete());
             Log.d("Firestore", "Event deleted: " + eventId);
             return true;
         } catch (ExecutionException | InterruptedException e) {

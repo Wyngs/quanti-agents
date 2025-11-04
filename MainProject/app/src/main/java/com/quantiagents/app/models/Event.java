@@ -8,7 +8,7 @@ import java.util.List;
 
 public class Event implements Serializable {
 
-    private final int eventId;
+    private String eventId;
     private String title;
     private String posterImageId;
     private String description;
@@ -19,25 +19,25 @@ public class Event implements Serializable {
     private String location;
     private Double cost;
     private constant.EventStatus status;
-    private int organizerId;
+    private String organizerId;
     private double waitingListLimit;
     private double eventCapacity;
     private boolean isGeoLocationOn;
-    private List<Integer> waitingList;
-    private List<Integer> selectedList;
-    private List<Integer> confirmedList;
-    private List<Integer> cancelledList;
+    private List<String> waitingList;
+    private List<String> selectedList;
+    private List<String> confirmedList;
+    private List<String> cancelledList;
     private boolean isFirstLotteryDone;
 
-
-    public Event(int eventId, String title, String posterImageId) {
+    public Event (){ }
+    public Event(String eventId, String title, String posterImageId) {
         //hold minimal admin-facing fields only
         this.eventId = eventId;
         this.title = title;
         this.posterImageId = posterImageId;
     }
 
-    public int getEventId() { return eventId; }
+    public String getEventId() { return eventId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getPosterImageId() { return posterImageId; }
@@ -107,11 +107,11 @@ public class Event implements Serializable {
         this.status = status;
     }
 
-    public int getOrganizerId() {
+    public String getOrganizerId() {
         return organizerId;
     }
 
-    public void setOrganizerId(int organizerId) {
+    public void setOrganizerId(String organizerId) {
         this.organizerId = organizerId;
     }
 
@@ -139,35 +139,35 @@ public class Event implements Serializable {
         isGeoLocationOn = geoLocationOn;
     }
 
-    public List<Integer> getWaitingList() {
+    public List<String> getWaitingList() {
         return waitingList;
     }
 
-    public void setWaitingList(List<Integer> waitingList) {
+    public void setWaitingList(List<String> waitingList) {
         this.waitingList = waitingList;
     }
 
-    public List<Integer> getSelectedList() {
+    public List<String> getSelectedList() {
         return selectedList;
     }
 
-    public void setSelectedList(List<Integer> selectedList) {
+    public void setSelectedList(List<String> selectedList) {
         this.selectedList = selectedList;
     }
 
-    public List<Integer> getConfirmedList() {
+    public List<String> getConfirmedList() {
         return confirmedList;
     }
 
-    public void setConfirmedList(List<Integer> confirmedList) {
+    public void setConfirmedList(List<String> confirmedList) {
         this.confirmedList = confirmedList;
     }
 
-    public List<Integer> getCancelledList() {
+    public List<String> getCancelledList() {
         return cancelledList;
     }
 
-    public void setCancelledList(List<Integer> cancelledList) {
+    public void setCancelledList(List<String> cancelledList) {
         this.cancelledList = cancelledList;
     }
 

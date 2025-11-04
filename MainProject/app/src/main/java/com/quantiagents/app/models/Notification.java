@@ -2,7 +2,7 @@ package com.quantiagents.app.models;
 
 import com.quantiagents.app.Constants.constant;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 
 public class Notification {
     private int notificationId;
@@ -10,20 +10,20 @@ public class Notification {
     private int recipientId;
     private int senderId;
     private int affiliatedEventId;
-    private LocalDateTime timestamp;
+    private Date timestamp;
     private boolean hasRead;
 
-
+    public Notification(){}
     public Notification(int notificationId, constant.NotificationType type, int recipientId, int senderId, int affiliatedEventId  ) {
         this.notificationId = notificationId;
         this.type = type;
         this.recipientId = recipientId;
         this.senderId = senderId;
         this.affiliatedEventId = affiliatedEventId;
-        this.timestamp = LocalDateTime.now();
+        this.timestamp = new Date();
         this.hasRead = false;
     }
-    public Notification(int notificationId, constant.NotificationType type, int recipientId, int senderId, int affiliatedEventId, LocalDateTime timestamp, boolean hasRead) {
+    public Notification(int notificationId, constant.NotificationType type, int recipientId, int senderId, int affiliatedEventId, Date timestamp, boolean hasRead) {
         this.notificationId = notificationId;
         this.type = type;
         this.recipientId = recipientId;
@@ -73,11 +73,11 @@ public class Notification {
         this.affiliatedEventId = affiliatedEventId;
     }
 
-    public LocalDateTime getTimestamp() {
+    public Date getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(LocalDateTime timestamp) {
+    public void setTimestamp(Date timestamp) {
         this.timestamp = timestamp;
     }
 

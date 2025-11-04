@@ -26,7 +26,7 @@ public class RegistrationHistoryRepository {
         this.context = fireBaseRepository.getRegistrationHistoryCollectionRef();
     }
 
-    public RegistrationHistory getRegistrationHistoryByEventIdAndUserId(int eventId, int userId) {
+    public RegistrationHistory getRegistrationHistoryByEventIdAndUserId(String eventId, String userId) {
         try {
             String docId = eventId + "_" + userId;
             DocumentSnapshot snapshot = Tasks.await(context.document(docId).get());
@@ -59,7 +59,7 @@ public class RegistrationHistoryRepository {
         }
     }
 
-    public List<RegistrationHistory> getRegistrationHistoriesByEventId(int eventId) {
+    public List<RegistrationHistory> getRegistrationHistoriesByEventId(String eventId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId).get());
             List<RegistrationHistory> histories = new ArrayList<>();
@@ -76,7 +76,7 @@ public class RegistrationHistoryRepository {
         }
     }
 
-    public List<RegistrationHistory> getRegistrationHistoriesByUserId(int userId) {
+    public List<RegistrationHistory> getRegistrationHistoriesByUserId(String userId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("userId", userId).get());
             List<RegistrationHistory> histories = new ArrayList<>();
@@ -123,7 +123,7 @@ public class RegistrationHistoryRepository {
                 });
     }
 
-    public void deleteRegistrationHistoryByEventIdAndUserId(int eventId, int userId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+    public void deleteRegistrationHistoryByEventIdAndUserId(String eventId, String userId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         String docId = eventId + "_" + userId;
         context.document(docId)
                 .delete()
@@ -131,7 +131,7 @@ public class RegistrationHistoryRepository {
                 .addOnFailureListener(onFailure);
     }
 
-    public boolean deleteRegistrationHistoryByEventIdAndUserId(int eventId, int userId) {
+    public boolean deleteRegistrationHistoryByEventIdAndUserId(String eventId, String userId) {
         try {
             String docId = eventId + "_" + userId;
             Tasks.await(context.document(docId).delete());

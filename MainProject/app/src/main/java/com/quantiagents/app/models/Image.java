@@ -9,6 +9,8 @@ public class Image implements Serializable {
     private String uri; //could be file path or remote url
     private int uploadedBy;
 
+    public Image(){}
+
     public Image(String imageId, String eventId, String uri) {
         //lightweight reference for admin gallery
         this.imageId = imageId;

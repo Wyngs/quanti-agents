@@ -23,7 +23,7 @@ public class RegistrationHistoryService {
         this.repository = new RegistrationHistoryRepository(fireBaseRepository);
     }
 
-    public RegistrationHistory getRegistrationHistoryByEventIdAndUserId(int eventId, int userId) {
+    public RegistrationHistory getRegistrationHistoryByEventIdAndUserId(String eventId, String userId) {
         return repository.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
     }
 
@@ -31,11 +31,11 @@ public class RegistrationHistoryService {
         return repository.getAllRegistrationHistories();
     }
 
-    public List<RegistrationHistory> getRegistrationHistoriesByEventId(int eventId) {
+    public List<RegistrationHistory> getRegistrationHistoriesByEventId(String eventId) {
         return repository.getRegistrationHistoriesByEventId(eventId);
     }
 
-    public List<RegistrationHistory> getRegistrationHistoriesByUserId(int userId) {
+    public List<RegistrationHistory> getRegistrationHistoriesByUserId(String userId) {
         return repository.getRegistrationHistoriesByUserId(userId);
     }
 
@@ -85,7 +85,7 @@ public class RegistrationHistoryService {
                 });
     }
 
-    public void deleteRegistrationHistory(int eventId, int userId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+    public void deleteRegistrationHistory(String eventId, String userId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         repository.deleteRegistrationHistoryByEventIdAndUserId(eventId, userId,
                 aVoid -> {
                     Log.d("App", "Registration history deleted: eventId=" + eventId + ", userId=" + userId);
@@ -97,7 +97,7 @@ public class RegistrationHistoryService {
                 });
     }
 
-    public boolean deleteRegistrationHistory(int eventId, int userId) {
+    public boolean deleteRegistrationHistory(String eventId, String userId) {
         return repository.deleteRegistrationHistoryByEventIdAndUserId(eventId, userId);
     }
 }

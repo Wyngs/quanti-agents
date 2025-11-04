@@ -13,9 +13,9 @@ import com.quantiagents.app.Repository.LotteryResultRepository;
 import com.quantiagents.app.models.LotteryResult;
 import com.quantiagents.app.models.RegistrationHistory;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
@@ -33,11 +33,11 @@ public class LotteryResultService {
         this.eventService = new EventService(context);
     }
 
-    public LotteryResult getLotteryResultByTimestampAndEventId(LocalDateTime timestamp, int eventId) {
+    public LotteryResult getLotteryResultByTimestampAndEventId(Date timestamp, String eventId) {
         return repository.getLotteryResultByTimestampAndEventId(timestamp, eventId);
     }
 
-    public List<LotteryResult> getLotteryResultsByEventId(int eventId) {
+    public List<LotteryResult> getLotteryResultsByEventId(String eventId) {
         return repository.getLotteryResultsByEventId(eventId);
     }
 
@@ -51,7 +51,7 @@ public class LotteryResultService {
             onFailure.onFailure(new IllegalArgumentException("Lottery result cannot be null"));
             return;
         }
-        if (result.getEventId() <= 0) {
+        if (result.getEventId() == null || result.getEventId().trim().isEmpty()) {
             onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
             return;
         }
@@ -75,7 +75,7 @@ public class LotteryResultService {
                                    @NonNull OnSuccessListener<Void> onSuccess,
                                    @NonNull OnFailureListener onFailure) {
         // Validate lottery result before updating
-        if (result.getEventId() <= 0) {
+        if (result.getEventId() == null || result.getEventId().trim().isEmpty()) {
             onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
             return;
         }
@@ -95,7 +95,7 @@ public class LotteryResultService {
                 });
     }
 
-    public void deleteLotteryResult(LocalDateTime timestamp, int eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+    public void deleteLotteryResult(Date timestamp, String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         repository.deleteLotteryResultByTimestampAndEventId(timestamp, eventId,
                 aVoid -> {
                     Log.d("App", "Lottery result deleted: timestamp=" + timestamp + ", eventId=" + eventId);
@@ -107,7 +107,7 @@ public class LotteryResultService {
                 });
     }
 
-    public boolean deleteLotteryResult(LocalDateTime timestamp, int eventId) {
+    public boolean deleteLotteryResult(Date timestamp, String eventId) {
         return repository.deleteLotteryResultByTimestampAndEventId(timestamp, eventId);
     }
 
@@ -120,12 +120,12 @@ public class LotteryResultService {
      * @param onSuccess Callback for successful lottery execution
      * @param onFailure Callback for failed lottery execution
      */
-    public void runLottery(int eventId, int numberOfEntrants,
+    public void runLottery(String eventId, int numberOfEntrants,
                           OnSuccessListener<LotteryResult> onSuccess,
                           OnFailureListener onFailure) {
         // Validate inputs
-        if (eventId <= 0) {
-            onFailure.onFailure(new IllegalArgumentException("Event ID must be positive"));
+        if (eventId == null || eventId.trim().isEmpty()) {
+            onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
             return;
         }
         if (numberOfEntrants <= 0) {
@@ -143,7 +143,7 @@ public class LotteryResultService {
         List<RegistrationHistory> registrations = registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
         
         // Filter for confirmed registrations only
-        List<Integer> confirmedUserIds = new ArrayList<>();
+        List<String> confirmedUserIds = new ArrayList<>();
         for (RegistrationHistory registration : registrations) {
             if (registration.getEventRegistrationStatus() == constant.EventRegistrationStatus.CONFIRMED) {
                 confirmedUserIds.add(registration.getUserId());
@@ -162,17 +162,18 @@ public class LotteryResultService {
         }
 
         // Randomly select entrants
-        List<Integer> selectedEntrants = new ArrayList<>(confirmedUserIds);
+        List<String> selectedEntrants = new ArrayList<>(confirmedUserIds);
         Collections.shuffle(selectedEntrants, new Random());
-        selectedEntrants = selectedEntrants.subList(0, numberOfEntrants);
+        List<String> finalSelectedEntrants = new ArrayList<>(selectedEntrants.subList(0, numberOfEntrants));
+        final int finalSelectedCount = finalSelectedEntrants.size();
 
         // Create lottery result
-        LotteryResult result = new LotteryResult(eventId, selectedEntrants);
+        LotteryResult result = new LotteryResult(eventId, finalSelectedEntrants);
 
         // Save lottery result
         repository.saveLotteryResult(result,
                 aVoid -> {
-                    Log.d("App", "Lottery completed for event: " + eventId + " with " + selectedEntrants.size() + " entrants");
+                    Log.d("App", "Lottery completed for event: " + eventId + " with " + finalSelectedCount + " entrants");
                     onSuccess.onSuccess(result);
                 },
                 e -> {

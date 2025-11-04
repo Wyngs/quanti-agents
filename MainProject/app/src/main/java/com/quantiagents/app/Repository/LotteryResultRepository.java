@@ -14,10 +14,11 @@ import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
 import com.quantiagents.app.models.LotteryResult;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 
 public class LotteryResultRepository {
@@ -30,18 +31,19 @@ public class LotteryResultRepository {
 
     /**
      * Helper method to create document ID from timestamp and eventId
-     * Format: timestamp_eventId (e.g., "20250101120000_123")
+     * Format: timestamp_eventId (e.g., "20250101120000_event123")
      */
-    private String createDocumentId(LocalDateTime timestamp, int eventId) {
+    private String createDocumentId(Date timestamp, String eventId) {
         if (timestamp == null) {
-            timestamp = LocalDateTime.now();
+            timestamp = new Date();
         }
         // Format timestamp as yyyyMMddHHmmss (year, month, day, hour, minute, second)
-        String timestampStr = timestamp.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss", Locale.US);
+        String timestampStr = formatter.format(timestamp);
         return timestampStr + "_" + eventId;
     }
 
-    public LotteryResult getLotteryResultByTimestampAndEventId(LocalDateTime timestamp, int eventId) {
+    public LotteryResult getLotteryResultByTimestampAndEventId(Date timestamp, String eventId) {
         try {
             String docId = createDocumentId(timestamp, eventId);
             DocumentSnapshot snapshot = Tasks.await(context.document(docId).get());
@@ -57,7 +59,7 @@ public class LotteryResultRepository {
         }
     }
 
-    public List<LotteryResult> getLotteryResultsByEventId(int eventId) {
+    public List<LotteryResult> getLotteryResultsByEventId(String eventId) {
         try {
             // Query by eventId field since document ID contains timestamp
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId).get());
@@ -98,7 +100,7 @@ public class LotteryResultRepository {
             return;
         }
         if (result.getTimeStamp() == null) {
-            result.setTimeStamp(LocalDateTime.now());
+            result.setTimeStamp(new Date());
         }
         // Use composite key: timestamp_eventId
         String docId = createDocumentId(result.getTimeStamp(), result.getEventId());
@@ -132,7 +134,7 @@ public class LotteryResultRepository {
                 });
     }
 
-    public void deleteLotteryResultByTimestampAndEventId(LocalDateTime timestamp, int eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+    public void deleteLotteryResultByTimestampAndEventId(Date timestamp, String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         String docId = createDocumentId(timestamp, eventId);
         context.document(docId)
                 .delete()
@@ -140,7 +142,7 @@ public class LotteryResultRepository {
                 .addOnFailureListener(onFailure);
     }
 
-    public boolean deleteLotteryResultByTimestampAndEventId(LocalDateTime timestamp, int eventId) {
+    public boolean deleteLotteryResultByTimestampAndEventId(Date timestamp, String eventId) {
         try {
             String docId = createDocumentId(timestamp, eventId);
             Tasks.await(context.document(docId).delete());

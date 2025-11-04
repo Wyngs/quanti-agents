@@ -3,9 +3,11 @@ package com.quantiagents.app.models;
 public class QRCode {
     private int id;
     private String qrCodeValue;
-    private int eventId;
+    private String eventId;
 
-    public QRCode(int id, String qrCodeValue, int eventId) {
+    public QRCode(){}
+
+    public QRCode(int id, String qrCodeValue, String eventId) {
         this.id = id;
         this.qrCodeValue = qrCodeValue;
         this.eventId = eventId;
@@ -27,11 +29,11 @@ public class QRCode {
         this.qrCodeValue = qrCodeValue;
     }
 
-    public int getEventId() {
+    public String getEventId() {
         return eventId;
     }
 
-    public void setEventId(int eventId) {
+    public void setEventId(String eventId) {
         this.eventId = eventId;
     }
 }

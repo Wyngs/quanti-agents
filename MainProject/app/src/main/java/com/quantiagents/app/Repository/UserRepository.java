@@ -27,9 +27,9 @@ public class UserRepository {
     public UserRepository(FireBaseRepository fireBaseRepository) {
         this.context = fireBaseRepository.getUserCollectionRef();
     }
-    public User getUserById(int userId) {
+    public User getUserById(String userId) {
         try {
-            DocumentSnapshot snapshot = Tasks.await(context.document(Integer.toString(userId)).get());
+            DocumentSnapshot snapshot = Tasks.await(context.document(userId).get());
             if (snapshot.exists()) {
                 return snapshot.toObject(User.class);
             } else {
@@ -42,24 +42,16 @@ public class UserRepository {
         }
     }
     public void saveUser(User user, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        // If userId is 0 or negative, let Firebase auto-generate an ID
-        if (user.getUserId() <= 0) {
+        // If userId is null or empty, let Firebase auto-generate an ID
+        if (user.getUserId() == null || user.getUserId().trim().isEmpty()) {
             // Use .add() to create a new document with auto-generated ID
             Task<DocumentReference> addTask = context.add(user);
             addTask.addOnSuccessListener(documentReference -> {
                 // Extract the auto-generated document ID
                 String docId = documentReference.getId();
                 
-                // Generate a unique int ID from the Firestore document ID
-                // Use hash code and ensure it's positive
-                int generatedId = docId.hashCode();
-                if (generatedId < 0) {
-                    generatedId = Math.abs(generatedId);
-                }
-                // If somehow still 0, use a timestamp-based fallback
-                if (generatedId == 0) {
-                    generatedId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
-                }
+                // Use the Firestore document ID as the userId
+                String generatedId = docId;
                 
                 // Update the user object with the generated ID
                 user.setUserId(generatedId);
@@ -67,7 +59,7 @@ public class UserRepository {
                 // Update the document with the generated userId field
                 context.document(docId).update("userId", generatedId)
                         .addOnSuccessListener(aVoid -> {
-                            Log.d("Firestore", "User created with auto-generated " + " (docId: " + docId + ")");
+                            Log.d("Firestore", "User created with auto-generated ID: " + generatedId + " (docId: " + docId + ")");
                             onSuccess.onSuccess(aVoid);
                         })
                         .addOnFailureListener(e -> {
@@ -78,7 +70,7 @@ public class UserRepository {
             }).addOnFailureListener(onFailure);
         } else {
             // Check if user with this ID already exists
-            DocumentReference docRef = context.document(String.valueOf(user.getUserId()));
+            DocumentReference docRef = context.document(user.getUserId());
             docRef.get().addOnSuccessListener(documentSnapshot -> {
                 if (documentSnapshot.exists()) {
                     // Document exists, update it
@@ -97,7 +89,7 @@ public class UserRepository {
     public void updateUser(@NonNull User user,
                            @NonNull OnSuccessListener<Void> onSuccess,
                            @NonNull OnFailureListener onFailure) {
-        context.document(String.valueOf(user.getUserId()))
+        context.document(user.getUserId())
                 .set(user, SetOptions.merge()) // merge only changed fields
                 .addOnSuccessListener(aVoid -> {
                     Log.d("Firestore", "User updated: " + user.getUserId());
@@ -108,8 +100,13 @@ public class UserRepository {
                     onFailure.onFailure(e);
                 });
     }
-    public void deleteUserById(int userId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        context.document(String.valueOf(userId))
+    public void deleteUserById(String userId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+        if (userId == null || userId.trim().isEmpty()) {
+            Log.e("Firestore", "Cannot delete user: userId is null or empty");
+            onFailure.onFailure(new IllegalArgumentException("userId cannot be null or empty"));
+            return;
+        }
+        context.document(userId)
                 .delete()
                 .addOnSuccessListener(onSuccess)
                 .addOnFailureListener(onFailure);

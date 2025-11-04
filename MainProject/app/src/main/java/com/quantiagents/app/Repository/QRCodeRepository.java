@@ -60,7 +60,7 @@ public class QRCodeRepository {
         }
     }
 
-    public List<QRCode> getQRCodesByEventId(int eventId) {
+    public List<QRCode> getQRCodesByEventId(String eventId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId).get());
             List<QRCode> qrCodes = new ArrayList<>();

@@ -31,7 +31,7 @@ public class QRCodeService {
         return repository.getAllQRCodes();
     }
 
-    public List<QRCode> getQRCodesByEventId(int eventId) {
+    public List<QRCode> getQRCodesByEventId(String eventId) {
         return repository.getQRCodesByEventId(eventId);
     }
 
@@ -45,7 +45,7 @@ public class QRCodeService {
             onFailure.onFailure(new IllegalArgumentException("QR code value is required"));
             return;
         }
-        if (qrCode.getEventId() <= 0) {
+        if (qrCode.getEventId() == null || qrCode.getEventId().trim().isEmpty()) {
             onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
             return;
         }
@@ -75,7 +75,7 @@ public class QRCodeService {
             onFailure.onFailure(new IllegalArgumentException("QR code value is required"));
             return;
         }
-        if (qrCode.getEventId() <= 0) {
+        if (qrCode.getEventId() == null || qrCode.getEventId().trim().isEmpty()) {
             onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
             return;
         }

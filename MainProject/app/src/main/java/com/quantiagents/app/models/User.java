@@ -1,39 +1,39 @@
 package com.quantiagents.app.models;
 import com.quantiagents.app.Constants.constant;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.util.Date;
 
 public class User implements Serializable {
 
-    private int userId;
+    private String userId;
     private String deviceId;
     private String name;
     private String email;
     private String phone;
     private String passwordHash;
     private boolean notificationsOn;
-    private LocalDateTime createdOn;
+    private Date createdOn;
     private constant.UserRole role;
     private RegistrationHistory registrationHistory;
 
 
     public User(){
-        this.userId = -1;
+        this.userId = "";
         this.deviceId = "";
         this.name = "";
         this.email = "";
         this.phone = "";
         this.passwordHash = "";
         this.notificationsOn = true;
-        this.createdOn = LocalDateTime.now();
+        this.createdOn = new Date();
     }
 
-    public User(int userId){
+    public User(String userId){
         super();
         this.userId = userId;
     }
 
-    public User(int userId, String deviceId, String name, String email, String phone, String passwordHash) {
+    public User(String userId, String deviceId, String name, String email, String phone, String passwordHash) {
         // Capture the snapshot of my profile at creation.
         this.userId = userId;
         this.deviceId = deviceId;
@@ -42,10 +42,10 @@ public class User implements Serializable {
         this.phone = phone;
         this.passwordHash = passwordHash;
         this.notificationsOn = true;
-        this.createdOn = LocalDateTime.now();
+        this.createdOn = new Date();
     }
 
-    public int getUserId() {
+    public String getUserId() {
         return userId;
     }
 
@@ -53,7 +53,7 @@ public class User implements Serializable {
         return deviceId;
     }
 
-    public void setUserId(int userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 
@@ -101,11 +101,11 @@ public class User implements Serializable {
         this.notificationsOn = notificationsOn;
     }
 
-    public LocalDateTime getCreatedOn() {
+    public Date getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(LocalDateTime createdOn) {
+    public void setCreatedOn(Date createdOn) {
         this.createdOn = createdOn;
     }
 

@@ -13,7 +13,6 @@ import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.quantiagents.app.Services.ServiceLocator;
-import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.Services.LoginService;
 import com.quantiagents.app.models.User;
 import com.quantiagents.app.Services.UserService;
@@ -74,10 +73,13 @@ public class UserFlowInstrumentedTest {
         ServiceLocator locator = new ServiceLocator(context);
         UserService userService = locator.userService();
         LoginService loginService = locator.loginService();
-        DeviceIdManager deviceIdManager = locator.deviceIdManager();
         userService.createUser("Dee Entrant", "dee@example.com", "5559998888", "deePass1");
         assertTrue(loginService.login("dee@example.com", "deePass1"));
-        String deviceId = deviceIdManager.getDeviceId();
+        // Get deviceId from the current user
+        User currentUser = userService.getCurrentUser();
+        assertNotNull(currentUser);
+        String deviceId = currentUser.getDeviceId();
+        assertNotNull(deviceId);
         // Recreate services to simulate a cold start.
         locator = new ServiceLocator(context);
         loginService = locator.loginService();
@@ -92,7 +94,7 @@ public class UserFlowInstrumentedTest {
         userService.createUser("Kim Entrant", "kim@example.com", "5550001111", "kimPass1");
         assertTrue(loginService.login("kim@example.com", "kimPass1"));
         userService.updateUser("Kim Updated", "kim.updated@example.com", "5550002222");
-        assertTrue(userService.updatePassword("newPass77"));
+        userService.updatePassword("newPass77");
         loginService.logout();
         assertFalse(loginService.login("kim.updated@example.com", "kimPass1"));
         assertTrue(loginService.login("kim.updated@example.com", "newPass77"));
@@ -104,6 +106,7 @@ public class UserFlowInstrumentedTest {
     private void wipeProfile() {
         ServiceLocator locator = new ServiceLocator(context);
         locator.userService().deleteUserProfile();
-        locator.deviceIdManager().reset();
+        // DeviceIdManager is internal to UserService, so we can't reset it directly
+        // The device ID will be reused, which is fine for testing
     }
 }

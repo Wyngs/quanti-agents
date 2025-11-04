@@ -2,36 +2,37 @@ package com.quantiagents.app.models;
 
 import com.quantiagents.app.Constants.constant;
 
-import java.time.LocalDateTime;
 import java.util.Date;
 
 public class RegistrationHistory {
 
-    private int eventId;
-    private int userId;
+    private String eventId;
+    private String userId;
     private constant.EventRegistrationStatus eventRegStatus;
     private Date registeredAt;
 
-    public RegistrationHistory(int eventId, int userId, constant.EventRegistrationStatus eventRegStatus, Date registeredAt ){
+    public RegistrationHistory(){}
+
+    public RegistrationHistory(String eventId, String userId, constant.EventRegistrationStatus eventRegStatus, Date registeredAt ){
         this.eventId = eventId;
         this.userId = userId;
         this.eventRegStatus = eventRegStatus;
         this.registeredAt = registeredAt;
     }
 
-    public int getEventId() {
+    public String getEventId() {
         return eventId;
     }
 
-    public void setEventId(int eventId) {
+    public void setEventId(String eventId) {
         this.eventId = eventId;
     }
 
-    public int getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(int userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 

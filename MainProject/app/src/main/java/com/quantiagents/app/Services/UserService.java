@@ -47,10 +47,10 @@ public class UserService {
         String trimmedPhone = phone == null ? "" : phone.trim();
         String deviceId = deviceIdManager.ensureDeviceId();
         String passwordHash = hashPassword(password);
-        // Create user with userId -1, Firebase will auto-generate an ID when saving
-        User user = new User(-1, deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
+        // Create user with empty userId, Firebase will auto-generate an ID when saving
+        User user = new User("", deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
 
-        // Save user - if userId is -1 or <= 0, Firebase will auto-generate an ID
+        // Save user - if userId is null or empty, Firebase will auto-generate an ID
         // The user object will be updated with the generated ID after saving
         repository.saveUser(user, aVoid -> Log.d("App", "User saved with ID: " + user.getUserId()),
                 e -> Log.e("App", "Failed to save", e));
@@ -148,7 +148,7 @@ public class UserService {
     public void deleteUserProfile() {
         // Hard delete wipes local profile entirely.
         User current = getCurrentUser();
-        if (current != null) {
+        if (current != null && current.getUserId() != null && !current.getUserId().trim().isEmpty()) {
             repository.deleteUserById(
                     current.getUserId(),
                     aVoid -> Log.d("App", "Deleted user"),
@@ -156,7 +156,7 @@ public class UserService {
         }
     }
 
-    public User getUserById(int userId) {
+    public User getUserById(String userId) {
         return repository.getUserById(userId);
     }
 

@@ -23,7 +23,7 @@ public class GeoLocationService {
         this.repository = new GeoLocationRepository(fireBaseRepository);
     }
 
-    public GeoLocation getGeoLocationByUserIdAndEventId(int userId, int eventId) {
+    public GeoLocation getGeoLocationByUserIdAndEventId(String userId, String eventId) {
         return repository.getGeoLocationByUserIdAndEventId(userId, eventId);
     }
 
@@ -31,15 +31,15 @@ public class GeoLocationService {
         return repository.getAllGeoLocations();
     }
 
-    public List<GeoLocation> getGeoLocationsByEventId(int eventId) {
+    public List<GeoLocation> getGeoLocationsByEventId(String eventId) {
         return repository.getGeoLocationsByEventId(eventId);
     }
 
-    public List<GeoLocation> getGeoLocationsByUserId(int userId) {
+    public List<GeoLocation> getGeoLocationsByUserId(String userId) {
         return repository.getGeoLocationsByUserId(userId);
     }
 
-    public List<GeoLocation> getGeoLocationsByEventIdAndUserId(int eventId, int userId) {
+    public List<GeoLocation> getGeoLocationsByEventIdAndUserId(String eventId, String userId) {
         return repository.getGeoLocationsByEventIdAndUserId(eventId, userId);
     }
 
@@ -98,7 +98,7 @@ public class GeoLocationService {
                 });
     }
 
-    public void deleteGeoLocation(int userId, int eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+    public void deleteGeoLocation(String userId, String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         repository.deleteGeoLocationByUserIdAndEventId(userId, eventId,
                 aVoid -> {
                     Log.d("App", "Geo location deleted: userId=" + userId + ", eventId=" + eventId);
@@ -110,7 +110,7 @@ public class GeoLocationService {
                 });
     }
 
-    public boolean deleteGeoLocation(int userId, int eventId) {
+    public boolean deleteGeoLocation(String userId, String eventId) {
         return repository.deleteGeoLocationByUserIdAndEventId(userId, eventId);
     }
 }

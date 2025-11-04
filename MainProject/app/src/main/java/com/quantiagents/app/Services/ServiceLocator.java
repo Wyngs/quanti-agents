@@ -2,6 +2,8 @@ package com.quantiagents.app.Services;
 
 import android.content.Context;
 
+import com.quantiagents.app.models.DeviceIdManager;
+
 public class ServiceLocator {
 
     private final Context appContext;
@@ -15,6 +17,7 @@ public class ServiceLocator {
     private GeoLocationService geoLocationService;
     private LotteryResultService lotteryResultService;
     private QRCodeService qrCodeService;
+    private DeviceIdManager deviceIdManager;
 
     public ServiceLocator(Context context) {
         // Stick with the app context to avoid leaks.
@@ -99,5 +102,13 @@ public class ServiceLocator {
             qrCodeService = new QRCodeService(appContext);
         }
         return qrCodeService;
+    }
+
+    public synchronized DeviceIdManager deviceIdManager() {
+        if (deviceIdManager == null) {
+            // DeviceIdManager manages device identity
+            deviceIdManager = new DeviceIdManager(appContext);
+        }
+        return deviceIdManager;
     }
 }

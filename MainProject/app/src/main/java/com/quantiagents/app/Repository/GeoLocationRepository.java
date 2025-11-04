@@ -26,7 +26,7 @@ public class GeoLocationRepository {
         this.context = fireBaseRepository.getGeoLocationCollectionRef();
     }
 
-    public GeoLocation getGeoLocationByUserIdAndEventId(int userId, int eventId) {
+    public GeoLocation getGeoLocationByUserIdAndEventId(String userId, String eventId) {
         try {
             // Use composite key: userId_eventId
             String docId = userId + "_" + eventId;
@@ -60,7 +60,7 @@ public class GeoLocationRepository {
         }
     }
 
-    public List<GeoLocation> getGeoLocationsByEventId(int eventId) {
+    public List<GeoLocation> getGeoLocationsByEventId(String eventId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId).get());
             List<GeoLocation> geoLocations = new ArrayList<>();
@@ -77,7 +77,7 @@ public class GeoLocationRepository {
         }
     }
 
-    public List<GeoLocation> getGeoLocationsByUserId(int userId) {
+    public List<GeoLocation> getGeoLocationsByUserId(String userId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("userId", userId).get());
             List<GeoLocation> geoLocations = new ArrayList<>();
@@ -94,7 +94,7 @@ public class GeoLocationRepository {
         }
     }
 
-    public List<GeoLocation> getGeoLocationsByEventIdAndUserId(int eventId, int userId) {
+    public List<GeoLocation> getGeoLocationsByEventIdAndUserId(String eventId, String userId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId)
                     .whereEqualTo("userId", userId).get());
@@ -145,7 +145,7 @@ public class GeoLocationRepository {
                 });
     }
 
-    public void deleteGeoLocationByUserIdAndEventId(int userId, int eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+    public void deleteGeoLocationByUserIdAndEventId(String userId, String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         // Use composite key: userId_eventId
         String docId = userId + "_" + eventId;
         context.document(docId)
@@ -154,7 +154,7 @@ public class GeoLocationRepository {
                 .addOnFailureListener(onFailure);
     }
 
-    public boolean deleteGeoLocationByUserIdAndEventId(int userId, int eventId) {
+    public boolean deleteGeoLocationByUserIdAndEventId(String userId, String eventId) {
         try {
             // Use composite key: userId_eventId
             String docId = userId + "_" + eventId;

@@ -1,46 +1,46 @@
 package com.quantiagents.app.models;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 
 public class LotteryResult {
-    private int eventId;
-    private List<Integer> entrantIds;
-    private LocalDateTime timeStamp;
-
-    public LotteryResult(int eventId, List<Integer> entrantIds) {
+    private String eventId;
+    private List<String> entrantIds;
+    private Date timeStamp;
+    public LotteryResult(){}
+    public LotteryResult(String eventId, List<String> entrantIds) {
         this.eventId = eventId;
         this.entrantIds = entrantIds;
-        this.timeStamp = LocalDateTime.now();
+        this.timeStamp = new Date();
     }
 
-    public LotteryResult(int eventId, List<Integer> entrantIds, LocalDateTime timeStamp) {
+    public LotteryResult(String eventId, List<String> entrantIds, Date timeStamp) {
         this.eventId = eventId;
         this.entrantIds = entrantIds;
         this.timeStamp = timeStamp;
     }
 
-    public int getEventId() {
+    public String getEventId() {
         return eventId;
     }
 
-    public void setEventId(int eventId) {
+    public void setEventId(String eventId) {
         this.eventId = eventId;
     }
 
-    public List<Integer> getEntrantIds() {
+    public List<String> getEntrantIds() {
         return entrantIds;
     }
 
-    public void setEntrantIds(List<Integer> entrantIds) {
+    public void setEntrantIds(List<String> entrantIds) {
         this.entrantIds = entrantIds;
     }
 
-    public LocalDateTime getTimeStamp() {
+    public Date getTimeStamp() {
         return timeStamp;
     }
 
-    public void setTimeStamp(LocalDateTime timeStamp) {
+    public void setTimeStamp(Date timeStamp) {
         this.timeStamp = timeStamp;
     }
 }
