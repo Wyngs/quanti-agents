@@ -103,7 +103,7 @@ public class QRCodeRepository {
                 // Update the document with the generated id field
                 context.document(docId).update("id", generatedId)
                         .addOnSuccessListener(aVoid -> {
-                            Log.d("Firestore", "QR code created with auto-generated ID: " + generatedId + " (docId: " + docId + ")");
+                            Log.d("Firestore", "QR code created with auto-generated " + " (docId: " + docId + ")");
                             onSuccess.onSuccess(aVoid);
                         })
                         .addOnFailureListener(e -> {
