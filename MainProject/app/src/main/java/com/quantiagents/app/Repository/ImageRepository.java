@@ -1,126 +1,131 @@
 package com.quantiagents.app.Repository;
 
-import android.content.Context;
-import android.content.SharedPreferences;
+import android.util.Log;
 
+import androidx.annotation.NonNull;
+
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.SetOptions;
 import com.quantiagents.app.models.Image;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class ImageRepository {
 
-    private static final String PREF_NAME = "admin_image_store";
-    private static final String KEY_IMAGES = "images_json";
-    private final SharedPreferences preferences;
+    private final CollectionReference context;
 
-    public ImageRepository(Context context) {
-        //tracks image metadata for admin deletion
-        this.preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+    public ImageRepository(FireBaseRepository fireBaseRepository) {
+        this.context = fireBaseRepository.getPosterCollectionRef();
     }
 
-    public synchronized List<Image> listImages() {
-        //return all images; tolerant of malformed json
-        String raw = preferences.getString(KEY_IMAGES, "[]");
-        List<Image> out = new ArrayList<>();
+    public Image getImageById(String imageId) {
         try {
-            JSONArray arr = new JSONArray(raw);
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.optJSONObject(i);
-                if (o == null) continue;
-                String imageId = o.optString("imageId", "");
-                if (imageId.isEmpty()) continue;
-                String eid = o.optString("eventId", "");
-                String eventId = eid.isEmpty() ? null : eid;
-                String uri = o.optString("uri", "");
-                out.add(new Image(imageId, eventId, uri));
+            DocumentSnapshot snapshot = Tasks.await(context.document(imageId).get());
+            if (snapshot.exists()) {
+                return snapshot.toObject(Image.class);
+            } else {
+                Log.d("Firestore", "No image found for ID: " + imageId);
+                return null;
             }
-        } catch (JSONException ignore) {
-            //swallow and return what we have
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e("Firestore", "Error getting image", e);
+            return null;
         }
-        return out;
     }
 
-    public synchronized boolean saveOrReplace(Image img) {
-        //upsert an image by id
+    public List<Image> getAllImages() {
         try {
-            JSONArray arr = new JSONArray(preferences.getString(KEY_IMAGES, "[]"));
-            JSONArray next = new JSONArray();
-            boolean replaced = false;
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.optJSONObject(i);
-                if (o == null) continue;
-                if (img.getImageId().equals(o.optString("imageId"))) {
-                    next.put(toJson(img));
-                    replaced = true;
-                } else {
-                    next.put(o);
+            QuerySnapshot snapshot = Tasks.await(context.get());
+            List<Image> images = new ArrayList<>();
+            for (QueryDocumentSnapshot document : snapshot) {
+                Image image = document.toObject(Image.class);
+                if (image != null) {
+                    images.add(image);
                 }
             }
-            if (!replaced) next.put(toJson(img));
-            preferences.edit().putString(KEY_IMAGES, next.toString()).apply();
+            return images;
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e("Firestore", "Error getting all images", e);
+            return new ArrayList<>();
+        }
+    }
+
+    public void saveImage(Image image, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+        if (image.getImageId() == null || image.getImageId().isEmpty()) {
+            onFailure.onFailure(new IllegalArgumentException("Image ID cannot be null or empty"));
+            return;
+        }
+        context.document(image.getImageId())
+                .set(image)
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void updateImage(@NonNull Image image,
+                           @NonNull OnSuccessListener<Void> onSuccess,
+                           @NonNull OnFailureListener onFailure) {
+        if (image.getImageId() == null || image.getImageId().isEmpty()) {
+            onFailure.onFailure(new IllegalArgumentException("Image ID cannot be null or empty"));
+            return;
+        }
+        context.document(image.getImageId())
+                .set(image, SetOptions.merge()) // merge only changed fields
+                .addOnSuccessListener(aVoid -> {
+                    Log.d("Firestore", "Image updated: " + image.getImageId());
+                    onSuccess.onSuccess(aVoid);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("Firestore", "Error updating image", e);
+                    onFailure.onFailure(e);
+                });
+    }
+
+    public void deleteImageById(String imageId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+        context.document(imageId)
+                .delete()
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public boolean deleteImageById(String imageId) {
+        try {
+            Tasks.await(context.document(imageId).delete());
+            Log.d("Firestore", "Image deleted: " + imageId);
             return true;
-        } catch (JSONException e) {
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e("Firestore", "Error deleting image", e);
             return false;
         }
     }
 
-    public synchronized boolean deleteImage(String imageId) {
-        //remove a single image by id
-        try {
-            JSONArray arr = new JSONArray(preferences.getString(KEY_IMAGES, "[]"));
-            JSONArray next = new JSONArray();
-            boolean removed = false;
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.optJSONObject(i);
-                if (o == null) continue;
-                if (imageId.equals(o.optString("imageId"))) {
-                    removed = true;
-                } else {
-                    next.put(o);
-                }
-            }
-            if (removed) preferences.edit().putString(KEY_IMAGES, next.toString()).apply();
-            return removed;
-        } catch (JSONException e) {
-            return false;
-        }
-    }
-
-    public synchronized int deleteImagesByEventId(String eventId) {
-        //remove all images linked to a given event id
-        if (eventId == null || eventId.isEmpty()) return 0;
-        try {
-            JSONArray arr = new JSONArray(preferences.getString(KEY_IMAGES, "[]"));
-            JSONArray next = new JSONArray();
-            int removed = 0;
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.optJSONObject(i);
-                if (o == null) continue;
-                String eid = o.optString("eventId", "");
-                if (eventId.equals(eid)) {
-                    removed++;
-                } else {
-                    next.put(o);
-                }
-            }
-            if (removed > 0) preferences.edit().putString(KEY_IMAGES, next.toString()).apply();
-            return removed;
-        } catch (JSONException e) {
+    public int deleteImagesByEventId(String eventId) {
+        if (eventId == null || eventId.isEmpty()) {
             return 0;
         }
-    }
-
-    private JSONObject toJson(Image img) throws JSONException {
-        //serialize with null-safe fields
-        JSONObject o = new JSONObject();
-        o.put("imageId", img.getImageId() == null ? "" : img.getImageId());
-        o.putOpt("eventId", img.getEventId()); //safe when null
-        o.put("uri", img.getUri() == null ? "" : img.getUri());
-        return o;
+        try {
+            QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId).get());
+            int removed = 0;
+            for (QueryDocumentSnapshot document : snapshot) {
+                try {
+                    Tasks.await(document.getReference().delete());
+                    removed++;
+                } catch (ExecutionException | InterruptedException e) {
+                    Log.e("Firestore", "Error deleting image during cascade", e);
+                }
+            }
+            Log.d("Firestore", "Deleted " + removed + " images for event: " + eventId);
+            return removed;
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e("Firestore", "Error getting images by event ID", e);
+            return 0;
+        }
     }
 }

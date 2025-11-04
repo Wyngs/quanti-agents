@@ -6,7 +6,6 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import com.quantiagents.app.Repository.AdminLogRepository;
-import com.quantiagents.app.Repository.ImageRepository;
 import com.quantiagents.app.Repository.ProfilesRepository;
 import com.quantiagents.app.models.AdminActionLog;
 import com.quantiagents.app.models.DeviceIdManager;
@@ -20,7 +19,7 @@ import java.util.List;
 public class AdminService {
 
     private final EventService eventService;
-    private final ImageRepository imageRepository;
+    private final ImageService imageService;
     private final ProfilesRepository profilesRepository;
     private final AdminLogRepository logRepository;
     private final DeviceIdManager deviceIdManager;
@@ -29,7 +28,7 @@ public class AdminService {
     public AdminService(Context context) {
         // Instantiate services and repositories internally
         this.eventService = new EventService(context);
-        this.imageRepository = new ImageRepository(context);
+        this.imageService = new ImageService(context);
         this.profilesRepository = new ProfilesRepository(context);
         this.logRepository = new AdminLogRepository(context);
         this.deviceIdManager = new DeviceIdManager(context);
@@ -56,7 +55,7 @@ public class AdminService {
         }
         
         //cascade: delete event poster images by event id
-        imageRepository.deleteImagesByEventId(eventId);
+        imageService.deleteImagesByEventId(eventId);
         
         // Delete event using EventService
         boolean removed = eventService.deleteEvent(eventIdInt);
@@ -113,7 +112,7 @@ public class AdminService {
 
     //us 03.03.01a: list all uploaded images
     public List<Image> listAllImages() {
-        return imageRepository.listImages();
+        return imageService.getAllImages();
     }
 
     //us 03.03.01b+c: select an image and confirm deletion
@@ -121,7 +120,7 @@ public class AdminService {
         if (!confirmed) {
             throw new IllegalArgumentException("confirmation required");
         }
-        boolean removed = imageRepository.deleteImage(imageId);
+        boolean removed = imageService.deleteImage(imageId);
         if (removed) {
             logRepository.append(new AdminActionLog(
                     AdminActionLog.KIND_IMAGE,

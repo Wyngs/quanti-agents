@@ -10,10 +10,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.quantiagents.app.Repository.EventRepository;
 import com.quantiagents.app.Repository.ImageRepository;
 import com.quantiagents.app.Repository.ProfilesRepository;
-import com.quantiagents.app.Repository.ServiceLocator;
+import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.Services.AdminService;
 import com.quantiagents.app.models.Event;
-import com.quantiagents.app.models.StoredImage;
+import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.User;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.UserSummary;
@@ -77,7 +77,7 @@ public class AdminFlowInstrumentedTest {
         for (Event e : er.listEvents()) { er.deleteEvent(e.getEventId()); }
         //remove all images
         ImageRepository ir = locator.imageRepository();
-        for (StoredImage si : ir.listImages()) { ir.deleteImage(si.getImageId()); }
+        for (Image si : ir.listImages()) { ir.deleteImage(si.getImageId()); }
         //remove all admin-profile summaries and clear local user
         ProfilesRepository pr = locator.profilesRepository();
         for (UserSummary us : pr.listProfiles()) { pr.deleteProfile(us.getUserId()); }
@@ -92,8 +92,8 @@ public class AdminFlowInstrumentedTest {
         locator.eventRepository().saveOrReplace(new Event("evt1","event one","img1"));
         locator.eventRepository().saveOrReplace(new Event("evt2","event two",null));
         //seed two images: one linked to evt1, one standalone
-        locator.imageRepository().saveOrReplace(new StoredImage("img1","evt1","uri://poster1"));
-        locator.imageRepository().saveOrReplace(new StoredImage("img2",null,"uri://poster2"));
+        locator.imageRepository().saveOrReplace(new Image("img1","evt1","uri://poster1"));
+        locator.imageRepository().saveOrReplace(new Image("img2",null,"uri://poster2"));
         //create a real local user so profile deletion also clears local store
         UserService us = locator.userService();
         us.createUser("Local User","local@example.com","5550000000","pass123");

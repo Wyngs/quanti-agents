@@ -12,7 +12,7 @@ import android.text.TextUtils;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
-import com.quantiagents.app.Repository.ServiceLocator;
+import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.Services.LoginService;
 import com.quantiagents.app.models.User;
