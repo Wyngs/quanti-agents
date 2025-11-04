@@ -2,7 +2,6 @@ package com.quantiagents.app.Services;
 
 import android.util.Log;
 
-import com.google.android.gms.tasks.Task;
 import com.quantiagents.app.Repository.UserRepository;
 import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.models.User;
@@ -10,7 +9,7 @@ import com.quantiagents.app.models.User;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.UUID;
+import java.util.List;
 import java.util.regex.Pattern;
 
 public class UserService {
@@ -24,7 +23,17 @@ public class UserService {
         this.deviceIdManager = deviceIdManager;
     }
 
-    public User getCurrentUser() { return new User(); }
+    public User getCurrentUser() {
+        // Find current user by device ID
+        String deviceId = deviceIdManager.ensureDeviceId();
+        List<User> allUsers = repository.getAllUsers();
+        for (User user : allUsers) {
+            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
+                return user;
+            }
+        }
+        return null;
+    }
 
     public User createUser(String name, String email, String phone, String password) {
         // Validate everything once before I write to prefs.
@@ -46,37 +55,45 @@ public class UserService {
         User current = requireUser();
         validateName(name);
         validateEmail(email);
-        current.setName(name.trim());
-        current.setEmail(email.trim());
-        current.setPhone(phone == null ? "" : phone.trim());
-        repository.updateUser(current,
-                aVoid -> Log.d("App", "Update user"),
-                e -> Log.e("App", "Failed to update user", e));
+        if (current != null) {
+            current.setName(name.trim());
+            current.setEmail(email.trim());
+            current.setPhone(phone == null ? "" : phone.trim());
+            repository.updateUser(current,
+                    aVoid -> Log.d("App", "Update user"),
+                    e -> Log.e("App", "Failed to update user", e));
+        }
         return current;
     }
 
     public boolean authenticate(String email, String password) {
         // Quick email/password check for manual login.
-        User user = getUserById(-1);
-        if (user == null) {
-            return false;
+        // Find user by email
+        List<User> allUsers = repository.getAllUsers();
+        for (User user : allUsers) {
+            if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
+                String hash = hashPassword(password);
+                return hash.equals(user.getPasswordHash());
+            }
         }
-        if (!user.getEmail().equalsIgnoreCase(email.trim())) {
-            return false;
-        }
-        String hash = hashPassword(password);
-        return hash.equals(user.getPasswordHash());
+        return false;
     }
 
     public boolean authenticateDevice(String deviceId) {
         // Device-only gate for auto login.
-        User user = repository.getUserById();
-        return user != null && deviceId != null && deviceId.equals(user.getDeviceId());
+        // Find user by device ID by checking all users
+        List<User> allUsers = repository.getAllUsers();
+        for (User user : allUsers) {
+            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void attachDeviceToCurrentUser() {
         // Make sure the stored profile follows the latest device id.
-        User current = repository.getUserById();
+        User current = getCurrentUser();
         if (current == null) {
             return;
         }
@@ -102,27 +119,34 @@ public class UserService {
         // Allow password refresh on demand.
         validatePassword(newPassword);
         User current = requireUser();
-        current.setPasswordHash(hashPassword(newPassword));
-        repository.updateUser(current,
-                aVoid -> Log.d("App", "Update user"),
-                e -> Log.e("App", "Failed to update user", e));
+        if (current != null) {
+            current.setPasswordHash(hashPassword(newPassword));
+            repository.updateUser(current,
+                    aVoid -> Log.d("App", "Update user"),
+                    e -> Log.e("App", "Failed to update user", e));
+        }
     }
 
     public void updateNotificationPreference(boolean enabled) {
         // Keep notification toggle in sync.
         User current = requireUser();
-        current.setNotificationsOn(enabled);
-        repository.updateUser(current,
-                aVoid -> Log.d("App", "Update user"),
-                e -> Log.e("App", "Failed to update user", e));
+        if (current != null) {
+            current.setNotificationsOn(enabled);
+            repository.updateUser(current,
+                    aVoid -> Log.d("App", "Update user"),
+                    e -> Log.e("App", "Failed to update user", e));
+        }
     }
 
     public void deleteUserProfile() {
         // Hard delete wipes local profile entirely.
-        repository.deleteUserById(
-                -1,
-                aVoid -> Log.d("App", "Deleted user"),
-                e -> Log.e("App", "Failed to delete user", e));
+        User current = getCurrentUser();
+        if (current != null) {
+            repository.deleteUserById(
+                    current.getUserId(),
+                    aVoid -> Log.d("App", "Deleted user"),
+                    e -> Log.e("App", "Failed to delete user", e));
+        }
     }
 
     public User getUserById(int userId) {
@@ -130,7 +154,7 @@ public class UserService {
     }
 
     private User requireUser() {
-        User current = getUserById(-1);
+        User current = getCurrentUser();
         if (current == null) {
             throw new IllegalStateException("Profile missing");
         }

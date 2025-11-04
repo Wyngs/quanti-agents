@@ -1,32 +1,21 @@
 package com.quantiagents.app.Repository;
 
-import static android.content.ContentValues.TAG;
-
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.CollectionReference;
-import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
 import com.quantiagents.app.models.User;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 public class UserRepository {
@@ -75,5 +64,22 @@ public class UserRepository {
                 .delete()
                 .addOnSuccessListener(onSuccess)
                 .addOnFailureListener(onFailure);
+    }
+
+    public List<User> getAllUsers() {
+        try {
+            QuerySnapshot snapshot = Tasks.await(context.get());
+            List<User> users = new ArrayList<>();
+            for (QueryDocumentSnapshot document : snapshot) {
+                User user = document.toObject(User.class);
+                if (user != null) {
+                    users.add(user);
+                }
+            }
+            return users;
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e("Firestore", "Error getting all users", e);
+            return new ArrayList<>();
+        }
     }
 }
