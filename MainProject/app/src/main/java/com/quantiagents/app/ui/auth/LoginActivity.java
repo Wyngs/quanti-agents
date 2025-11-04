@@ -35,18 +35,28 @@ public class LoginActivity extends AppCompatActivity {
         userService = app.locator().userService();
         loginService = app.locator().loginService();
         bindViews();
-        User user = userService.getCurrentUser();
-        if (user == null) {
-            Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(this, SignUpActivity.class));
-            finish();
-            return;
-        }
-        preloadInputs(user);
-        findViewById(R.id.button_continue).setOnClickListener(v -> handleLogin());
-        findViewById(R.id.button_switch_user).setOnClickListener(v -> resetProfile());
-        TextView forgotView = findViewById(R.id.text_forgot_password);
-        forgotView.setOnClickListener(v -> Toast.makeText(this, R.string.message_password_hint, Toast.LENGTH_SHORT).show());
+        // Use async getCurrentUser to avoid blocking the main thread
+        userService.getCurrentUser(
+                user -> {
+                    if (user == null) {
+                        Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
+                        startActivity(new Intent(this, SignUpActivity.class));
+                        finish();
+                        return;
+                    }
+                    preloadInputs(user);
+                    // Set up buttons after user is loaded
+                    findViewById(R.id.button_continue).setOnClickListener(v -> handleLogin());
+                    findViewById(R.id.button_switch_user).setOnClickListener(v -> resetProfile());
+                    TextView forgotView = findViewById(R.id.text_forgot_password);
+                    forgotView.setOnClickListener(v -> Toast.makeText(this, R.string.message_password_hint, Toast.LENGTH_SHORT).show());
+                },
+                e -> {
+                    Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(this, SignUpActivity.class));
+                    finish();
+                }
+        );
     }
 
     private void bindViews() {
@@ -74,12 +84,19 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
         // Let LoginService verify credentials.
-        boolean success = loginService.login(email, password);
-        if (success) {
-            openHome();
-        } else {
-            passwordLayout.setError(getString(R.string.error_login_invalid));
-        }
+        // Use async login to avoid blocking the main thread
+        loginService.login(email, password,
+                success -> {
+                    if (success) {
+                        openHome();
+                    } else {
+                        passwordLayout.setError(getString(R.string.error_login_invalid));
+                    }
+                },
+                e -> {
+                    passwordLayout.setError(getString(R.string.error_login_invalid));
+                }
+        );
     }
 
     private void openHome() {

@@ -49,10 +49,17 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        User user = userService.getCurrentUser();
-        if (user != null) {
-            notificationSwitch.setChecked(user.hasNotificationsOn());
-        }
+        // Use async getCurrentUser to avoid blocking the main thread
+        userService.getCurrentUser(
+                user -> {
+                    if (user != null) {
+                        notificationSwitch.setChecked(user.hasNotificationsOn());
+                    }
+                },
+                e -> {
+                    // On error, do nothing - switch will remain in its current state
+                }
+        );
     }
 
     private void confirmDeletion() {

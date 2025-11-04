@@ -128,4 +128,22 @@ public class UserRepository {
             return new ArrayList<>();
         }
     }
+
+    public void getAllUsers(OnSuccessListener<List<User>> onSuccess, OnFailureListener onFailure) {
+        context.get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<User> users = new ArrayList<>();
+                    for (QueryDocumentSnapshot document : querySnapshot) {
+                        User user = document.toObject(User.class);
+                        if (user != null) {
+                            users.add(user);
+                        }
+                    }
+                    onSuccess.onSuccess(users);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("Firestore", "Error getting all users", e);
+                    onFailure.onFailure(e);
+                });
+    }
 }

@@ -3,6 +3,10 @@ package com.quantiagents.app.Services;
 import android.content.Context;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.UserRepository;
 import com.quantiagents.app.models.DeviceIdManager;
@@ -86,6 +90,24 @@ public class UserService {
         return false;
     }
 
+    public void authenticate(String email, String password, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
+        // Async version for UI thread
+        repository.getAllUsers(
+                users -> {
+                    for (User user : users) {
+                        if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
+                            String hash = hashPassword(password);
+                            boolean success = hash.equals(user.getPasswordHash());
+                            onSuccess.onSuccess(success);
+                            return;
+                        }
+                    }
+                    onSuccess.onSuccess(false);
+                },
+                onFailure
+        );
+    }
+
     public boolean authenticateDevice(String deviceId) {
         // Device-only gate for auto login.
         // Find user by device ID by checking all users
@@ -96,6 +118,39 @@ public class UserService {
             }
         }
         return false;
+    }
+
+    public void authenticateDevice(String deviceId, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
+        // Async version for UI thread
+        repository.getAllUsers(
+                users -> {
+                    for (User user : users) {
+                        if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
+                            onSuccess.onSuccess(true);
+                            return;
+                        }
+                    }
+                    onSuccess.onSuccess(false);
+                },
+                onFailure
+        );
+    }
+
+    public void getCurrentUser(OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
+        // Async version for UI thread
+        String deviceId = deviceIdManager.ensureDeviceId();
+        repository.getAllUsers(
+                users -> {
+                    for (User user : users) {
+                        if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
+                            onSuccess.onSuccess(user);
+                            return;
+                        }
+                    }
+                    onSuccess.onSuccess(null);
+                },
+                onFailure
+        );
     }
 
     public void attachDeviceToCurrentUser() {

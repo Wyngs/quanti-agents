@@ -90,12 +90,23 @@ public class SignUpActivity extends AppCompatActivity {
         try {
             // Save profile, hash password, and auto-login.
             User user = userService.createUser(name, email, phone, password);
-            loginService.login(email, password);
-            Toast.makeText(this, getString(R.string.message_profile_created, user.getName()), Toast.LENGTH_SHORT).show();
-            Intent intent = new Intent(this, MainActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
+            // Use async login to avoid blocking the main thread
+            loginService.login(email, password,
+                    success -> {
+                        if (success) {
+                            Toast.makeText(this, getString(R.string.message_profile_created, user.getName()), Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(this, MainActivity.class);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                            startActivity(intent);
+                            finish();
+                        } else {
+                            emailLayout.setError(getString(R.string.error_email_invalid));
+                        }
+                    },
+                    e -> {
+                        emailLayout.setError(getString(R.string.error_email_invalid));
+                    }
+            );
         } catch (IllegalArgumentException exception) {
             emailLayout.setError(getString(R.string.error_email_invalid));
         }
