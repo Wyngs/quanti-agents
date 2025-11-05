@@ -10,9 +10,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.domain.DeviceIdManager;
-import com.quantiagents.app.domain.LoginService;
-import com.quantiagents.app.domain.UserService;
+import com.quantiagents.app.models.DeviceIdManager;
+import com.quantiagents.app.Services.LoginService;
+import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.ui.main.MainActivity;
 
 public class SplashActivity extends AppCompatActivity {
@@ -33,14 +33,49 @@ public class SplashActivity extends AppCompatActivity {
         LoginService loginService = app.locator().loginService();
         String deviceId = deviceIdManager.ensureDeviceId();
         // Try silent device login first; fall back to manual entry.
-        if (loginService.loginWithDevice(deviceId)) {
-            launchHome();
-        } else if (userService.getCurrentUser() == null) {
-            launchSignUp();
-        } else {
-            launchLogin();
-        }
-        finish();
+        loginService.loginWithDevice(deviceId,
+                success -> {
+                    if (success) {
+                        launchHome();
+                        finish();
+                    } else {
+                        // Check if user exists to decide between sign up and login
+                        userService.getCurrentUser(
+                                user -> {
+                                    if (user == null) {
+                                        launchSignUp();
+                                    } else {
+                                        launchLogin();
+                                    }
+                                    finish();
+                                },
+                                e -> {
+                                    // On error, go to sign up
+                                    launchSignUp();
+                                    finish();
+                                }
+                        );
+                    }
+                },
+                e -> {
+                    // On error, check if user exists
+                    userService.getCurrentUser(
+                            user -> {
+                                if (user == null) {
+                                    launchSignUp();
+                                } else {
+                                    launchLogin();
+                                }
+                                finish();
+                            },
+                            err -> {
+                                // On error, go to sign up
+                                launchSignUp();
+                                finish();
+                            }
+                    );
+                }
+        );
     }
 
     private void launchSignUp() {

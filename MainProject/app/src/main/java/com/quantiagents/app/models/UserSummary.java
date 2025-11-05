@@ -1,13 +1,13 @@
-package com.quantiagents.app.domain;
+package com.quantiagents.app.models;
 
 import java.io.Serializable;
 
 public class UserSummary implements Serializable {
 
-    private final String userId;
-    private final String name;
-    private final String email;
-
+    private String userId;
+    private String name;
+    private String email;
+    public UserSummary(){}
     public UserSummary(String userId, String name, String email) {
         //admin-facing minimal profile
         this.userId = userId;

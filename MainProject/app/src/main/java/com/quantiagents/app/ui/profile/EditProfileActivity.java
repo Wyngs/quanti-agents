@@ -12,8 +12,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.domain.User;
-import com.quantiagents.app.domain.UserService;
+import com.quantiagents.app.models.User;
+import com.quantiagents.app.Services.UserService;
 
 public class EditProfileActivity extends AppCompatActivity {
 
@@ -56,16 +56,23 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void bindUser() {
-        User user = userService.getCurrentUser();
-        if (user == null) {
-            finish();
-            return;
-        }
-        nameField.setText(user.getName());
-        emailField.setText(user.getEmail());
-        phoneField.setText(user.getPhone());
-        passwordField.setText("");
-        confirmPasswordField.setText("");
+        // Use async getCurrentUser to avoid blocking the main thread
+        userService.getCurrentUser(
+                user -> {
+                    if (user == null) {
+                        finish();
+                        return;
+                    }
+                    nameField.setText(user.getName());
+                    emailField.setText(user.getEmail());
+                    phoneField.setText(user.getPhone());
+                    passwordField.setText("");
+                    confirmPasswordField.setText("");
+                },
+                e -> {
+                    finish();
+                }
+        );
     }
 
     private void handleSave() {

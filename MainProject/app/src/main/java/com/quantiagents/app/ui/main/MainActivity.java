@@ -20,9 +20,9 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.navigation.NavigationView;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.domain.LoginService;
-import com.quantiagents.app.domain.User;
-import com.quantiagents.app.domain.UserService;
+import com.quantiagents.app.Services.LoginService;
+import com.quantiagents.app.models.User;
+import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.ui.auth.LoginActivity;
 import com.quantiagents.app.ui.profile.ProfileFragment;
 import com.quantiagents.app.ui.profile.SettingsFragment;
@@ -43,13 +43,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         userService = app.locator().userService();
         loginService = app.locator().loginService();
 
-        User user = userService.getCurrentUser();
-        if (user == null) {
-            startActivity(new Intent(this, LoginActivity.class));
-            finish();
-            return;
-        }
-
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.navigation_view);
         MaterialToolbar toolbar = findViewById(R.id.top_app_bar);
@@ -65,12 +58,29 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         toggle.syncState();
 
         navigationView.setNavigationItemSelectedListener(this);
-        bindHeader(user);
 
-        if (savedInstanceState == null) {
-            navigationView.setCheckedItem(activeItemId);
-            showFragment(ProfileFragment.newInstance());
-        }
+        // Use async getCurrentUser to avoid blocking the main thread
+        userService.getCurrentUser(
+                user -> {
+                    if (user == null) {
+                        startActivity(new Intent(this, LoginActivity.class));
+                        finish();
+                        return;
+                    }
+
+                    bindHeader(user);
+
+                    if (savedInstanceState == null) {
+                        navigationView.setCheckedItem(activeItemId);
+                        showFragment(ProfileFragment.newInstance());
+                    }
+                },
+                e -> {
+                    // On error, redirect to login
+                    startActivity(new Intent(this, LoginActivity.class));
+                    finish();
+                }
+        );
     }
 
     private void bindHeader(@NonNull User user) {

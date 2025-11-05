@@ -16,8 +16,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.domain.User;
-import com.quantiagents.app.domain.UserService;
+import com.quantiagents.app.models.User;
+import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.ui.auth.SignUpActivity;
 
 public class SettingsFragment extends Fragment {
@@ -49,10 +49,17 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        User user = userService.getCurrentUser();
-        if (user != null) {
-            notificationSwitch.setChecked(user.hasNotificationsOn());
-        }
+        // Use async getCurrentUser to avoid blocking the main thread
+        userService.getCurrentUser(
+                user -> {
+                    if (user != null) {
+                        notificationSwitch.setChecked(user.hasNotificationsOn());
+                    }
+                },
+                e -> {
+                    // On error, do nothing - switch will remain in its current state
+                }
+        );
     }
 
     private void confirmDeletion() {

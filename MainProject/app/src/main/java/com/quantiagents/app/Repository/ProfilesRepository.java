@@ -1,9 +1,9 @@
-package com.quantiagents.app.data;
+package com.quantiagents.app.Repository;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import com.quantiagents.app.domain.UserSummary;
+import com.quantiagents.app.models.UserSummary;
 
 import org.json.JSONArray;
 import org.json.JSONException;

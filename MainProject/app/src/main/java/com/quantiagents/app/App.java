@@ -2,7 +2,7 @@ package com.quantiagents.app;
 
 import android.app.Application;
 
-import com.quantiagents.app.data.ServiceLocator;
+import com.quantiagents.app.Services.ServiceLocator;
 
 public class App extends Application {
 

@@ -1,4 +1,4 @@
-package com.quantiagents.app.domain;
+package com.quantiagents.app.models;
 
 import android.content.Context;
 import android.content.SharedPreferences;

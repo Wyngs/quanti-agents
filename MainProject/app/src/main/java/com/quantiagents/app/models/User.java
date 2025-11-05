@@ -1,17 +1,37 @@
-package com.quantiagents.app.domain;
-
+package com.quantiagents.app.models;
+import com.quantiagents.app.Constants.constant;
 import java.io.Serializable;
+import java.util.Date;
 
 public class User implements Serializable {
 
-    private final String userId;
-    private final String deviceId;
+    private String userId;
+    private String deviceId;
     private String name;
     private String email;
     private String phone;
     private String passwordHash;
     private boolean notificationsOn;
-    private long createdOn;
+    private Date createdOn;
+    private constant.UserRole role;
+    private RegistrationHistory registrationHistory;
+
+
+    public User(){
+        this.userId = "";
+        this.deviceId = "";
+        this.name = "";
+        this.email = "";
+        this.phone = "";
+        this.passwordHash = "";
+        this.notificationsOn = true;
+        this.createdOn = new Date();
+    }
+
+    public User(String userId){
+        super();
+        this.userId = userId;
+    }
 
     public User(String userId, String deviceId, String name, String email, String phone, String passwordHash) {
         // Capture the snapshot of my profile at creation.
@@ -22,7 +42,7 @@ public class User implements Serializable {
         this.phone = phone;
         this.passwordHash = passwordHash;
         this.notificationsOn = true;
-        this.createdOn = System.currentTimeMillis();
+        this.createdOn = new Date();
     }
 
     public String getUserId() {
@@ -31,6 +51,14 @@ public class User implements Serializable {
 
     public String getDeviceId() {
         return deviceId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 
     public String getName() {
@@ -73,11 +101,28 @@ public class User implements Serializable {
         this.notificationsOn = notificationsOn;
     }
 
-    public long getCreatedOn() {
+    public Date getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(long createdOn) {
+    public void setCreatedOn(Date createdOn) {
         this.createdOn = createdOn;
     }
+
+    public RegistrationHistory getRegistrationHistory() {
+        return registrationHistory;
+    }
+
+    public void setRegistrationHistory(RegistrationHistory registrationHistory) {
+        this.registrationHistory = registrationHistory;
+    }
+
+    public constant.UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(constant.UserRole role) {
+        this.role = role;
+    }
+
 }
