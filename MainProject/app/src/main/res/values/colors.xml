@@ -31,6 +31,7 @@
     <color name="navigationBarColor">#FFFFFF</color>
 
     <!-- Extra Helper Colours-->
+    <color name="colorSurface">#FFFFFF</color>
     <color name="colorSurfaceVariant">#FFFFFF</color>
     <color name="colorOnSurfaceVariant">#4D5170</color>
     <color name="colorAccent">#FF5D5D</color>

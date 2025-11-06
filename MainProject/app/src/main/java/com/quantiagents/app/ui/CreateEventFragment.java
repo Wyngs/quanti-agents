@@ -3,6 +3,7 @@ package com.quantiagents.app.ui;
 import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,8 +21,12 @@ import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
+import com.quantiagents.app.Services.ImageService;
 import com.quantiagents.app.Services.UserService;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.quantiagents.app.models.Event;
+import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.User;
 
 import java.text.ParseException;
@@ -29,6 +34,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -40,6 +46,7 @@ public class CreateEventFragment extends Fragment {
 
     private EventService eventService;
     private UserService userService;
+    private ImageService imageService;
 
     // Form fields
     private TextInputLayout nameLayout;
@@ -86,6 +93,7 @@ public class CreateEventFragment extends Fragment {
         App app = (App) requireActivity().getApplication();
         eventService = app.locator().eventService();
         userService = app.locator().userService();
+        imageService = app.locator().imageService();
 
         // Bind views
         bindViews(view);
@@ -309,19 +317,6 @@ public class CreateEventFragment extends Fragment {
             }
         }
 
-        if (isValid && !TextUtils.isEmpty(startDate) && !TextUtils.isEmpty(regStartDate)) {
-            try {
-                Date start = dateFormat.parse(regStartDate);
-                Date regStart = dateFormat.parse(regStartDate);
-                if (start != null && regStart != null && regStart.before(start)) {
-                    regStartDateLayout.setError("Registration start date must be before the start date");
-                    isValid = false;
-                }
-            } catch (ParseException e) {
-                // Already validated above
-            }
-        }
-
         if (isValid && !TextUtils.isEmpty(regStartDate) && !TextUtils.isEmpty(regEndDate)) {
             try {
                 Date regStart = dateFormat.parse(regStartDate);
@@ -334,18 +329,6 @@ public class CreateEventFragment extends Fragment {
                 // Already validated above
             }
         }
-        if (isValid && !TextUtils.isEmpty(endDate) && !TextUtils.isEmpty(regStartDate)){
-            try {
-                Date eventStart = dateFormat.parse(endDate);
-                Date regEnd = dateFormat.parse(regEndDate);
-                if (eventStart != null && regEnd != null && regEnd.before(eventStart)){
-                    regEndDateLayout.setError("Registration end date must be before the event start date");
-                }
-            }catch (ParseException e) {
-                // Already validated above
-            }
-
-        }
 
         return isValid;
     }
@@ -354,9 +337,9 @@ public class CreateEventFragment extends Fragment {
         try {
             // Create new Event object
             Event event = new Event();
-            
-            // Generate unique event ID
-            event.setEventId(UUID.randomUUID().toString());
+
+            // Make Firebase Generate new event ID
+            // event.setEventId(UUID.randomUUID().toString());
             
             // Set basic information
             event.setTitle(safeText(nameField));
@@ -395,13 +378,7 @@ public class CreateEventFragment extends Fragment {
             } else {
                 event.setWaitingListLimit(0); // 0 means unlimited
             }
-            
-            // Set poster URL (optional)
-            String posterUrl = safeText(posterField);
-            if (!TextUtils.isEmpty(posterUrl)) {
-                event.setPosterImageId(posterUrl);
-            }
-            
+
             // Set geolocation requirement
             event.setGeoLocationOn(geolocationSwitch.isChecked());
             
@@ -419,17 +396,62 @@ public class CreateEventFragment extends Fragment {
             
             // Save event
             eventService.saveEvent(event,
-                    aVoid -> {
+                    eventId -> {
                         Toast.makeText(requireContext(), "Event created successfully!", Toast.LENGTH_SHORT).show();
+
+                        event.setEventId(eventId);
+
+                        // Create poster image if URL is provided
+                        String posterUrl = safeText(posterField);
+                        if (!TextUtils.isEmpty(posterUrl)) {
+                            createPoster(posterUrl, eventId, event.getOrganizerId(),
+                                    imageId -> {
+                                        Log.d("CreateEvent", "Poster image saved with ID: " + imageId);
+                                        event.setPosterImageId(imageId);
+                                        eventService.updateEvent(event,
+                                                aVoid -> {
+                                                    Log.d("UpdateEvent", "Updated Event with new Image Id: " + imageId);
+                                                },
+                                                e -> {
+                                                    Log.e("UpdateEvent", "Failed Updating Event with new Image Id: " + imageId, e);
+                                                });
+                                    },
+                                    e -> {
+                                        Log.e("CreateEvent", "Failed to save poster image: " + e.getMessage());
+                                    });
+                        }
                         resetForm();
                     },
                     e -> {
                         Toast.makeText(requireContext(), "Failed to create event: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     }
             );
+
+
         } catch (Exception e) {
             Toast.makeText(requireContext(), "Error creating event: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void createPoster(String posterUrl, String eventId, String userId, 
+                              OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
+        Image newPoster = new Image();
+        newPoster.setUri(posterUrl);
+        newPoster.setEventId(eventId);
+        newPoster.setUploadedBy(userId);
+        // imageId will be auto-generated by repository when saved
+
+        imageService.saveImage(newPoster, 
+            imageId -> {
+                // Image saved successfully, imageId is returned in callback
+                Log.d("CreateEvent", "Poster image saved with ID: " + imageId);
+                onSuccess.onSuccess(imageId);
+            }, 
+            e -> {
+                Log.e("CreateEvent", "Failed to save poster image: " + e.getMessage());
+                onFailure.onFailure(e);
+            }
+        );
     }
 
     private void clearErrors() {
