@@ -6,8 +6,10 @@ import androidx.annotation.NonNull;
 
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -58,15 +60,51 @@ public class ImageRepository {
         }
     }
 
-    public void saveImage(Image image, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        if (image.getImageId() == null || image.getImageId().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Image ID cannot be null or empty"));
-            return;
+    public void saveImage(Image image, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
+        // If imageId is null or empty, let Firebase auto-generate an ID
+        if (image.getImageId() == null || image.getImageId().trim().isEmpty()) {
+            // Use .add() to create a new document with auto-generated ID
+            Task<DocumentReference> addTask = context.add(image);
+            addTask.addOnSuccessListener(documentReference -> {
+                // Extract the auto-generated document ID
+                String docId = documentReference.getId();
+                
+                // Use the Firestore document ID as the imageId
+                String generatedId = docId;
+                
+                // Update the image object with the generated ID
+                image.setImageId(generatedId);
+                
+                // Update the document with the generated imageId field
+                context.document(docId).update("imageId", generatedId)
+                        .addOnSuccessListener(aVoid -> {
+                            Log.d("Firestore", "Image created with auto-generated ID: " + generatedId + " (docId: " + docId + ")");
+                            onSuccess.onSuccess(generatedId);
+                        })
+                        .addOnFailureListener(e -> {
+                            Log.e("Firestore", "Error updating image with generated ID", e);
+                            // Still call success since document was created, just the ID update failed
+                            onSuccess.onSuccess(generatedId);
+                        });
+            }).addOnFailureListener(onFailure);
+        } else {
+            // Check if image with this ID already exists
+            String imageId = image.getImageId();
+            DocumentReference docRef = context.document(imageId);
+            docRef.get().addOnSuccessListener(documentSnapshot -> {
+                if (documentSnapshot.exists()) {
+                    // Document exists, update it
+                    docRef.set(image, SetOptions.merge())
+                            .addOnSuccessListener(aVoid -> onSuccess.onSuccess(imageId))
+                            .addOnFailureListener(onFailure);
+                } else {
+                    // Document doesn't exist, create it
+                    docRef.set(image)
+                            .addOnSuccessListener(aVoid -> onSuccess.onSuccess(imageId))
+                            .addOnFailureListener(onFailure);
+                }
+            }).addOnFailureListener(onFailure);
         }
-        context.document(image.getImageId())
-                .set(image)
-                .addOnSuccessListener(onSuccess)
-                .addOnFailureListener(onFailure);
     }
 
     public void updateImage(@NonNull Image image,

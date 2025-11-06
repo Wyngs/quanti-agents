@@ -38,6 +38,7 @@ public class Event implements Serializable {
     }
 
     public String getEventId() { return eventId; }
+    public void setEventId(String eventId) { this.eventId = eventId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getPosterImageId() { return posterImageId; }

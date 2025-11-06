@@ -31,7 +31,7 @@ public class EventService {
         return repository.getAllEvents();
     }
 
-    public void saveEvent(Event event, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+    public void saveEvent(Event event, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         // Validate event before saving
         if (event == null) {
             onFailure.onFailure(new IllegalArgumentException("Event cannot be null"));
@@ -43,9 +43,9 @@ public class EventService {
         }
         
         repository.saveEvent(event, 
-                aVoid -> {
+                eventId -> {
                     Log.d("App", "Event saved: " + event.getEventId());
-                    onSuccess.onSuccess(aVoid);
+                    onSuccess.onSuccess(eventId);
                 },
                 e -> {
                     Log.e("App", "Failed to save event", e);

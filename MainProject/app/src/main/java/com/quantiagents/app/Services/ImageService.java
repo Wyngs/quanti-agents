@@ -31,25 +31,22 @@ public class ImageService {
         return repository.getAllImages();
     }
 
-    public void saveImage(Image image, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+    public void saveImage(Image image, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         // Validate image before saving
         if (image == null) {
             onFailure.onFailure(new IllegalArgumentException("Image cannot be null"));
             return;
         }
-        if (image.getImageId() == null || image.getImageId().trim().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Image ID is required"));
-            return;
-        }
+        // Note: imageId is optional - repository will auto-generate if null/empty
         if (image.getUri() == null || image.getUri().trim().isEmpty()) {
             onFailure.onFailure(new IllegalArgumentException("Image URI is required"));
             return;
         }
         
         repository.saveImage(image,
-                aVoid -> {
-                    Log.d("App", "Image saved: " + image.getImageId());
-                    onSuccess.onSuccess(aVoid);
+                imageId -> {
+                    Log.d("App", "Image saved with ID: " + imageId);
+                    onSuccess.onSuccess(imageId);
                 },
                 e -> {
                     Log.e("App", "Failed to save image", e);

@@ -62,4 +62,26 @@
     <string name="nav_open">Open navigation</string>
     <string name="nav_role_entrant">Entrant</string>
     <string name="nav_placeholder_unavailable">Coming soon</string>
+    <string name="create_event_title">Create New Event</string>
+    <string name="create_event_subtitle">Set up a new lottery-based event</string>
+    <string name="create_event_card_title">Event Information</string>
+    <string name="create_event_card_description">Basic details about your event</string>
+    <string name="create_event_name_label">Event Name *</string>
+    <string name="create_event_name_hint">e.g., Beginner Swimming Lessons</string>
+    <string name="create_event_description_label">Description *</string>
+    <string name="create_event_description_hint">Describe your event…</string>
+    <string name="create_event_start_date_label">Event Start Date *</string>
+    <string name="create_event_end_date_label">Event End Date *</string>
+    <string name="create_event_reg_start_date_label">Registration Opens *</string>
+    <string name="create_event_reg_end_date_label">Registration Closes *</string>
+    <string name="create_event_capacity_label">Capacity *</string>
+    <string name="create_event_price_label">Price ($) *</string>
+    <string name="create_event_waiting_list_label">Waiting List Limit (Optional)</string>
+    <string name="create_event_waiting_list_hint">Leave empty for unlimited</string>
+    <string name="create_event_poster_label">Event Poster URL (Optional)</string>
+    <string name="create_event_poster_hint">https://example.com/poster.jpg</string>
+    <string name="create_event_geolocation_label">Require Geolocation</string>
+    <string name="create_event_geolocation_description">Track where entrants join the waiting list</string>
+    <string name="create_event_button">Create Event</string>
+    
 </resources>

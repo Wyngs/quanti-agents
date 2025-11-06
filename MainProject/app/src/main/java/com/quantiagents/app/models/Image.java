@@ -7,7 +7,7 @@ public class Image implements Serializable {
     private String imageId;
     private String eventId; //may be null for non-event images
     private String uri; //could be file path or remote url
-    private int uploadedBy;
+    private String uploadedBy;
 
     public Image(){}
 
@@ -22,11 +22,11 @@ public class Image implements Serializable {
     public String getEventId() { return eventId; }
     public String getUri() { return uri; }
 
-    public int getUploadedBy() {
+    public String getUploadedBy() {
         return uploadedBy;
     }
 
-    public void setUploadedBy(int uploadedBy) {
+    public void setUploadedBy(String uploadedBy) {
         this.uploadedBy = uploadedBy;
     }
 
