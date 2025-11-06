@@ -17,10 +17,9 @@ public class EntrantInfoHostActivity extends AppCompatActivity {
         setContentView(R.layout.activity_entrant_info_host);
 
         if (savedInstanceState == null) {
-            // Use provided eventId if present, else a demo id for testing
             String eventId = getIntent().getStringExtra(EXTRA_EVENT_ID);
             if (eventId == null || eventId.trim().isEmpty()) {
-                eventId = "demo-event-1";
+                eventId = "demo-event-1"; // Use an example Id for testing
             }
 
             getSupportFragmentManager()
