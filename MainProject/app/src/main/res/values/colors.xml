@@ -12,7 +12,6 @@
 
     <!-- Background and Surfaces -->
     <color name="colorBackground">#F8F9FA</color> <!-- Light Gray Background -->
-    <color name="colorSurface">#FFFFFF</color> <!-- White cards -->
     <color name="colorOnSurface">#212121</color> <!-- Text on white -->
 
     <!-- Text Colors -->
@@ -31,7 +30,7 @@
     <color name="statusBarColor">#303F9F</color>
     <color name="navigationBarColor">#FFFFFF</color>
 
-    <!-- Extrs Helper Colours-->
+    <!-- Extra Helper Colours-->
     <color name="colorSurfaceVariant">#FFFFFF</color>
     <color name="colorOnSurfaceVariant">#4D5170</color>
     <color name="colorAccent">#FF5D5D</color>
