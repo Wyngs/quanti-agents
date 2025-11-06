@@ -24,6 +24,11 @@ public class LotteryResultService {
     private final LotteryResultRepository repository;
     private final RegistrationHistoryService registrationHistoryService;
     private final EventService eventService;
+    /// Region: internal status strings (use enum names to match Firestore)
+    private static final String ST_WAITING   = constant.EventRegistrationStatus.WAITING.name();
+    private static final String ST_SELECTED  = constant.EventRegistrationStatus.SELECTED.name();
+    private static final String ST_CONFIRMED = constant.EventRegistrationStatus.CONFIRMED.name();
+    private static final String ST_CANCELED  = constant.EventRegistrationStatus.CANCELED.name();
 
     public LotteryResultService(Context context) {
         // LotteryResultService instantiates its own repositories internally
@@ -111,74 +116,140 @@ public class LotteryResultService {
         return repository.deleteLotteryResultByTimestampAndEventId(timestamp, eventId);
     }
 
+
+
     /**
-     * Runs a lottery for a given event, randomly selecting the specified number of entrants
-     * from confirmed registrations for that event.
-     * 
-     * @param eventId The ID of the event to run the lottery for
-     * @param numberOfEntrants The number of entrants to select
-     * @param onSuccess Callback for successful lottery execution
-     * @param onFailure Callback for failed lottery execution
+     * Draws {@code count} entrants from the {@code WAITING} pool for a given event,
+     * promotes them to {@code SELECTED}, and persists a {@link LotteryResult} snapshot.
+     * <p>
+     * This method encapsulates randomness, status updates (batched), and result logging.
+     * If {@code count <= 0} or the waiting pool is empty, a result with an empty list
+     * is returned via {@code ok}.
+     *
+     * @param eventId event identifier
+     * @param count   number of entrants to select (capped to waiting size)
+     * @param ok      receives the persisted {@link LotteryResult} (possibly empty)
+     * @param err     receives any failure while reading/updating/saving
      */
-    public void runLottery(String eventId, int numberOfEntrants,
-                          OnSuccessListener<LotteryResult> onSuccess,
-                          OnFailureListener onFailure) {
-        // Validate inputs
-        if (eventId == null || eventId.trim().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
-            return;
-        }
-        if (numberOfEntrants <= 0) {
-            onFailure.onFailure(new IllegalArgumentException("Number of entrants must be positive"));
+    public void drawLottery(@NonNull String eventId, int count,
+                            @NonNull OnSuccessListener<LotteryResult> ok,
+                            @NonNull OnFailureListener err) {
+        if (count <= 0) {
+            ok.onSuccess(new LotteryResult(eventId, new ArrayList<>()));
             return;
         }
 
-        // Verify event exists
-        if (eventService.getEventById(eventId) == null) {
-            onFailure.onFailure(new IllegalArgumentException("Event not found with ID: " + eventId));
-            return;
-        }
+        // 1) Load WAITING registrations
+        registrationHistoryService.getByEventAndStatus(
+                eventId, ST_WAITING,
+                waitingList -> {
+                    if (waitingList.isEmpty()) {
+                        ok.onSuccess(new LotteryResult(eventId, new ArrayList<>()));
+                        return;
+                    }
 
-        // Get all registration histories for this event
-        List<RegistrationHistory> registrations = registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
-        
-        // Filter for confirmed registrations only
-        List<String> confirmedUserIds = new ArrayList<>();
-        for (RegistrationHistory registration : registrations) {
-            if (registration.getEventRegistrationStatus() == constant.EventRegistrationStatus.CONFIRMED) {
-                confirmedUserIds.add(registration.getUserId());
-            }
-        }
+                    // 2) Shuffle and pick N
+                    List<String> waitingIds = new ArrayList<>();
+                    for (RegistrationHistory rh : waitingList) waitingIds.add(rh.getUserId());
+                    Collections.shuffle(waitingIds, new Random());
+                    List<String> picked = waitingIds.subList(0, Math.min(count, waitingIds.size()));
 
-        // Check if we have enough confirmed registrations
-        if (confirmedUserIds.isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("No confirmed registrations found for event: " + eventId));
-            return;
-        }
-
-        if (confirmedUserIds.size() < numberOfEntrants) {
-            Log.w("App", "Requested " + numberOfEntrants + " entrants, but only " + confirmedUserIds.size() + " confirmed registrations available. Selecting all available.");
-            numberOfEntrants = confirmedUserIds.size();
-        }
-
-        // Randomly select entrants
-        List<String> selectedEntrants = new ArrayList<>(confirmedUserIds);
-        Collections.shuffle(selectedEntrants, new Random());
-        List<String> finalSelectedEntrants = new ArrayList<>(selectedEntrants.subList(0, numberOfEntrants));
-        final int finalSelectedCount = finalSelectedEntrants.size();
-
-        // Create lottery result
-        LotteryResult result = new LotteryResult(eventId, finalSelectedEntrants);
-
-        // Save lottery result
-        repository.saveLotteryResult(result,
-                aVoid -> {
-                    Log.d("App", "Lottery completed for event: " + eventId + " with " + finalSelectedCount + " entrants");
-                    onSuccess.onSuccess(result);
+                    // 3) Promote to SELECTED in a single batch
+                    registrationHistoryService.bulkUpdateStatus(
+                            eventId, picked, ST_SELECTED,
+                            updated -> {
+                                // 4) Save a LotteryResult snapshot (timestamped in repo)
+                                LotteryResult result = new LotteryResult(eventId, new ArrayList<>(picked));
+                                repository.saveLotteryResult(result,
+                                        v -> ok.onSuccess(result),
+                                        err);
+                            },
+                            err);
                 },
-                e -> {
-                    Log.e("App", "Failed to save lottery result", e);
-                    onFailure.onFailure(e);
-                });
+                err);
     }
+
+    /**
+     * Computes open selection slots as {@code quota - (SELECTED + CONFIRMED)} and,
+     * if positive, draws that many entrants from {@code WAITING}. If no slots are open,
+     * returns an empty {@link LotteryResult}.
+     *
+     * @param eventId event identifier
+     * @param ok      receives a {@link LotteryResult} (possibly empty)
+     * @param err     receives any failure while reading or updating
+     */
+    public void refillCanceledSlots(@NonNull String eventId,
+                                    @NonNull OnSuccessListener<LotteryResult> ok,
+                                    @NonNull OnFailureListener err) {
+
+        // Step 1: fetch quota
+        eventService.getSelectionQuota(eventId, quota ->
+
+                // Step 2: count SELECTED
+                registrationHistoryService.countByStatus(eventId, ST_SELECTED, selectedCount ->
+
+                        // Step 3: count CONFIRMED
+                        registrationHistoryService.countByStatus(eventId, ST_CONFIRMED, confirmedCount -> {
+                            int open = Math.max(0, quota - (selectedCount + confirmedCount));
+                            if (open <= 0) {
+                                ok.onSuccess(new LotteryResult(eventId, new ArrayList<>()));
+                            } else {
+                                // Step 4: draw up to 'open' from WAITING
+                                drawLottery(eventId, open, ok, err);
+                            }
+                        }, err), err), err);
+    }
+
+    /**
+     * Cancels {@code SELECTED} users who missed a response deadline.
+     * <p>
+     * Very simple Part-3 rule: if {@code registeredAt} is older than {@code deadlineEpochMs},
+     * that user is considered stale and is moved to {@code CANCELED}.
+     *
+     * @param eventId          event identifier
+     * @param deadlineEpochMs  epoch millis cutoff
+     * @param okCanceledCount  receives the number of users moved to CANCELED
+     * @param err              receives any failure during read or batch update
+     */
+    public void cancelNonResponders(@NonNull String eventId, long deadlineEpochMs,
+                                    @NonNull OnSuccessListener<Integer> okCanceledCount,
+                                    @NonNull OnFailureListener err) {
+        // Load current SELECTED
+        registrationHistoryService.getByEventAndStatus(
+                eventId, ST_SELECTED,
+                selectedList -> {
+                    List<String> stale = new ArrayList<>();
+                    for (RegistrationHistory rh : selectedList) {
+                        if (rh.getRegisteredAt() != null &&
+                                rh.getRegisteredAt().getTime() < deadlineEpochMs) {
+                            stale.add(rh.getUserId());
+                        }
+                    }
+                    if (stale.isEmpty()) { okCanceledCount.onSuccess(0); return; }
+
+                    // Bulk move to CANCELED
+                    registrationHistoryService.bulkUpdateStatus(
+                            eventId, stale, ST_CANCELED, okCanceledCount, err);
+                },
+                err);
+    }
+
+    /**
+     * Compatibility wrapper for existing callers that expect a "run lottery" API.
+     * <p>
+     * New behavior: samples from {@code WAITING} and promotes to {@code SELECTED}.
+     * Internally delegates to {@link #drawLottery(String, int, OnSuccessListener, OnFailureListener)}.
+     *
+     * @param eventId           event identifier
+     * @param numberOfEntrants  number of entrants to draw
+     * @param onSuccess         receives the {@link LotteryResult}
+     * @param onFailure         receives any failure
+     */
+    @Override
+    public void runLottery(String eventId, int numberOfEntrants,
+                           OnSuccessListener<LotteryResult> onSuccess,
+                           OnFailureListener onFailure) {
+        drawLottery(eventId, numberOfEntrants, onSuccess, onFailure);
+    }
+
 }

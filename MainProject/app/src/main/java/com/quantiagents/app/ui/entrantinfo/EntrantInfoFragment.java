@@ -17,7 +17,7 @@ import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.RegistrationHistoryService;
-import com.quantiagents.app.app.App;
+import com.quantiagents.app.App;
 
 /**
  * Fragment that hosts the Entrant Information area:
@@ -103,7 +103,7 @@ public class EntrantInfoFragment extends Fragment {
 
         // Redraw canceled: fill open slots created by cancellations
         btnRedraw.setOnClickListener(view ->
-                svc.refillCanceledSlots(eventId,
+                svc.refillCancel4edSlots(eventId,
                         filled -> Toast.makeText(getContext(), "Refilled " + filled + " slot(s)", Toast.LENGTH_SHORT).show(),
                         e -> Toast.makeText(getContext(), "Refill failed: " + e.getMessage(), Toast.LENGTH_LONG).show()));
     }

@@ -18,7 +18,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.RegistrationHistoryService;
-import com.quantiagents.app.app.App;
+import com.quantiagents.app.App;
 import com.quantiagents.app.models.UserSummary;
 
 import java.util.ArrayList;

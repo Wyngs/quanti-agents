@@ -142,4 +142,87 @@ public class RegistrationHistoryRepository {
             return false;
         }
     }
+
+
+    /**
+     * Returns (asynchronously) all registration documents for a given event filtered by status.
+     * <p>
+     * Queries Firestore where {@code eventId == eventId} and {@code eventRegStatus == status}.
+     * The method performs no business logic; it only reads and maps documents.
+     *
+     * @param eventId the event id
+     * @param status  one of your {@code constant.EventRegistrationStatus.name()} values
+     * @param ok      receives a list (possibly empty) of {@link RegistrationHistory}
+     * @param err     receives the error on failure
+     */
+    public void getByEventAndStatus(@NonNull String eventId,
+                                    @NonNull String status,
+                                    @NonNull OnSuccessListener<List<RegistrationHistory>> ok,
+                                    @NonNull OnFailureListener err) {
+        context.whereEqualTo("eventId", eventId)
+                .whereEqualTo("eventRegStatus", status)
+                .get()
+                .addOnSuccessListener(qs -> {
+                    List<RegistrationHistory> out = new ArrayList<>();
+                    for (QueryDocumentSnapshot d : qs) {
+                        RegistrationHistory rh = d.toObject(RegistrationHistory.class);
+                        if (rh != null) out.add(rh);
+                    }
+                    ok.onSuccess(out);
+                })
+                .addOnFailureListener(err);
+    }
+
+    /**
+     * Counts (asynchronously) how many registrations exist for a given event in a given status.
+     *
+     * @param eventId the event id
+     * @param status  status to count
+     * @param ok      receives the count (0 if none)
+     * @param err     receives the error on failure
+     */
+    public void countByEventAndStatus(@NonNull String eventId,
+                                      @NonNull String status,
+                                      @NonNull OnSuccessListener<Integer> ok,
+                                      @NonNull OnFailureListener err) {
+        context.whereEqualTo("eventId", eventId)
+                .whereEqualTo("eventRegStatus", status)
+                .get()
+                .addOnSuccessListener(qs -> ok.onSuccess(qs.size()))
+                .addOnFailureListener(err);
+    }
+
+    /**
+     * Bulk-updates {@code eventRegStatus} for the provided {@code userIds} within an event.
+     * <p>
+     * Uses a single Firestore {@link WriteBatch}. The repository assumes the composite id
+     * format {@code eventId + "_" + userId} used elsewhere in your project.
+     *
+     * @param eventId   event id
+     * @param userIds   users to update (no-op if empty)
+     * @param newStatus new status to set (e.g., "SELECTED")
+     * @param okCount   invoked with the number of attempted updates
+     * @param err       invoked on write failure
+     */
+    public void bulkUpdateStatus(@NonNull String eventId,
+                                 @NonNull List<String> userIds,
+                                 @NonNull String newStatus,
+                                 @NonNull OnSuccessListener<Integer> okCount,
+                                 @NonNull OnFailureListener err) {
+        if (userIds.isEmpty()) { okCount.onSuccess(0); return; }
+
+        WriteBatch batch = context.getFirestore().batch();
+        int n = 0;
+        for (String uid : userIds) {
+            String docId = eventId + "_" + uid; // composite key used by your project
+            batch.update(context.document(docId), "eventRegStatus", newStatus);
+            n++;
+        }
+        final int attempted = n;
+
+        batch.commit()
+                .addOnSuccessListener(v -> okCount.onSuccess(attempted))
+                .addOnFailureListener(err);
+    }
+
 }
