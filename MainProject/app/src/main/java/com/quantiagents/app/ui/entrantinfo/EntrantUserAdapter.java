@@ -14,18 +14,12 @@ import com.quantiagents.app.models.RegistrationHistory;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Very small RecyclerView adapter that renders registration rows in the entrant list.
- * <p>
- * It expects {@link RegistrationHistory} items. If your model does not yet carry
- * a user name/email in each row, this adapter gracefully falls back to userId and status.
- */
 public class EntrantUserAdapter extends RecyclerView.Adapter<EntrantUserAdapter.VH> {
 
     private final List<RegistrationHistory> data = new ArrayList<>();
 
-    /** Simple holder for the two-line row (name + subline). */
-    static class VH extends RecyclerView.ViewHolder {
+    /** ViewHolder for item_entrant_user.xml (name + sub). */
+    public static class VH extends RecyclerView.ViewHolder {
         final TextView name;
         final TextView sub;
         VH(@NonNull View itemView) {
@@ -35,56 +29,38 @@ public class EntrantUserAdapter extends RecyclerView.Adapter<EntrantUserAdapter.
         }
     }
 
-    /** Creates a new view holder using {@code row_entrant_user.xml}. */
     @NonNull
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.row_entrant_user, parent, false);
+                .inflate(R.layout.item_entrant_user, parent, false);
         return new VH(v);
     }
 
-    /**
-     * Binds a single {@link RegistrationHistory} to the row.
-     * <ul>
-     *   <li>Title line: user name if available, else userId.</li>
-     *   <li>Sub line: email if available, else "status: XYZ".</li>
-     * </ul>
-     */
     @Override
     public void onBindViewHolder(@NonNull VH h, int position) {
         RegistrationHistory rh = data.get(position);
 
-        // Try to read friendly fields if your model has them; otherwise fallback.
-        String name = safe(rh.getUserName());           // if you have getUserName()
-        if (name.isEmpty()) name = safe(rh.getUserId()); // fallback
+        // Title: prefer a friendly value if you later add it; for now use userId.
+        String title = safe(rh.getUserId());
 
-        String sub = safe(rh.getUserEmail());           // if you have getUserEmail()
-        if (sub.isEmpty()) sub = "status: " + safe(rh.getEventRegistrationStatus());
+        // Sub: show status (works whether it’s a String or an enum).
+        String status = safe(rh.getEventRegistrationStatus());
+        String sub    = status.isEmpty() ? "" : "status: " + status;
 
-        h.name.setText(name);
+        h.name.setText(title);
         h.sub.setText(sub);
     }
 
-    /** @return current item count. */
     @Override
-    public int getItemCount() {
-        return data.size();
-    }
+    public int getItemCount() { return data.size(); }
 
-    /**
-     * Replaces all items with the provided list and refreshes the view.
-     *
-     * @param rows New rows to display (may be empty, but not null).
-     */
+    /** Replace all items (fine for P3; can switch to DiffUtil later). */
     public void submit(@NonNull List<RegistrationHistory> rows) {
         data.clear();
         data.addAll(rows);
-        notifyDataSetChanged(); // fine for P3; can optimize later with DiffUtil
+        notifyDataSetChanged();
     }
 
-    // --- tiny helper ---
-    private static String safe(Object o) {
-        return o == null ? "" : String.valueOf(o);
-    }
+    private static String safe(Object o) { return o == null ? "" : String.valueOf(o); }
 }

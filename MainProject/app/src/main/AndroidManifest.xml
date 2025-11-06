@@ -21,6 +21,10 @@
             android:name=".ui.main.MainActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.entrantinfo.EntrantInfoHostActivity"
+            android:exported="true"
+            android:label="EntrantInfoHost (dev)" />
+        <activity
             android:name=".ui.auth.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.QuantiAgents.Splash">

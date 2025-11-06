@@ -1,19 +1,18 @@
 package com.quantiagents.app;
 
-import com.quantiagents.app.Repository.RegistrationHistoryRepository;
-import com.quantiagents.app.models.RegistrationHistory;
 import com.google.android.gms.tasks.OnSuccessListener;
 
-import com.quantiagents.app.Services.EventService;
-import com.quantiagents.app.Repository.EventRepository;
-import com.quantiagents.app.models.Event;
-
+import com.quantiagents.app.Constants.constant; // <-- for constant.EventRegistrationStatus
+import com.quantiagents.app.Repository.RegistrationHistoryRepository;
+import com.quantiagents.app.Services.RegistrationHistoryService;
+import com.quantiagents.app.models.RegistrationHistory;
 
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.Date;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -24,6 +23,7 @@ import static org.mockito.Mockito.*;
  */
 public class RegistrationHistoryServiceTest {
 
+    /** Test-only reflection helper to set a private final field. */
     static void forceSet(Object target, String fieldName, Object value) {
         try {
             Field f = target.getClass().getDeclaredField(fieldName);
@@ -37,11 +37,20 @@ public class RegistrationHistoryServiceTest {
         }
     }
 
+    /** Tiny box to capture async values. */
     static class Box<T> { T v; }
 
-    private static RegistrationHistory rh(String e, String u, Date d, Enum<?> status) {
+    /** Builder for a RegistrationHistory test object, using the REAL enum type. */
+    private static RegistrationHistory rh(
+            String e,
+            String u,
+            Date d,
+            constant.EventRegistrationStatus status
+    ) {
         RegistrationHistory r = new RegistrationHistory();
-        r.setEventId(e); r.setUserId(u); r.setRegisteredAt(d);
+        r.setEventId(e);
+        r.setUserId(u);
+        r.setRegisteredAt(d);
         if (status != null) r.setEventRegistrationStatus(status);
         return r;
     }
@@ -69,9 +78,13 @@ public class RegistrationHistoryServiceTest {
     @Test
     public void save_missingDate_fails() {
         RegistrationHistoryService svc = new RegistrationHistoryService(null);
-        Enum<?> dummy = new Enum<Object>() { public String name(){return "OK";} public int ordinal(){return 0;} };
         Box<Throwable> fail = new Box<>();
-        svc.saveRegistrationHistory(rh("E1","U1", null, dummy), v -> fail("x"), e -> fail.v = e);
+        // pass a real enum constant
+        svc.saveRegistrationHistory(
+                rh("E1","U1", null, constant.EventRegistrationStatus.SELECTED),
+                v -> fail("x"),
+                e -> fail.v = e
+        );
         assertNotNull(fail.v);
         assertTrue(fail.v.getMessage().toLowerCase().contains("date"));
     }
@@ -85,9 +98,12 @@ public class RegistrationHistoryServiceTest {
                 .when(repo).saveRegistrationHistory(any(), any(), any());
         forceSet(svc, "repository", repo);
 
-        Enum<?> ok = new Enum<Object>() { public String name(){return "OK";} public int ordinal(){return 0;} };
         Box<Boolean> hit = new Box<>(); hit.v = false;
-        svc.saveRegistrationHistory(rh("E2","U2", new Date(), ok), v -> hit.v = true, e -> fail("x"));
+        svc.saveRegistrationHistory(
+                rh("E2","U2", new Date(), constant.EventRegistrationStatus.SELECTED),
+                v -> hit.v = true,
+                e -> fail("x")
+        );
         assertTrue(hit.v);
         verify(repo).saveRegistrationHistory(any(), any(), any());
     }
@@ -110,9 +126,12 @@ public class RegistrationHistoryServiceTest {
                 .when(repo).updateRegistrationHistory(any(), any(), any());
         forceSet(svc, "repository", repo);
 
-        Enum<?> ok = new Enum<Object>() { public String name(){return "OK";} public int ordinal(){return 0;} };
         Box<Boolean> hit = new Box<>(); hit.v = false;
-        svc.updateRegistrationHistory(rh("E4","U4", new Date(), ok), v -> hit.v = true, e -> fail("x"));
+        svc.updateRegistrationHistory(
+                rh("E4","U4", new Date(), constant.EventRegistrationStatus.CONFIRMED),
+                v -> hit.v = true,
+                e -> fail("x")
+        );
         assertTrue(hit.v);
         verify(repo).updateRegistrationHistory(any(), any(), any());
     }
@@ -153,11 +172,11 @@ public class RegistrationHistoryServiceTest {
         doAnswer(inv -> {
             inv.<OnSuccessListener<List<RegistrationHistory>>>getArgument(2).onSuccess(List.of());
             return null;
-        }).when(repo).getByEventAndStatus(eq("E7"), eq("WAITING"), any(), any());
+        }).when(repo).getByEventAndStatus(eq("E7"), eq("WAITLIST"), any(), any()); // enum name as string
         forceSet(svc, "repository", repo);
 
         Box<List<RegistrationHistory>> got = new Box<>();
-        svc.getByEventAndStatus("E7", "WAITING", l -> got.v = l, e -> fail("x"));
+        svc.getByEventAndStatus("E7", "WAITLIST", l -> got.v = l, e -> fail("x"));
         assertNotNull(got.v);
         assertTrue(got.v.isEmpty());
     }

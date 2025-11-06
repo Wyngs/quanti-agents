@@ -1,6 +1,8 @@
 package com.quantiagents.app;
 
 import com.quantiagents.app.Repository.LotteryResultRepository;
+import com.quantiagents.app.Services.LotteryResultService;
+import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.models.LotteryResult;
 import com.quantiagents.app.models.RegistrationHistory;
 import com.google.android.gms.tasks.OnSuccessListener;

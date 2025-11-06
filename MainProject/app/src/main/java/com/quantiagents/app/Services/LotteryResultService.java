@@ -25,10 +25,10 @@ public class LotteryResultService {
     private final RegistrationHistoryService registrationHistoryService;
     private final EventService eventService;
     /// Region: internal status strings (use enum names to match Firestore)
-    private static final String ST_WAITING   = constant.EventRegistrationStatus.WAITING.name();
+    private static final String ST_WAITING   = constant.EventRegistrationStatus.WAITLIST.name();
     private static final String ST_SELECTED  = constant.EventRegistrationStatus.SELECTED.name();
     private static final String ST_CONFIRMED = constant.EventRegistrationStatus.CONFIRMED.name();
-    private static final String ST_CANCELED  = constant.EventRegistrationStatus.CANCELED.name();
+    private static final String ST_CANCELED  = constant.EventRegistrationStatus.CANCELLED.name();
 
     public LotteryResultService(Context context) {
         // LotteryResultService instantiates its own repositories internally
@@ -50,54 +50,57 @@ public class LotteryResultService {
         return repository.getAllLotteryResults();
     }
 
-    public void saveLotteryResult(LotteryResult result, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        // Validate lottery result before saving
-        if (result == null) {
-            onFailure.onFailure(new IllegalArgumentException("Lottery result cannot be null"));
-            return;
-        }
+    /**
+     * Validates and persists a lottery result snapshot.
+     * Ensures non-null result, non-empty eventId/entrantIds, and sets a timestamp if missing.
+     */
+    public void saveLotteryResult(@NonNull LotteryResult result,
+                                  @NonNull OnSuccessListener<Void> onSuccess,
+                                  @NonNull OnFailureListener onFailure) {
+        if (result == null) { onFailure.onFailure(new IllegalArgumentException("Lottery result cannot be null")); return; }
         if (result.getEventId() == null || result.getEventId().trim().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
-            return;
+            onFailure.onFailure(new IllegalArgumentException("Event ID is required")); return;
         }
         if (result.getEntrantIds() == null || result.getEntrantIds().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Entrant IDs cannot be null or empty"));
-            return;
+            onFailure.onFailure(new IllegalArgumentException("Entrant IDs cannot be null or empty")); return;
         }
-        
-        repository.saveLotteryResult(result,
-                aVoid -> {
-                    Log.d("App", "Lottery result saved for event: " + result.getEventId());
-                    onSuccess.onSuccess(aVoid);
-                },
-                e -> {
-                    Log.e("App", "Failed to save lottery result", e);
-                    onFailure.onFailure(e);
-                });
+        if (result.getTimeStamp() == null) {
+            result.setTimeStamp(new java.util.Date()); // default timestamp here (service rule)
+        }
+
+        repository.saveLotteryResult(result, aVoid -> {
+            android.util.Log.d("App", "Lottery result saved for event: " + result.getEventId());
+            onSuccess.onSuccess(aVoid);
+        }, e -> {
+            android.util.Log.e("App", "Failed to save lottery result", e);
+            onFailure.onFailure(e);
+        });
     }
 
+    /**
+     * Validates and updates an existing lottery result (merge write).
+     * Requires timestamp (part of repo doc id) and non-empty eventId/entrantIds.
+     */
     public void updateLotteryResult(@NonNull LotteryResult result,
-                                   @NonNull OnSuccessListener<Void> onSuccess,
-                                   @NonNull OnFailureListener onFailure) {
-        // Validate lottery result before updating
+                                    @NonNull OnSuccessListener<Void> onSuccess,
+                                    @NonNull OnFailureListener onFailure) {
         if (result.getEventId() == null || result.getEventId().trim().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
-            return;
+            onFailure.onFailure(new IllegalArgumentException("Event ID is required")); return;
         }
         if (result.getEntrantIds() == null || result.getEntrantIds().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Entrant IDs cannot be null or empty"));
-            return;
+            onFailure.onFailure(new IllegalArgumentException("Entrant IDs cannot be null or empty")); return;
         }
-        
-        repository.updateLotteryResult(result,
-                aVoid -> {
-                    Log.d("App", "Lottery result updated for event: " + result.getEventId());
-                    onSuccess.onSuccess(aVoid);
-                },
-                e -> {
-                    Log.e("App", "Failed to update lottery result", e);
-                    onFailure.onFailure(e);
-                });
+        if (result.getTimeStamp() == null) {
+            onFailure.onFailure(new IllegalArgumentException("Timestamp is required for update")); return;
+        }
+
+        repository.updateLotteryResult(result, aVoid -> {
+            android.util.Log.d("App", "Lottery result updated for event: " + result.getEventId());
+            onSuccess.onSuccess(aVoid);
+        }, e -> {
+            android.util.Log.e("App", "Failed to update lottery result", e);
+            onFailure.onFailure(e);
+        });
     }
 
     public void deleteLotteryResult(Date timestamp, String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
@@ -245,7 +248,6 @@ public class LotteryResultService {
      * @param onSuccess         receives the {@link LotteryResult}
      * @param onFailure         receives any failure
      */
-    @Override
     public void runLottery(String eventId, int numberOfEntrants,
                            OnSuccessListener<LotteryResult> onSuccess,
                            OnFailureListener onFailure) {

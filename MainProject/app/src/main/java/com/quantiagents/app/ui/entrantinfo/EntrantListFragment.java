@@ -99,7 +99,7 @@ public class EntrantListFragment extends Fragment {
 
         RecyclerView rv = view.findViewById(R.id.list);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
-        adapter = new EntrantUserAdapter(new ArrayList<>());
+        adapter = new EntrantUserAdapter();
         rv.setAdapter(adapter);
 
         swipe = view.findViewById(R.id.swipe);

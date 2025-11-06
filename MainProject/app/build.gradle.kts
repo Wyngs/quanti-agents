@@ -64,6 +64,10 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.test:core:1.5.0")
 
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+
+
+
     // Optional: fragment testing (debug only)
     debugImplementation("androidx.fragment:fragment-testing:1.7.1")
 }
