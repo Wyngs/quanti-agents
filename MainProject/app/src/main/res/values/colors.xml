@@ -1,15 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#5661F6</color>
+    <!-- Primary Brand Colors -->
+    <color name="colorPrimary">#3F51B5</color> <!-- Indigo 500 -->
+    <color name="colorPrimaryVariant">#303F9F</color> <!-- Indigo 700 -->
     <color name="colorOnPrimary">#FFFFFF</color>
-    <color name="colorSecondary">#151D4A</color>
+
+    <!-- Secondary Accent -->
+    <color name="colorSecondary">#536DFE</color> <!-- Indigo Accent -->
+    <color name="colorSecondaryVariant">#304FFE</color>
     <color name="colorOnSecondary">#FFFFFF</color>
-    <color name="colorSurface">#F7F8FF</color>
-    <color name="colorOnSurface">#11152A</color>
+
+    <!-- Background and Surfaces -->
+    <color name="colorBackground">#F8F9FA</color> <!-- Light Gray Background -->
+    <color name="colorSurface">#FFFFFF</color> <!-- White cards -->
+    <color name="colorOnSurface">#212121</color> <!-- Text on white -->
+
+    <!-- Text Colors -->
+    <color name="textPrimary">#1E1E1E</color>
+    <color name="textSecondary">#6C757D</color>
+    <color name="textHint">#9E9E9E</color>
+
+    <!-- Button / Action -->
+    <color name="buttonBlack">#212121</color>
+    <color name="buttonTextWhite">#FFFFFF</color>
+
+    <!-- Dividers / Borders -->
+    <color name="dividerColor">#E0E0E0</color>
+
+    <!-- Status / System Bars -->
+    <color name="statusBarColor">#303F9F</color>
+    <color name="navigationBarColor">#FFFFFF</color>
+
+    <!-- Extrs Helper Colours-->
     <color name="colorSurfaceVariant">#FFFFFF</color>
     <color name="colorOnSurfaceVariant">#4D5170</color>
     <color name="colorAccent">#FF5D5D</color>
     <color name="colorSuccess">#27C498</color>
     <color name="colorWarning">#FFB347</color>
     <color name="colorShadow">#1A253399</color>
+    <color name="colorBlack">#000000</color>
+
 </resources>
