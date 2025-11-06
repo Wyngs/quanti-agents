@@ -7,6 +7,7 @@
     android:layout_height="match_parent">
 
     <!-- Action row: super simple inputs/buttons for Part 3 -->
+    <!-- Action row -->
     <LinearLayout
         android:id="@+id/actionRow"
         android:layout_width="match_parent"
@@ -17,24 +18,25 @@
         <EditText
             android:id="@+id/inputCount"
             android:layout_width="72dp"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:hint="N"
             android:inputType="number" />
 
         <Button
             android:id="@+id/btnDraw"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:layout_marginStart="8dp"
             android:text="Draw" />
 
         <Button
             android:id="@+id/btnRedrawCanceled"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
             android:layout_marginStart="8dp"
             android:text="Redraw Canceled" />
     </LinearLayout>
+
 
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabs"

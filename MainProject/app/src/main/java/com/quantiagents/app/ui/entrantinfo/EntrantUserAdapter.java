@@ -9,70 +9,82 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.quantiagents.app.R;
-import com.quantiagents.app.models.UserSummary;
+import com.quantiagents.app.models.RegistrationHistory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * RecyclerView adapter for a very simple entrant row (name + email).
- * The point is to prove the flow works; we can expand the row later as needed.
+ * Very small RecyclerView adapter that renders registration rows in the entrant list.
+ * <p>
+ * It expects {@link RegistrationHistory} items. If your model does not yet carry
+ * a user name/email in each row, this adapter gracefully falls back to userId and status.
  */
 public class EntrantUserAdapter extends RecyclerView.Adapter<EntrantUserAdapter.VH> {
 
-    private List<UserSummary> data;
+    private final List<RegistrationHistory> data = new ArrayList<>();
 
-    /**
-     * @param initial initial dataset to render (can be empty).
-     */
-    public EntrantUserAdapter(@NonNull List<UserSummary> initial) {
-        this.data = initial;
-    }
-
-    /**
-     * Replaces the list contents and triggers a full rebind.
-     * (Good enough for P3; can switch to ListAdapter+DiffUtil later.)
-     *
-     * @param next new dataset (non-null).
-     */
-    public void submit(@NonNull List<UserSummary> next) {
-        this.data = next;
-        notifyDataSetChanged();
-    }
-
-    /** Inflates {@code item_entrant_user} and returns a ViewHolder. */
-    @NonNull
-    @Override
-    public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View row = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_entrant_user, parent, false);
-        return new VH(row);
-    }
-
-    /** Binds a single {@link UserSummary} into the row views. */
-    @Override
-    public void onBindViewHolder(@NonNull VH h, int position) {
-        UserSummary u = data.get(position);
-        h.name.setText(u.getDisplayName()); // bold in xml
-        h.sub.setText(u.getEmail());        // secondary text
-    }
-
-    /** @return number of rows to render. */
-    @Override
-    public int getItemCount() {
-        return data == null ? 0 : data.size();
-    }
-
-    /**
-     * Simple ViewHolder that caches view refs (faster bind, less findViewById noise).
-     */
+    /** Simple holder for the two-line row (name + subline). */
     static class VH extends RecyclerView.ViewHolder {
         final TextView name;
         final TextView sub;
-
         VH(@NonNull View itemView) {
             super(itemView);
             name = itemView.findViewById(R.id.name);
-            sub = itemView.findViewById(R.id.sub);
+            sub  = itemView.findViewById(R.id.sub);
         }
+    }
+
+    /** Creates a new view holder using {@code row_entrant_user.xml}. */
+    @NonNull
+    @Override
+    public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View v = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.row_entrant_user, parent, false);
+        return new VH(v);
+    }
+
+    /**
+     * Binds a single {@link RegistrationHistory} to the row.
+     * <ul>
+     *   <li>Title line: user name if available, else userId.</li>
+     *   <li>Sub line: email if available, else "status: XYZ".</li>
+     * </ul>
+     */
+    @Override
+    public void onBindViewHolder(@NonNull VH h, int position) {
+        RegistrationHistory rh = data.get(position);
+
+        // Try to read friendly fields if your model has them; otherwise fallback.
+        String name = safe(rh.getUserName());           // if you have getUserName()
+        if (name.isEmpty()) name = safe(rh.getUserId()); // fallback
+
+        String sub = safe(rh.getUserEmail());           // if you have getUserEmail()
+        if (sub.isEmpty()) sub = "status: " + safe(rh.getEventRegistrationStatus());
+
+        h.name.setText(name);
+        h.sub.setText(sub);
+    }
+
+    /** @return current item count. */
+    @Override
+    public int getItemCount() {
+        return data.size();
+    }
+
+    /**
+     * Replaces all items with the provided list and refreshes the view.
+     *
+     * @param rows New rows to display (may be empty, but not null).
+     */
+    public void submit(@NonNull List<RegistrationHistory> rows) {
+        data.clear();
+        data.addAll(rows);
+        notifyDataSetChanged(); // fine for P3; can optimize later with DiffUtil
+    }
+
+    // --- tiny helper ---
+    private static String safe(Object o) {
+        return o == null ? "" : String.valueOf(o);
     }
 }

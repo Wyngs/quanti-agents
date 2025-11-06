@@ -16,28 +16,31 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.quantiagents.app.R;
-import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.App;
+import com.quantiagents.app.Services.LotteryResultService;
 
 /**
- * Fragment that hosts the Entrant Information area:
- * - Action row (Draw / Redraw-Canceled)
- * - TabLayout + ViewPager2 for the four status lists (Waiting, Selected, Confirmed, Canceled).
- * <p>
- * This is intentionally minimal: the point is to wire user actions to service calls
- * and render lists per user story; visual polish can come later.
+ * Fragment that hosts the Entrant Information feature:
+ * <ul>
+ *   <li>An action row for running a draw or refilling canceled slots.</li>
+ *   <li>A {@link TabLayout} and {@link ViewPager2} showing lists for the four
+ *       statuses: WAITING, SELECTED, CONFIRMED, CANCELED.</li>
+ * </ul>
+ *
+ * <p>This fragment focuses on wiring user actions to service calls for Part 3.
+ * Visual polish and full UX can be improved in later parts.</p>
  */
 public class EntrantInfoFragment extends Fragment {
 
     private static final String ARG_EVENT_ID = "eventId";
 
     /**
-     * Factory method to create a new instance with the required event id.
+     * Creates a new {@link EntrantInfoFragment} scoped to a specific event.
      *
-     * @param eventId Event identifier to scope all queries/actions.
-     * @return a configured {@link EntrantInfoFragment}.
+     * @param eventId A non-null event identifier; used by service calls and child pages.
+     * @return A configured fragment instance with arguments set.
      */
-    public static EntrantInfoFragment newInstance(String eventId) {
+    public static EntrantInfoFragment newInstance(@NonNull String eventId) {
         Bundle b = new Bundle();
         b.putString(ARG_EVENT_ID, eventId);
         EntrantInfoFragment f = new EntrantInfoFragment();
@@ -45,13 +48,20 @@ public class EntrantInfoFragment extends Fragment {
         return f;
     }
 
-    /** Default empty public ctor required by Fragment. */
+    /** Required empty public constructor. */
     public EntrantInfoFragment() { /* no-op */ }
 
     /**
-     * Inflates the layout containing:
-     * - action row (inputCount + Draw + Redraw buttons)
-     * - TabLayout + ViewPager2
+     * Inflates the container layout which includes:
+     * <ul>
+     *   <li>Action row: numeric input, "Draw", and "Redraw Canceled" buttons.</li>
+     *   <li>Tabs + pager for the four entrant lists.</li>
+     * </ul>
+     *
+     * @param inflater  The {@link LayoutInflater} object that can be used to inflate any views.
+     * @param container If non-null, this is the parent view that the fragment's UI should attach to.
+     * @param savedInstanceState If non-null, this fragment is being re-constructed from a prior state.
+     * @return The inflated root view for this fragment.
      */
     @Nullable
     @Override
@@ -62,60 +72,74 @@ public class EntrantInfoFragment extends Fragment {
     }
 
     /**
-     * Wires up the pager/tabs and the two action buttons.
-     * Notes:
-     * - ViewPager2 is fed by {@link EntrantPagerAdapter}.
-     * - Buttons call service endpoints; success/failure signaled via Toast for now.
+     * Binds UI elements (pager, tabs, buttons) and wires them to the corresponding services.
+     * <ul>
+     *   <li>Pager is backed by {@link EntrantPagerAdapter}.</li>
+     *   <li>"Draw" triggers {@link LotteryResultService#drawLottery(String, int, com.google.android.gms.tasks.OnSuccessListener, com.google.android.gms.tasks.OnFailureListener)}.</li>
+     *   <li>"Redraw Canceled" triggers {@link LotteryResultService#refillCanceledSlots(String, com.google.android.gms.tasks.OnSuccessListener, com.google.android.gms.tasks.OnFailureListener)}.</li>
+     *   <li>After each operation, a fragment result is posted so child list pages refresh.</li>
+     * </ul>
+     *
+     * @param view               Root view previously returned by {@link #onCreateView}.
+     * @param savedInstanceState If non-null, fragment is being re-constructed from a prior state.
      */
     @Override
-    public void onViewCreated(@NonNull View v, @Nullable Bundle savedInstanceState) {
-        String eventId = requireArguments().getString(ARG_EVENT_ID);
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        final String eventId = requireArguments().getString(ARG_EVENT_ID);
 
-        // pager = 4 pages, one per status
-        ViewPager2 pager = v.findViewById(R.id.pager);
+        // Pager with 4 pages (one per status)
+        ViewPager2 pager = view.findViewById(R.id.pager);
         pager.setAdapter(new EntrantPagerAdapter(this, eventId));
 
-        // tabs sit on top of pager
-        TabLayout tabs = v.findViewById(R.id.tabs);
-        String[] labels = {"Waiting", "Selected", "Confirmed", "Canceled"};
+        // Tabs bound to pager
+        TabLayout tabs = view.findViewById(R.id.tabs);
+        final String[] labels = {"Waiting", "Selected", "Confirmed", "Canceled"};
         new TabLayoutMediator(tabs, pager, (tab, pos) -> tab.setText(labels[pos])).attach();
 
-        // action row
-        EditText inputCount = v.findViewById(R.id.inputCount);
-        Button btnDraw = v.findViewById(R.id.btnDraw);
-        Button btnRedraw = v.findViewById(R.id.btnRedrawCanceled);
+        // Action row
+        EditText inputCount = view.findViewById(R.id.inputCount);
+        Button btnDraw = view.findViewById(R.id.btnDraw);
+        Button btnRefill = view.findViewById(R.id.btnRedrawCanceled);
 
-        // grab the shared service via the app's locator
-        RegistrationHistoryService svc =
-                ((App) requireActivity().getApplication()).locator().registrationHistoryService();
+        // Get service from the app's service locator
+        LotteryResultService lotto =
+                ((App) requireActivity().getApplication()).locator().lotteryResultService();
 
-        // Draw: promote N WAITING -> SELECTED
-        btnDraw.setOnClickListener(view -> {
-            int n = parseIntSafe(inputCount.getText().toString(), 0);
+        // Draw: random sample from WAITING -> SELECTED, save snapshot, notify lists
+        btnDraw.setOnClickListener(click -> {
+            int n = parseIntSafe(inputCount.getText() != null ? inputCount.getText().toString() : "", 0);
             if (n <= 0) {
-                Toast.makeText(getContext(), "Enter a number to draw", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Enter a positive number", Toast.LENGTH_SHORT).show();
                 return;
             }
-            svc.promoteFromWaiting(eventId, n,
-                    () -> Toast.makeText(getContext(), "Drew " + n + " entrants", Toast.LENGTH_SHORT).show(),
+            lotto.drawLottery(eventId, n,
+                    res -> {
+                        int picked = (res != null && res.getEntrantIds() != null) ? res.getEntrantIds().size() : 0;
+                        Toast.makeText(getContext(), "Drew " + picked + " entrant(s)", Toast.LENGTH_SHORT).show();
+                        getParentFragmentManager().setFragmentResult("entrantinfo:refresh", new Bundle());
+                    },
                     e -> Toast.makeText(getContext(), "Draw failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
         });
 
-        // Redraw canceled: fill open slots created by cancellations
-        btnRedraw.setOnClickListener(view ->
-                svc.refillCancel4edSlots(eventId,
-                        filled -> Toast.makeText(getContext(), "Refilled " + filled + " slot(s)", Toast.LENGTH_SHORT).show(),
+        // Refill canceled: compute open seats by quota, fill from WAITING, notify lists
+        btnRefill.setOnClickListener(click ->
+                lotto.refillCanceledSlots(eventId,
+                        res -> {
+                            int filled = (res != null && res.getEntrantIds() != null) ? res.getEntrantIds().size() : 0;
+                            Toast.makeText(getContext(), "Refilled " + filled + " slot(s)", Toast.LENGTH_SHORT).show();
+                            getParentFragmentManager().setFragmentResult("entrantinfo:refresh", new Bundle());
+                        },
                         e -> Toast.makeText(getContext(), "Refill failed: " + e.getMessage(), Toast.LENGTH_LONG).show()));
     }
 
     /**
-     * Safe integer parsing for the action row input (keeps UI from crashing on blank).
+     * Parses an integer safely for UI inputs, returning a default on failure.
      *
-     * @param s   raw string from EditText.
-     * @param def default value when parsing fails.
-     * @return parsed integer or default.
+     * @param s   Raw string to parse (may be empty or whitespace).
+     * @param def Default value to return if parsing fails.
+     * @return Parsed integer or the provided default.
      */
-    private int parseIntSafe(String s, int def) {
+    private int parseIntSafe(@NonNull String s, int def) {
         try {
             return Integer.parseInt(s.trim());
         } catch (Exception ignore) {

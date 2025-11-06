@@ -5,19 +5,26 @@ import androidx.fragment.app.Fragment;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 /**
- * Pager adapter that provides 4 pages to {@link androidx.viewpager2.widget.ViewPager2}:
- * Waiting, Selected, Confirmed, Canceled. Each page is an {@link EntrantListFragment}
- * configured with the target status.
- *
- * Keeping this tiny lets most behavior live inside the list fragment.
+ * Pager adapter for the Entrant Information screen.
+ * <p>
+ * Provides four pages to {@link androidx.viewpager2.widget.ViewPager2}:
+ * <ol>
+ *   <li>WAITING</li>
+ *   <li>SELECTED</li>
+ *   <li>CONFIRMED</li>
+ *   <li>CANCELED</li>
+ * </ol>
+ * Each page is an {@link EntrantListFragment} scoped to the same event but a different status.
  */
 public class EntrantPagerAdapter extends FragmentStateAdapter {
 
     private final String eventId;
 
     /**
-     * @param host    Fragment host that owns this adapter (for child FragmentManager).
-     * @param eventId Event identifier to pass into each page.
+     * Constructs the adapter using the host fragment (so it uses the host's child FragmentManager).
+     *
+     * @param host    Fragment host that owns this adapter.
+     * @param eventId Event identifier to pass to each page.
      */
     public EntrantPagerAdapter(@NonNull Fragment host, @NonNull String eventId) {
         super(host);
@@ -25,9 +32,10 @@ public class EntrantPagerAdapter extends FragmentStateAdapter {
     }
 
     /**
-     * Creates one {@link EntrantListFragment} per position with the correct status.
+     * Creates the page fragment for a given position.
      *
-     * @param position 0..3 mapping to WAITING, SELECTED, CONFIRMED, CANCELED.
+     * @param position 0..3 mapped to WAITING, SELECTED, CONFIRMED, CANCELED.
+     * @return A new {@link EntrantListFragment} with proper status argument.
      */
     @NonNull
     @Override
@@ -41,7 +49,7 @@ public class EntrantPagerAdapter extends FragmentStateAdapter {
         return EntrantListFragment.newInstance(eventId, status);
     }
 
-    /** Fixed page count: four statuses. */
+    /** @return Fixed page count: 4 statuses. */
     @Override
     public int getItemCount() {
         return 4;
