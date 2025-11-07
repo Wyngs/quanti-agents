@@ -30,6 +30,10 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
         this.data = initial == null ? new ArrayList<>() : new ArrayList<>(initial);
         this.cb = cb;
     }
+    public void setData(List<Event> newEvents) {
+        data.clear();
+        data.addAll(newEvents);
+    }
 
     public void replace(List<Event> next) {
         data.clear();

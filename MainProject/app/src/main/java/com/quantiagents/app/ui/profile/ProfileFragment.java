@@ -2,26 +2,35 @@ package com.quantiagents.app.ui.profile;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+
+import com.google.android.material.button.MaterialButton;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.User;
+import com.quantiagents.app.Services.UserService;
+import com.quantiagents.app.ui.auth.SignUpActivity;
+
+import java.text.DateFormat;
+import java.util.Date;
 
 public class ProfileFragment extends Fragment {
 
-    private TextView nameTextView;
-    private TextView emailTextView;
-    private TextView phoneTextView;
     private UserService userService;
+    private TextView nameView;
+    private TextView emailView;
+    private TextView phoneView;
+    private TextView deviceView;
+    private TextView createdView;
 
     public static ProfileFragment newInstance() {
         return new ProfileFragment();
@@ -36,37 +45,54 @@ public class ProfileFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        App app = (App) requireActivity().getApplication();
-        userService = app.locator().userService();
-
-        nameTextView = view.findViewById(R.id.profile_name);
-        emailTextView = view.findViewById(R.id.profile_email);
-        phoneTextView = view.findViewById(R.id.profile_phone);
-        Button editProfileButton = view.findViewById(R.id.edit_profile_button);
-
-        editProfileButton.setOnClickListener(v -> {
-            startActivity(new Intent(requireContext(), EditProfileActivity.class));
-        });
+        userService = ((App) requireActivity().getApplication()).locator().userService();
+        // Grab handles to the profile fields once.
+        nameView = view.findViewById(R.id.text_profile_name);
+        emailView = view.findViewById(R.id.text_profile_email);
+        phoneView = view.findViewById(R.id.text_profile_phone);
+        deviceView = view.findViewById(R.id.text_profile_device);
+        createdView = view.findViewById(R.id.text_profile_created);
+        MaterialButton editButton = view.findViewById(R.id.button_edit_profile);
+        editButton.setOnClickListener(v -> openEdit());
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        loadUserProfile();
+        bindUser();
     }
 
-    private void loadUserProfile() {
-        userService.getCurrentUser().addOnSuccessListener(user -> {
-            if (user != null && getContext() != null) {
-                nameTextView.setText(user.getName());
-                emailTextView.setText(user.getEmail());
-                phoneTextView.setText(user.getPhone());
-            }
-        }).addOnFailureListener(e -> {
-            if (getContext() != null) {
-                Toast.makeText(getContext(), "Failed to load profile", Toast.LENGTH_SHORT).show();
-            }
-        });
+    private void bindUser() {
+        // Use async getCurrentUser to avoid blocking the main thread
+        userService.getCurrentUser(
+                user -> {
+                    if (user == null) {
+                        Toast.makeText(requireContext(), R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
+                        startActivity(new Intent(requireContext(), SignUpActivity.class));
+                        requireActivity().finish();
+                        return;
+                    }
+                    // Fill the card with the latest profile snapshot.
+                    nameView.setText(user.getName());
+                    emailView.setText(user.getEmail());
+                    if (TextUtils.isEmpty(user.getPhone())) {
+                        phoneView.setText(R.string.profile_phone_placeholder);
+                    } else {
+                        phoneView.setText(user.getPhone());
+                    }
+                    deviceView.setText(user.getDeviceId());
+                    DateFormat format = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT);
+                    createdView.setText(format.format(new Date(user.getCreatedOn().toString())));
+                },
+                e -> {
+                    Toast.makeText(requireContext(), R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(requireContext(), SignUpActivity.class));
+                    requireActivity().finish();
+                }
+        );
+    }
+
+    private void openEdit() {
+        startActivity(new Intent(requireContext(), EditProfileActivity.class));
     }
 }

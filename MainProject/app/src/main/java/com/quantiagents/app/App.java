@@ -1,14 +1,9 @@
 package com.quantiagents.app;
 
 import android.app.Application;
-
 import androidx.annotation.Nullable;
-
 import com.quantiagents.app.Services.ServiceLocator;
 
-/**
- * Lazily builds the real graph so tests can inject a fake one first.
- */
 public class App extends Application {
 
     // Real app graph (built on first access).
@@ -17,6 +12,14 @@ public class App extends Application {
     // Test override graph.
     private @Nullable ServiceLocator testLocator;
 
+//    @Override
+//    public void onCreate() {
+//        super.onCreate();
+//        // Spin up my shared locator once.
+//        serviceLocator = new ServiceLocator(this);
+//    }
+
+    // Hand this out so everything hits the same graph.
     /**
      * Tests call this in @Before (see TestDataSetup.seedData()).
      * When set, everything in the app will use this locator instead

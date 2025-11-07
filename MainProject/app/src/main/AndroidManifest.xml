@@ -21,9 +21,9 @@
             android:name=".ui.main.MainActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.entrantinfo.EntrantInfoHostActivity"
-            android:exported="true"
-            android:label="EntrantInfoHost (dev)" />
+            android:name=".ui.manageeventinfo.ManageEventInfoHostActivity"
+            android:label="Manage Event Info"
+            android:exported="true" />
         <activity
             android:name=".ui.auth.SplashActivity"
             android:exported="true"
@@ -34,32 +34,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".ui.admin.AdminDashboardActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.admin.ManageEventsActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.admin.AdminDashboardActivity" />
-
-        <activity
-            android:name=".ui.admin.ManageImagesActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.admin.AdminDashboardActivity" />
-
-        <activity
-            android:name=".ui.admin.ManageProfilesActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.admin.AdminDashboardActivity" />
-
-        <activity
-            android:name=".ui.admin.ManageNotificationsActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.admin.AdminDashboardActivity" />
-
-
     </application>
 
 </manifest>

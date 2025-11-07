@@ -1,4 +1,4 @@
-package com.quantiagents.app.ui.entrantinfo;
+package com.quantiagents.app.ui.manageeventinfo;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -20,19 +20,15 @@ import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.models.RegistrationHistory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
- * A single tab page that displays entrants for a given (eventId, status) pair.
- * <p>Responsibilities:</p>
- * <ul>
- *   <li>Perform an async one-shot load (with pull-to-refresh).</li>
- *   <li>Listen to a parent "refresh" signal after draw/refill to reload.</li>
- *   <li>Show a simple empty state when no rows exist.</li>
- * </ul>
+ * A single tab page that displays entrants filtered by status for one event.
+ *
+ * <p>Contract: fetch all histories for the event on background (Service may block);
+ * filter in-memory by status; then bind to adapter on main thread.</p>
  */
-public class EntrantListFragment extends Fragment {
+public class ManageEventInfoListFragment extends Fragment {
 
     private static final String ARG_EVENT = "eventId";
     private static final String ARG_STATUS = "status";
@@ -42,7 +38,7 @@ public class EntrantListFragment extends Fragment {
 
     private SwipeRefreshLayout swipe;
     private TextView empty;
-    private EntrantUserAdapter adapter;
+    private ManageEventInfoUserAdapter adapter;
     private RegistrationHistoryService svc;
 
     /**
@@ -50,48 +46,27 @@ public class EntrantListFragment extends Fragment {
      *
      * @param eventId Non-null event identifier used to scope queries.
      * @param status  One of "WAITING", "SELECTED", "CONFIRMED", or "CANCELED".
-     * @return A configured fragment instance.
      */
-    public static EntrantListFragment newInstance(@NonNull String eventId, @NonNull String status) {
+    public static ManageEventInfoListFragment newInstance(@NonNull String eventId, @NonNull String status) {
         Bundle b = new Bundle();
         b.putString(ARG_EVENT, eventId);
         b.putString(ARG_STATUS, status);
-        EntrantListFragment f = new EntrantListFragment();
+        ManageEventInfoListFragment f = new ManageEventInfoListFragment();
         f.setArguments(b);
         return f;
     }
 
     /** Required empty public constructor. */
-    public EntrantListFragment() { /* no-op */ }
+    public ManageEventInfoListFragment() { }
 
-    /**
-     * Inflates the list container which consists of:
-     * <ul>
-     *   <li>{@link SwipeRefreshLayout} wrapping a {@link RecyclerView}</li>
-     *   <li>A centered empty-label {@link TextView} (initially hidden)</li>
-     * </ul>
-     *
-     * @param inflater  The {@link LayoutInflater}.
-     * @param container The parent container (may be null).
-     * @param savedInstanceState Prior saved state, if any (may be null).
-     * @return The inflated root view.
-     */
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_entrant_list, container, false);
+        return inflater.inflate(R.layout.fragment_manage_event_list, container, false);
     }
 
-    /**
-     * Wires the RecyclerView and refresh behavior, then triggers an initial load.
-     * Also subscribes to a parent fragment result with key "entrantinfo:refresh"
-     * so we can reload after draw/refill operations.
-     *
-     * @param view               Root view returned by {@link #onCreateView}.
-     * @param savedInstanceState Prior saved state, if any.
-     */
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         eventId = requireArguments().getString(ARG_EVENT);
@@ -99,7 +74,7 @@ public class EntrantListFragment extends Fragment {
 
         RecyclerView rv = view.findViewById(R.id.list);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
-        adapter = new EntrantUserAdapter();
+        adapter = new ManageEventInfoUserAdapter();
         rv.setAdapter(adapter);
 
         swipe = view.findViewById(R.id.swipe);
@@ -109,9 +84,9 @@ public class EntrantListFragment extends Fragment {
 
         swipe.setOnRefreshListener(this::load);
 
-        // Reload when the host fragment broadcasts a refresh request.
+        // Listen for parent broadcasts to refresh after save/redraw.
         getParentFragmentManager().setFragmentResultListener(
-                "entrantinfo:refresh",
+                ManageEventInfoFragment.RESULT_REFRESH,
                 this,
                 (key, bundle) -> load()
         );
@@ -119,26 +94,41 @@ public class EntrantListFragment extends Fragment {
         load();
     }
 
-    /**
-     * Executes an async fetch of registrations for the configured (eventId, status).
-     * On success, binds rows to the adapter and toggles the empty state. On failure,
-     * shows a toast and clears the list.
-     */
+    /** Trigger a background fetch + in-memory filter, then bind results to the adapter. */
     private void load() {
         swipe.setRefreshing(true);
-        svc.getByEventAndStatus(eventId, status,
-                this::bind,
-                e -> {
-                    bind(Collections.emptyList());
+        new Thread(() -> {
+            try {
+                List<RegistrationHistory> all = svc.getRegistrationHistoriesByEventId(eventId);
+                List<RegistrationHistory> filtered = filterByStatus(all, status);
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> bind(filtered));
+            } catch (Exception e) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    bind(new ArrayList<>());
                     Toast.makeText(getContext(), "Load failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 });
+            }
+        }).start();
     }
 
     /**
-     * Renders the provided rows into the adapter and updates the empty state.
-     *
-     * @param rows Non-null list of {@link RegistrationHistory} rows to display (may be empty).
+     * Returns only rows that match the requested status, being tolerant of enum/string storage.
      */
+    private static List<RegistrationHistory> filterByStatus(@NonNull List<RegistrationHistory> src,
+                                                            @NonNull String want) {
+        List<RegistrationHistory> out = new ArrayList<>();
+        for (RegistrationHistory rh : src) {
+            if (rh == null) continue;
+            Object st = rh.getEventRegistrationStatus();
+            String have = (st == null) ? null : String.valueOf(st);
+            if (have != null && have.equalsIgnoreCase(want)) out.add(rh);
+        }
+        return out;
+    }
+
+    /** Bind rows to adapter and toggle empty state. */
     private void bind(@NonNull List<RegistrationHistory> rows) {
         swipe.setRefreshing(false);
         adapter.submit(rows);

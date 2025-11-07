@@ -1,4 +1,4 @@
-package com.quantiagents.app.ui.entrantinfo;
+package com.quantiagents.app.ui.manageeventinfo;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,18 +14,19 @@ import com.quantiagents.app.models.RegistrationHistory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class EntrantUserAdapter extends RecyclerView.Adapter<EntrantUserAdapter.VH> {
+/** Recycler adapter for entrant rows (name/id + status line). */
+public class ManageEventInfoUserAdapter extends RecyclerView.Adapter<ManageEventInfoUserAdapter.VH> {
 
     private final List<RegistrationHistory> data = new ArrayList<>();
 
-    /** ViewHolder for item_entrant_user.xml (name + sub). */
+    /** ViewHolder for item layout with two text lines. */
     public static class VH extends RecyclerView.ViewHolder {
         final TextView name;
         final TextView sub;
-        VH(@NonNull View itemView) {
-            super(itemView);
-            name = itemView.findViewById(R.id.name);
-            sub  = itemView.findViewById(R.id.sub);
+        VH(@NonNull View v) {
+            super(v);
+            name = v.findViewById(R.id.name);
+            sub  = v.findViewById(R.id.sub);
         }
     }
 
@@ -33,21 +34,16 @@ public class EntrantUserAdapter extends RecyclerView.Adapter<EntrantUserAdapter.
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_entrant_user, parent, false);
+                .inflate(R.layout.item_manage_event_user, parent, false);
         return new VH(v);
     }
 
     @Override
     public void onBindViewHolder(@NonNull VH h, int position) {
         RegistrationHistory rh = data.get(position);
-
-        // Title: prefer a friendly value if you later add it; for now use userId.
-        String title = safe(rh.getUserId());
-
-        // Sub: show status (works whether it’s a String or an enum).
-        String status = safe(rh.getEventRegistrationStatus());
-        String sub    = status.isEmpty() ? "" : "status: " + status;
-
+        String title = safe(rh == null ? null : rh.getUserId());
+        String status = safe(rh == null ? null : rh.getEventRegistrationStatus());
+        String sub = status.isEmpty() ? "" : ("status: " + status);
         h.name.setText(title);
         h.sub.setText(sub);
     }
@@ -55,7 +51,7 @@ public class EntrantUserAdapter extends RecyclerView.Adapter<EntrantUserAdapter.
     @Override
     public int getItemCount() { return data.size(); }
 
-    /** Replace all items (fine for P3; can switch to DiffUtil later). */
+    /** Replace entire dataset; fine for current scale. */
     public void submit(@NonNull List<RegistrationHistory> rows) {
         data.clear();
         data.addAll(rows);

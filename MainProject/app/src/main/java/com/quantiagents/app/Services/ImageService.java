@@ -1,63 +1,108 @@
 package com.quantiagents.app.Services;
 
 import android.content.Context;
+import android.util.Log;
+
 import androidx.annotation.NonNull;
+
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
 import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.ImageRepository;
 import com.quantiagents.app.models.Image;
+
+import java.util.List;
 
 public class ImageService {
 
     private final ImageRepository repository;
 
     public ImageService(Context context) {
+        // ImageService instantiates its own repositories internally
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
         this.repository = new ImageRepository(fireBaseRepository);
     }
 
-    public Task<DocumentSnapshot> getImageById(String imageId) {
+    public Image getImageById(String imageId) {
         return repository.getImageById(imageId);
     }
 
-    public Task<QuerySnapshot> getAllImages() {
+    public List<Image> getAllImages() {
         return repository.getAllImages();
     }
 
     public void saveImage(Image image, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
+        // Validate image before saving
         if (image == null) {
             onFailure.onFailure(new IllegalArgumentException("Image cannot be null"));
             return;
         }
+        // Note: imageId is optional - repository will auto-generate if null/empty
         if (image.getUri() == null || image.getUri().trim().isEmpty()) {
             onFailure.onFailure(new IllegalArgumentException("Image URI is required"));
             return;
         }
-        repository.saveImage(image, onSuccess, onFailure);
+        
+        repository.saveImage(image,
+                imageId -> {
+                    Log.d("App", "Image saved with ID: " + imageId);
+                    onSuccess.onSuccess(imageId);
+                },
+                e -> {
+                    Log.e("App", "Failed to save image", e);
+                    onFailure.onFailure(e);
+                });
     }
 
-    public Task<Void> updateImage(@NonNull Image image) {
+    public void updateImage(@NonNull Image image,
+                           @NonNull OnSuccessListener<Void> onSuccess,
+                           @NonNull OnFailureListener onFailure) {
+        // Validate image before updating
         if (image.getImageId() == null || image.getImageId().trim().isEmpty()) {
-            throw new IllegalArgumentException("Image ID is required");
+            onFailure.onFailure(new IllegalArgumentException("Image ID is required"));
+            return;
         }
-        return repository.updateImage(image);
+        
+        repository.updateImage(image,
+                aVoid -> {
+                    Log.d("App", "Image updated: " + image.getImageId());
+                    onSuccess.onSuccess(aVoid);
+                },
+                e -> {
+                    Log.e("App", "Failed to update image", e);
+                    onFailure.onFailure(e);
+                });
     }
 
-    public Task<Void> deleteImageById(String imageId) {
+    public void deleteImage(String imageId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (imageId == null || imageId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Image ID is required");
+            onFailure.onFailure(new IllegalArgumentException("Image ID is required"));
+            return;
+        }
+        
+        repository.deleteImageById(imageId,
+                aVoid -> {
+                    Log.d("App", "Image deleted: " + imageId);
+                    onSuccess.onSuccess(aVoid);
+                },
+                e -> {
+                    Log.e("App", "Failed to delete image", e);
+                    onFailure.onFailure(e);
+                });
+    }
+
+    public boolean deleteImage(String imageId) {
+        if (imageId == null || imageId.trim().isEmpty()) {
+            return false;
         }
         return repository.deleteImageById(imageId);
     }
 
-    public Task<Void> deleteImagesByEventId(String eventId) {
+    public int deleteImagesByEventId(String eventId) {
         if (eventId == null || eventId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Event ID is required");
+            return 0;
         }
         return repository.deleteImagesByEventId(eventId);
     }
 }
+

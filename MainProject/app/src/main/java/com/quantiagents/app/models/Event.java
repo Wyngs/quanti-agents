@@ -20,8 +20,8 @@ public class Event implements Serializable {
     private Double cost;
     private constant.EventStatus status;
     private String organizerId;
-    private int waitingListLimit;
-    private int eventCapacity;
+    private double waitingListLimit;
+    private double eventCapacity;
     private boolean isGeoLocationOn;
     private List<String> waitingList;
     private List<String> selectedList;
@@ -31,6 +31,7 @@ public class Event implements Serializable {
 
     public Event (){ }
     public Event(String eventId, String title, String posterImageId) {
+        //hold minimal admin-facing fields only
         this.eventId = eventId;
         this.title = title;
         this.posterImageId = posterImageId;
@@ -42,14 +43,6 @@ public class Event implements Serializable {
     public void setTitle(String title) { this.title = title; }
     public String getPosterImageId() { return posterImageId; }
     public void setPosterImageId(String posterImageId) { this.posterImageId = posterImageId; }
-
-    public String getEventName() {
-        return this.title;
-    }
-
-    public void setEventName(String eventName) {
-        this.title = eventName;
-    }
 
     public String getDescription() {
         return description;
@@ -123,19 +116,19 @@ public class Event implements Serializable {
         this.organizerId = organizerId;
     }
 
-    public int getWaitingListLimit() {
+    public double getWaitingListLimit() {
         return waitingListLimit;
     }
 
-    public void setWaitingListLimit(int waitingListLimit) {
+    public void setWaitingListLimit(double waitingListLimit) {
         this.waitingListLimit = waitingListLimit;
     }
 
-    public int getEventCapacity() {
+    public double getEventCapacity() {
         return eventCapacity;
     }
 
-    public void setEventCapacity(int eventCapacity) {
+    public void setEventCapacity(double eventCapacity) {
         this.eventCapacity = eventCapacity;
     }
 

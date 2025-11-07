@@ -27,7 +27,7 @@ public class ServiceLocator {
     public synchronized UserService userService() {
         if (userService == null) {
             // UserService instantiates its own repositories internally
-            userService = new UserService(appContext, null);
+            userService = new UserService(appContext);
         }
         return userService;
     }
@@ -111,6 +111,7 @@ public class ServiceLocator {
         }
         return deviceIdManager;
     }
+
     // In com.quantiagents.app.Services.ServiceLocator
     public void replaceUserService(UserService svc) { this.userService = svc; }
     public void replaceEventService(EventService svc) { this.eventService = svc; }

@@ -94,38 +94,44 @@ public class LotteryResultRepository {
         }
     }
 
-    /**
-     * Writes a lottery result document.
-     * Uses composite id "yyyyMMddHHmmss_eventId". Assumes result has a timestamp.
-     */
-    public void saveLotteryResult(@NonNull LotteryResult result,
-                                  @NonNull OnSuccessListener<Void> onSuccess,
-                                  @NonNull OnFailureListener onFailure) {
+    public void saveLotteryResult(LotteryResult result, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
+        if (result == null) {
+            onFailure.onFailure(new IllegalArgumentException("Lottery result cannot be null"));
+            return;
+        }
+        if (result.getTimeStamp() == null) {
+            result.setTimeStamp(new Date());
+        }
+        // Use composite key: timestamp_eventId
         String docId = createDocumentId(result.getTimeStamp(), result.getEventId());
         context.document(docId)
                 .set(result)
-                .addOnSuccessListener(v -> {
-                    android.util.Log.d("Firestore", "Lottery result saved: " + docId);
-                    onSuccess.onSuccess(v);
+                .addOnSuccessListener(aVoid -> {
+                    Log.d("Firestore", "Lottery result saved with ID: " + docId);
+                    onSuccess.onSuccess(aVoid);
                 })
                 .addOnFailureListener(onFailure);
     }
 
-    /**
-     * Merges fields into an existing lottery result document.
-     * Uses the same composite id (timestamp + eventId). Assumes timestamp is present.
-     */
     public void updateLotteryResult(@NonNull LotteryResult result,
-                                    @NonNull OnSuccessListener<Void> onSuccess,
-                                    @NonNull OnFailureListener onFailure) {
+                                   @NonNull OnSuccessListener<Void> onSuccess,
+                                   @NonNull OnFailureListener onFailure) {
+        if (result.getTimeStamp() == null) {
+            onFailure.onFailure(new IllegalArgumentException("Timestamp is required for update"));
+            return;
+        }
+        // Use composite key: timestamp_eventId
         String docId = createDocumentId(result.getTimeStamp(), result.getEventId());
         context.document(docId)
-                .set(result, SetOptions.merge())
-                .addOnSuccessListener(v -> {
-                    android.util.Log.d("Firestore", "Lottery result updated: " + docId);
-                    onSuccess.onSuccess(v);
+                .set(result, SetOptions.merge()) // merge only changed fields
+                .addOnSuccessListener(aVoid -> {
+                    Log.d("Firestore", "Lottery result updated with ID: " + docId);
+                    onSuccess.onSuccess(aVoid);
                 })
-                .addOnFailureListener(onFailure);
+                .addOnFailureListener(e -> {
+                    Log.e("Firestore", "Error updating lottery result", e);
+                    onFailure.onFailure(e);
+                });
     }
 
     public void deleteLotteryResultByTimestampAndEventId(Date timestamp, String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {

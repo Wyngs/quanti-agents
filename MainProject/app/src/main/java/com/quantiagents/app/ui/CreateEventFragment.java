@@ -8,11 +8,15 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+
 import com.google.android.material.button.MaterialButton;
+//import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
@@ -21,15 +25,21 @@ import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.ImageService;
 import com.quantiagents.app.Services.UserService;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.User;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
+
 
 public class CreateEventFragment extends Fragment {
 
@@ -41,6 +51,7 @@ public class CreateEventFragment extends Fragment {
     private UserService userService;
     private ImageService imageService;
 
+    // Form fields
     private TextInputLayout nameLayout;
     private TextInputLayout descriptionLayout;
     private TextInputLayout startDateLayout;
@@ -63,7 +74,8 @@ public class CreateEventFragment extends Fragment {
     private TextInputEditText waitingListField;
     private TextInputEditText posterField;
 
-    private MaterialSwitch geolocationSwitch;
+    //private MaterialSwitch geolocationSwitch;
+    private SwitchMaterial geolocationSwitch;
     private MaterialButton createButton;
 
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
@@ -81,17 +93,24 @@ public class CreateEventFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        // Initialize services
         App app = (App) requireActivity().getApplication();
         eventService = app.locator().eventService();
         userService = app.locator().userService();
         imageService = app.locator().imageService();
 
+        // Bind views
         bindViews(view);
+
+        // Set up date pickers
         setupDatePickers();
+
+        // Set up button click listener
         createButton.setOnClickListener(v -> handleCreateEvent());
     }
 
     private void bindViews(View view) {
+        // TextInputLayouts
         nameLayout = view.findViewById(R.id.input_name_layout);
         descriptionLayout = view.findViewById(R.id.input_description_layout);
         startDateLayout = view.findViewById(R.id.input_start_date_layout);
@@ -103,6 +122,7 @@ public class CreateEventFragment extends Fragment {
         waitingListLayout = view.findViewById(R.id.input_waiting_list_layout);
         posterLayout = view.findViewById(R.id.input_poster_layout);
 
+        // TextInputEditTexts
         nameField = view.findViewById(R.id.input_name);
         descriptionField = view.findViewById(R.id.input_description);
         startDateField = view.findViewById(R.id.input_start_date);
@@ -114,14 +134,22 @@ public class CreateEventFragment extends Fragment {
         waitingListField = view.findViewById(R.id.input_waiting_list);
         posterField = view.findViewById(R.id.input_poster);
 
+        // Switch and Button
         geolocationSwitch = view.findViewById(R.id.switch_geolocation);
         createButton = view.findViewById(R.id.button_create_event);
     }
 
     private void setupDatePickers() {
+        // Event Start Date
         startDateField.setOnClickListener(v -> showDatePicker(startDateField, "Event Start Date"));
+
+        // Event End Date
         endDateField.setOnClickListener(v -> showDatePicker(endDateField, "Event End Date"));
+
+        // Registration Start Date
         regStartDateField.setOnClickListener(v -> showDatePicker(regStartDateField, "Registration Start Date"));
+
+        // Registration End Date
         regEndDateField.setOnClickListener(v -> showDatePicker(regEndDateField, "Registration End Date"));
     }
 
@@ -130,6 +158,7 @@ public class CreateEventFragment extends Fragment {
         int month = calendar.get(Calendar.MONTH);
         int day = calendar.get(Calendar.DAY_OF_MONTH);
 
+        // Try to parse existing date if present
         String existingDate = safeText(field);
         if (!TextUtils.isEmpty(existingDate)) {
             try {
@@ -141,7 +170,7 @@ public class CreateEventFragment extends Fragment {
                     day = calendar.get(Calendar.DAY_OF_MONTH);
                 }
             } catch (ParseException e) {
-
+                // Use current date if parsing fails
             }
         }
 
@@ -159,62 +188,75 @@ public class CreateEventFragment extends Fragment {
     }
 
     private void handleCreateEvent() {
+        // Clear previous errors
         clearErrors();
 
+        // Validate and collect form data
         if (!validateForm()) {
             return;
         }
 
-
-        userService.getCurrentUser().addOnSuccessListener(user -> {
-            if (user == null) {
-                Toast.makeText(requireContext(), "User not found. Please log in again.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            createEvent(user);
-        }).addOnFailureListener(e -> {
-            Toast.makeText(requireContext(), "Error getting user: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        });
+        // Get current user
+        userService.getCurrentUser(
+                user -> {
+                    if (user == null) {
+                        Toast.makeText(requireContext(), "User not found. Please log in again.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    createEvent(user);
+                },
+                e -> {
+                    Toast.makeText(requireContext(), "Error getting user: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+        );
     }
 
     private boolean validateForm() {
         boolean isValid = true;
+
+        // Validate Event Name
         String name = safeText(nameField);
         if (TextUtils.isEmpty(name)) {
             nameLayout.setError("Event name is required");
             isValid = false;
         }
 
+        // Validate Description
         String description = safeText(descriptionField);
         if (TextUtils.isEmpty(description)) {
             descriptionLayout.setError("Description is required");
             isValid = false;
         }
 
+        // Validate Event Start Date
         String startDate = safeText(startDateField);
         if (TextUtils.isEmpty(startDate)) {
             startDateLayout.setError("Event start date is required");
             isValid = false;
         }
 
+        // Validate Event End Date
         String endDate = safeText(endDateField);
         if (TextUtils.isEmpty(endDate)) {
             endDateLayout.setError("Event end date is required");
             isValid = false;
         }
 
+        // Validate Registration Start Date
         String regStartDate = safeText(regStartDateField);
         if (TextUtils.isEmpty(regStartDate)) {
             regStartDateLayout.setError("Registration start date is required");
             isValid = false;
         }
 
+        // Validate Registration End Date
         String regEndDate = safeText(regEndDateField);
         if (TextUtils.isEmpty(regEndDate)) {
             regEndDateLayout.setError("Registration end date is required");
             isValid = false;
         }
 
+        // Validate Capacity
         String capacityStr = safeText(capacityField);
         if (TextUtils.isEmpty(capacityStr)) {
             capacityLayout.setError("Capacity is required");
@@ -232,6 +274,7 @@ public class CreateEventFragment extends Fragment {
             }
         }
 
+        // Validate Price
         String priceStr = safeText(priceField);
         if (TextUtils.isEmpty(priceStr)) {
             priceLayout.setError("Price is required");
@@ -249,6 +292,7 @@ public class CreateEventFragment extends Fragment {
             }
         }
 
+        // Validate Waiting List Limit (optional)
         String waitingListStr = safeText(waitingListField);
         if (!TextUtils.isEmpty(waitingListStr)) {
             try {
@@ -263,6 +307,7 @@ public class CreateEventFragment extends Fragment {
             }
         }
 
+        // Validate date relationships
         if (isValid && !TextUtils.isEmpty(startDate) && !TextUtils.isEmpty(endDate)) {
             try {
                 Date start = dateFormat.parse(startDate);
@@ -272,7 +317,7 @@ public class CreateEventFragment extends Fragment {
                     isValid = false;
                 }
             } catch (ParseException e) {
-
+                // Already validated above
             }
         }
 
@@ -285,30 +330,38 @@ public class CreateEventFragment extends Fragment {
                     isValid = false;
                 }
             } catch (ParseException e) {
-
+                // Already validated above
             }
         }
+
         return isValid;
     }
 
     private void createEvent(User user) {
         try {
+            // Create new Event object
             Event event = new Event();
+
+            // Make Firebase Generate new event ID
+            // event.setEventId(UUID.randomUUID().toString());
+            
+            // Set basic information
             event.setTitle(safeText(nameField));
             event.setDescription(safeText(descriptionField));
             event.setOrganizerId(user.getUserId());
-
+            
+            // Parse and set dates
             String startDateStr = safeText(startDateField);
             String endDateStr = safeText(endDateField);
             String regStartDateStr = safeText(regStartDateField);
             String regEndDateStr = safeText(regEndDateField);
-
+            
             try {
                 Date startDate = dateFormat.parse(startDateStr);
                 Date endDate = dateFormat.parse(endDateStr);
                 Date regStartDate = dateFormat.parse(regStartDateStr);
                 Date regEndDate = dateFormat.parse(regEndDateStr);
-
+                
                 event.setEventStartDate(startDate);
                 event.setEventEndDate(endDate);
                 event.setRegistrationStartDate(regStartDate);
@@ -317,43 +370,53 @@ public class CreateEventFragment extends Fragment {
                 Toast.makeText(requireContext(), "Error parsing dates: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 return;
             }
-
-
-            event.setEventCapacity(Integer.parseInt(safeText(capacityField)));
+            
+            // Set capacity and price
+            event.setEventCapacity(Double.parseDouble(safeText(capacityField)));
             event.setCost(Double.parseDouble(safeText(priceField)));
-
+            
+            // Set waiting list limit (optional)
             String waitingListStr = safeText(waitingListField);
             if (!TextUtils.isEmpty(waitingListStr)) {
-
-                event.setWaitingListLimit(Integer.parseInt(waitingListStr));
+                event.setWaitingListLimit(Double.parseDouble(waitingListStr));
             } else {
-                event.setWaitingListLimit(0);
+                event.setWaitingListLimit(0); // 0 means unlimited
             }
 
+            // Set geolocation requirement
             event.setGeoLocationOn(geolocationSwitch.isChecked());
+            
+            // Set initial status
             event.setStatus(constant.EventStatus.OPEN);
+            
+            // Initialize lists
             event.setWaitingList(new ArrayList<>());
             event.setSelectedList(new ArrayList<>());
             event.setConfirmedList(new ArrayList<>());
             event.setCancelledList(new ArrayList<>());
+            
+            // Set lottery status
             event.setFirstLotteryDone(false);
-
+            
+            // Save event
             eventService.saveEvent(event,
                     eventId -> {
                         Toast.makeText(requireContext(), "Event created successfully!", Toast.LENGTH_SHORT).show();
+
                         event.setEventId(eventId);
+
+                        // Create poster image if URL is provided
                         String posterUrl = safeText(posterField);
                         if (!TextUtils.isEmpty(posterUrl)) {
                             createPoster(posterUrl, eventId, event.getOrganizerId(),
                                     imageId -> {
                                         Log.d("CreateEvent", "Poster image saved with ID: " + imageId);
                                         event.setPosterImageId(imageId);
-
-                                        eventService.updateEvent(event)
-                                                .addOnSuccessListener(aVoid -> {
+                                        eventService.updateEvent(event,
+                                                aVoid -> {
                                                     Log.d("UpdateEvent", "Updated Event with new Image Id: " + imageId);
-                                                })
-                                                .addOnFailureListener(e -> {
+                                                },
+                                                e -> {
                                                     Log.e("UpdateEvent", "Failed Updating Event with new Image Id: " + imageId, e);
                                                 });
                                     },
@@ -368,28 +431,30 @@ public class CreateEventFragment extends Fragment {
                     }
             );
 
+
         } catch (Exception e) {
             Toast.makeText(requireContext(), "Error creating event: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void createPoster(String posterUrl, String eventId, String userId,
-                              com.google.android.gms.tasks.OnSuccessListener<String> onSuccess,
-                              com.google.android.gms.tasks.OnFailureListener onFailure) {
+    private void createPoster(String posterUrl, String eventId, String userId, 
+                              OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         Image newPoster = new Image();
         newPoster.setUri(posterUrl);
         newPoster.setEventId(eventId);
         newPoster.setUploadedBy(userId);
+        // imageId will be auto-generated by repository when saved
 
-        imageService.saveImage(newPoster,
-                imageId -> {
-                    Log.d("CreateEvent", "Poster image saved with ID: " + imageId);
-                    onSuccess.onSuccess(imageId);
-                },
-                e -> {
-                    Log.e("CreateEvent", "Failed to save poster image: " + e.getMessage());
-                    onFailure.onFailure(e);
-                }
+        imageService.saveImage(newPoster, 
+            imageId -> {
+                // Image saved successfully, imageId is returned in callback
+                Log.d("CreateEvent", "Poster image saved with ID: " + imageId);
+                onSuccess.onSuccess(imageId);
+            }, 
+            e -> {
+                Log.e("CreateEvent", "Failed to save poster image: " + e.getMessage());
+                onFailure.onFailure(e);
+            }
         );
     }
 
