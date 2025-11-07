@@ -100,4 +100,52 @@ public class RegistrationHistoryService {
     public boolean deleteRegistrationHistory(String eventId, String userId) {
         return repository.deleteRegistrationHistoryByEventIdAndUserId(eventId, userId);
     }
+
+    /**
+     * Asynchronously fetches all registrations for an event with the given status.
+     *
+     * @param eventId event id
+     * @param status  status filter (use enumName: WAITING/SELECTED/CONFIRMED/CANCELED)
+     * @param ok      receives list (possibly empty)
+     * @param err     receives error
+     */
+    public void getByEventAndStatus(@NonNull String eventId,
+                                    @NonNull String status,
+                                    @NonNull OnSuccessListener<List<RegistrationHistory>> ok,
+                                    @NonNull OnFailureListener err) {
+        repository.getByEventAndStatus(eventId, status, ok, err);
+    }
+
+    /**
+     * Asynchronously counts registrations for an event in a given status.
+     *
+     * @param eventId event id
+     * @param status  status to count
+     * @param ok      receives count
+     * @param err     receives error
+     */
+    public void countByStatus(@NonNull String eventId,
+                              @NonNull String status,
+                              @NonNull OnSuccessListener<Integer> ok,
+                              @NonNull OnFailureListener err) {
+        repository.countByEventAndStatus(eventId, status, ok, err);
+    }
+
+    /**
+     * Asynchronously updates {@code eventRegStatus} for a batch of users in an event.
+     *
+     * @param eventId   event id
+     * @param userIds   target users
+     * @param newStatus new status (enumName string)
+     * @param ok        receives number of attempted updates
+     * @param err       receives error
+     */
+    public void bulkUpdateStatus(@NonNull String eventId,
+                                 @NonNull List<String> userIds,
+                                 @NonNull String newStatus,
+                                 @NonNull OnSuccessListener<Integer> ok,
+                                 @NonNull OnFailureListener err) {
+        repository.bulkUpdateStatus(eventId, userIds, newStatus, ok, err);
+    }
+
 }

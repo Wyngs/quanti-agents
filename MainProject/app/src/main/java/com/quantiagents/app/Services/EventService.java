@@ -11,6 +11,9 @@ import com.quantiagents.app.Repository.EventRepository;
 import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.models.Event;
 
+import java.util.Collections;
+import java.util.List;
+
 public class EventService {
 
     private final EventRepository repository;
