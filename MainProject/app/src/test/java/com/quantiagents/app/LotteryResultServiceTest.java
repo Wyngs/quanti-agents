@@ -202,9 +202,11 @@ public class LotteryResultServiceTest {
         forceSet(svc, "registrationHistoryService", regSvc);
         forceSet(svc, "eventService", evtSvc);
 
-        // quota = 0
-        doAnswer(inv -> { inv.<OnSuccessListener<Integer>>getArgument(1).onSuccess(0); return null; })
-                .when(evtSvc).getSelectionQuota(eq("E8"), any(), any());
+        // Return an Event with waitingListLimit = 0
+        Event ev = new Event("E8", "t", "p");
+        ev.setWaitingListLimit(0); // int or double depending on your model
+        when(evtSvc.getEventById("E8")).thenReturn(ev);
+
         // selected = 0, confirmed = 0
         doAnswer(inv -> { inv.<OnSuccessListener<Integer>>getArgument(2).onSuccess(0); return null; })
                 .when(regSvc).countByStatus(eq("E8"), anyString(), any(), any());
@@ -214,6 +216,7 @@ public class LotteryResultServiceTest {
         assertNotNull(got.v);
         assertTrue(got.v.getEntrantIds().isEmpty());
     }
+
 
     /** cancelNonResponders: two stale users -> bulk update size 2. */
     @Test

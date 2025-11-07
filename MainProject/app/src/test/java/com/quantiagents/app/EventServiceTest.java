@@ -169,6 +169,4 @@ public class EventServiceTest {
         verify(repo, times(2)).deleteEventById("E7");
     }
 
-    // Note: getSelectionQuota / setSelectionQuota rely on Firestore handles not shown;
-    // we skip them here to keep JVM tests simple.
 }

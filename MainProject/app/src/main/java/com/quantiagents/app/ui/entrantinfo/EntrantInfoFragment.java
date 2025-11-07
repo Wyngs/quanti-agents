@@ -1,11 +1,11 @@
 package com.quantiagents.app.ui.entrantinfo;
 
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -15,31 +15,22 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
-import com.quantiagents.app.R;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
+import com.quantiagents.app.R;
+import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.LotteryResultService;
+import com.quantiagents.app.models.Event;
 
-/**
- * Fragment that hosts the Entrant Information feature:
- * <ul>
- *   <li>An action row for running a draw or refilling canceled slots.</li>
- *   <li>A {@link TabLayout} and {@link ViewPager2} showing lists for the four
- *       statuses: WAITING, SELECTED, CONFIRMED, CANCELED.</li>
- * </ul>
- *
- * <p>This fragment focuses on wiring user actions to service calls for Part 3.
- * Visual polish and full UX can be improved in later parts.</p>
- */
 public class EntrantInfoFragment extends Fragment {
 
     private static final String ARG_EVENT_ID = "eventId";
 
-    /**
-     * Creates a new {@link EntrantInfoFragment} scoped to a specific event.
-     *
-     * @param eventId A non-null event identifier; used by service calls and child pages.
-     * @return A configured fragment instance with arguments set.
-     */
+    // Edit fields
+    private TextInputLayout nameLayout, descriptionLayout, capacityLayout, waitingLayout, priceLayout;
+    private TextInputEditText nameField, descriptionField, capacityField, waitingField, priceField;
+
     public static EntrantInfoFragment newInstance(@NonNull String eventId) {
         Bundle b = new Bundle();
         b.putString(ARG_EVENT_ID, eventId);
@@ -48,21 +39,8 @@ public class EntrantInfoFragment extends Fragment {
         return f;
     }
 
-    /** Required empty public constructor. */
     public EntrantInfoFragment() { /* no-op */ }
 
-    /**
-     * Inflates the container layout which includes:
-     * <ul>
-     *   <li>Action row: numeric input, "Draw", and "Redraw Canceled" buttons.</li>
-     *   <li>Tabs + pager for the four entrant lists.</li>
-     * </ul>
-     *
-     * @param inflater  The {@link LayoutInflater} object that can be used to inflate any views.
-     * @param container If non-null, this is the parent view that the fragment's UI should attach to.
-     * @param savedInstanceState If non-null, this fragment is being re-constructed from a prior state.
-     * @return The inflated root view for this fragment.
-     */
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -71,79 +49,126 @@ public class EntrantInfoFragment extends Fragment {
         return inflater.inflate(R.layout.fragment_entrant_info, container, false);
     }
 
-    /**
-     * Binds UI elements (pager, tabs, buttons) and wires them to the corresponding services.
-     * <ul>
-     *   <li>Pager is backed by {@link EntrantPagerAdapter}.</li>
-     *   <li>"Draw" triggers {@link LotteryResultService#drawLottery(String, int, com.google.android.gms.tasks.OnSuccessListener, com.google.android.gms.tasks.OnFailureListener)}.</li>
-     *   <li>"Redraw Canceled" triggers {@link LotteryResultService#refillCanceledSlots(String, com.google.android.gms.tasks.OnSuccessListener, com.google.android.gms.tasks.OnFailureListener)}.</li>
-     *   <li>After each operation, a fragment result is posted so child list pages refresh.</li>
-     * </ul>
-     *
-     * @param view               Root view previously returned by {@link #onCreateView}.
-     * @param savedInstanceState If non-null, fragment is being re-constructed from a prior state.
-     */
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         final String eventId = requireArguments().getString(ARG_EVENT_ID);
 
-        // Pager with 4 pages (one per status)
+        // Services
+        App app = (App) requireActivity().getApplication();
+        final EventService evtSvc = app.locator().eventService();
+        final LotteryResultService lotto = app.locator().lotteryResultService();
+
+        // ----- Bind Edit UI -----
+        nameLayout        = view.findViewById(R.id.input_name_layout);
+        descriptionLayout = view.findViewById(R.id.input_description_layout);
+        capacityLayout    = view.findViewById(R.id.input_capacity_layout);
+        waitingLayout     = view.findViewById(R.id.input_waiting_list_layout);
+        priceLayout       = view.findViewById(R.id.input_price_layout);
+
+        nameField         = view.findViewById(R.id.input_name);
+        descriptionField  = view.findViewById(R.id.input_description);
+        capacityField     = view.findViewById(R.id.input_capacity);
+        waitingField      = view.findViewById(R.id.input_waiting_list);
+        priceField        = view.findViewById(R.id.input_price);
+
+        // Prefill with current Event (light, synchronous fetch you already expose)
+        Event ev = evtSvc.getEventById(eventId);
+        if (ev != null) {
+            if (!TextUtils.isEmpty(ev.getTitle()))        nameField.setText(ev.getTitle());
+            if (!TextUtils.isEmpty(ev.getDescription()))  descriptionField.setText(ev.getDescription());
+            if (ev.getEventCapacity() > 0)                capacityField.setText(String.valueOf((long) ev.getEventCapacity()));
+            if (ev.getWaitingListLimit() >= 0)            waitingField.setText(String.valueOf((long) ev.getWaitingListLimit()));
+            if (ev.getCost() != null)                     priceField.setText(String.valueOf(ev.getCost()));
+        }
+
+        // Save edits
+        Button btnSave = view.findViewById(R.id.btnSaveEventDetails);
+        btnSave.setOnClickListener(v -> {
+            Event cur = evtSvc.getEventById(eventId);
+            if (cur == null) {
+                Toast.makeText(getContext(), "Event not found.", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            // Clear old errors
+            nameLayout.setError(null);
+            descriptionLayout.setError(null);
+            capacityLayout.setError(null);
+            waitingLayout.setError(null);
+            priceLayout.setError(null);
+
+            // Read inputs
+            String name   = safe(nameField);
+            String desc   = safe(descriptionField);
+            String capS   = safe(capacityField);
+            String waitS  = safe(waitingField);
+            String priceS = safe(priceField);
+
+            boolean ok = true;
+            if (name.isEmpty()) { nameLayout.setError("Required"); ok = false; }
+            if (desc.isEmpty()) { descriptionLayout.setError("Required"); ok = false; }
+
+            Double cap = null, wait = null, price = null;
+            try { if (!capS.isEmpty())   cap   = Double.parseDouble(capS); }   catch (NumberFormatException e) { capacityLayout.setError("Invalid"); ok = false; }
+            try { if (!waitS.isEmpty())  wait  = Double.parseDouble(waitS); }  catch (NumberFormatException e) { waitingLayout.setError("Invalid"); ok = false; }
+            try { if (!priceS.isEmpty()) price = Double.parseDouble(priceS); } catch (NumberFormatException e) { priceLayout.setError("Invalid"); ok = false; }
+
+            if (!ok) return;
+
+            // Apply & persist
+            cur.setTitle(name);
+            cur.setDescription(desc);
+            if (cap   != null) cur.setEventCapacity(cap);
+            if (wait  != null) cur.setWaitingListLimit(wait);
+            if (price != null) cur.setCost(price);
+
+            evtSvc.updateEvent(cur,
+                    aVoid -> {
+                        Toast.makeText(getContext(), "Saved.", Toast.LENGTH_SHORT).show();
+                        // lists may depend on capacity/limit → tell child fragments to refresh if needed
+                        getParentFragmentManager().setFragmentResult("entrantinfo:refresh", new Bundle());
+                    },
+                    e -> Toast.makeText(getContext(), "Save failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
+            );
+        });
+
+        // ----- Redraw Canceled button (top of screen) -----
+        Button btnRefill = view.findViewById(R.id.btnRedrawCanceled);
+        btnRefill.setOnClickListener(click -> {
+            Event cur = evtSvc.getEventById(eventId);
+            if (cur == null || cur.getStatus() == null) {
+                Toast.makeText(getContext(), "Event not found.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            String statusName = cur.getStatus().name();
+            boolean isCanceled = "CANCELED".equals(statusName) || "CANCELLED".equals(statusName);
+            if (!isCanceled) {
+                Toast.makeText(getContext(),
+                        "You can only redraw when the event is canceled.",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            lotto.refillCanceledSlots(eventId,
+                    res -> {
+                        int filled = (res != null && res.getEntrantIds() != null)
+                                ? res.getEntrantIds().size() : 0;
+                        Toast.makeText(getContext(), "Refilled " + filled + " slot(s)", Toast.LENGTH_SHORT).show();
+                        getParentFragmentManager().setFragmentResult("entrantinfo:refresh", new Bundle());
+                    },
+                    e -> Toast.makeText(getContext(), "Refill failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+        });
+
+        // ----- Tabs + Pager (lists live inside the pager area) -----
         ViewPager2 pager = view.findViewById(R.id.pager);
         pager.setAdapter(new EntrantPagerAdapter(this, eventId));
 
-        // Tabs bound to pager
         TabLayout tabs = view.findViewById(R.id.tabs);
         final String[] labels = {"Waiting", "Selected", "Confirmed", "Canceled"};
         new TabLayoutMediator(tabs, pager, (tab, pos) -> tab.setText(labels[pos])).attach();
-
-        // Action row
-        EditText inputCount = view.findViewById(R.id.inputCount);
-        Button btnDraw = view.findViewById(R.id.btnDraw);
-        Button btnRefill = view.findViewById(R.id.btnRedrawCanceled);
-
-        // Get service from the app's service locator
-        LotteryResultService lotto =
-                ((App) requireActivity().getApplication()).locator().lotteryResultService();
-
-        // Draw: random sample from WAITING -> SELECTED, save snapshot, notify lists
-        btnDraw.setOnClickListener(click -> {
-            int n = parseIntSafe(inputCount.getText() != null ? inputCount.getText().toString() : "", 0);
-            if (n <= 0) {
-                Toast.makeText(getContext(), "Enter a positive number", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            lotto.drawLottery(eventId, n,
-                    res -> {
-                        int picked = (res != null && res.getEntrantIds() != null) ? res.getEntrantIds().size() : 0;
-                        Toast.makeText(getContext(), "Drew " + picked + " entrant(s)", Toast.LENGTH_SHORT).show();
-                        getParentFragmentManager().setFragmentResult("entrantinfo:refresh", new Bundle());
-                    },
-                    e -> Toast.makeText(getContext(), "Draw failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
-        });
-
-        // Refill canceled: compute open seats by quota, fill from WAITING, notify lists
-        btnRefill.setOnClickListener(click ->
-                lotto.refillCanceledSlots(eventId,
-                        res -> {
-                            int filled = (res != null && res.getEntrantIds() != null) ? res.getEntrantIds().size() : 0;
-                            Toast.makeText(getContext(), "Refilled " + filled + " slot(s)", Toast.LENGTH_SHORT).show();
-                            getParentFragmentManager().setFragmentResult("entrantinfo:refresh", new Bundle());
-                        },
-                        e -> Toast.makeText(getContext(), "Refill failed: " + e.getMessage(), Toast.LENGTH_LONG).show()));
     }
 
-    /**
-     * Parses an integer safely for UI inputs, returning a default on failure.
-     *
-     * @param s   Raw string to parse (may be empty or whitespace).
-     * @param def Default value to return if parsing fails.
-     * @return Parsed integer or the provided default.
-     */
-    private int parseIntSafe(@NonNull String s, int def) {
-        try {
-            return Integer.parseInt(s.trim());
-        } catch (Exception ignore) {
-            return def;
-        }
+    private static String safe(TextInputEditText f) {
+        return (f.getText() == null) ? "" : f.getText().toString().trim();
     }
 }

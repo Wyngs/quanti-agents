@@ -141,34 +141,4 @@ public class EventRepository {
         }
     }
 
-
-    /**
-     * Reads the raw selection quota field from Firestore.
-     * Returns a {@code Long} or {@code null} if the doc/field is missing.
-     */
-    public void getSelectionQuota(@NonNull String eventId,
-                                  @NonNull OnSuccessListener<Long> ok,
-                                  @NonNull OnFailureListener err) {
-        context.document(eventId)
-                .get()
-                .addOnSuccessListener(snap -> {
-                    if (!snap.exists()) { ok.onSuccess(null); return; }
-                    ok.onSuccess(snap.getLong("selectionQuota"));
-                })
-                .addOnFailureListener(err);
-    }
-
-    /**
-     * Upserts the {@code selectionQuota} field using merge(), leaving other fields untouched.
-     */
-    public void setSelectionQuota(@NonNull String eventId, int quota,
-                                  @NonNull OnSuccessListener<Void> ok,
-                                  @NonNull OnFailureListener err) {
-        context.document(eventId)
-                .set(Collections.singletonMap("selectionQuota", quota), SetOptions.merge())
-                .addOnSuccessListener(ok)
-                .addOnFailureListener(err);
-    }
-
-
 }

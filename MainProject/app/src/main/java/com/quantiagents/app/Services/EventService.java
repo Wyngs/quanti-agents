@@ -91,30 +91,4 @@ public class EventService {
     }
 
 
-    /**
-     * Returns the event's selection quota as an int (defaults to 0 if missing).
-     * Delegates storage to the repository and converts Firestore's Long→int.
-     */
-    public void getSelectionQuota(@NonNull String eventId,
-                                  @NonNull OnSuccessListener<Integer> ok,
-                                  @NonNull OnFailureListener err) {
-        repository.getSelectionQuota(eventId,
-                v -> ok.onSuccess(v == null ? 0 : v.intValue()),
-                err);
-    }
-
-    /**
-     * Validates and writes the selection quota.
-     * Rejects negatives; actual write is delegated to the repository.
-     */
-    public void setSelectionQuota(@NonNull String eventId, int quota,
-                                  @NonNull OnSuccessListener<Void> ok,
-                                  @NonNull OnFailureListener err) {
-        if (quota < 0) {
-            err.onFailure(new IllegalArgumentException("Selection quota must be >= 0"));
-            return;
-        }
-        repository.setSelectionQuota(eventId, quota, ok, err);
-    }
-
 }

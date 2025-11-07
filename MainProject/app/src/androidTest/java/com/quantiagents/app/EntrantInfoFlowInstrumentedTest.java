@@ -39,8 +39,6 @@ public class EntrantInfoFlowInstrumentedTest {
 
     @Test
     public void renders_basicChrome() {
-        onView(withId(R.id.inputCount)).check(matches(isDisplayed()));
-        onView(withId(R.id.btnDraw)).check(matches(isDisplayed()));
         onView(withId(R.id.btnRedrawCanceled)).check(matches(isDisplayed()));
         onView(withId(R.id.tabs)).check(matches(isDisplayed()));
         onView(withId(R.id.pager)).check(matches(isDisplayed()));
@@ -58,8 +56,6 @@ public class EntrantInfoFlowInstrumentedTest {
 
     @Test
     public void can_type_and_click_buttons_without_crash() {
-        onView(withId(R.id.inputCount)).perform(replaceText("2"), closeSoftKeyboard());
-        onView(withId(R.id.btnDraw)).perform(click());
         onView(withId(R.id.btnRedrawCanceled)).perform(click());
         onView(withId(R.id.pager)).check(matches(isDisplayed()));
     }
