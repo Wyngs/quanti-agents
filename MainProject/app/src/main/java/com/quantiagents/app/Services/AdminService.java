@@ -1,6 +1,7 @@
 package com.quantiagents.app.Services;
 
 import android.content.Context;
+
 import androidx.annotation.Nullable;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -22,7 +23,7 @@ public class AdminService {
         this.imageService = locator.imageService();
         this.logRepository = new AdminLogRepository(context);
         this.deviceIdManager = new DeviceIdManager(context);
-        this.userService = locator.userService();
+        this.userService = new UserService(context, null);
     }
 
     public Task<QuerySnapshot> listAllEvents() {

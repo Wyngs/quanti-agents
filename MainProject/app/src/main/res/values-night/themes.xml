@@ -1,25 +1,27 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.QuantiAgents" parent="Theme.Material3.Dark.NoActionBar">
+    <!-- Same parent; DayNight auto-switches -->
+    <style name="Theme.QuantiAgents" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
         <item name="colorOnPrimary">@color/colorOnPrimary</item>
+
         <item name="colorSecondary">@color/colorSecondary</item>
+        <item name="colorSecondaryVariant">@color/colorSecondaryVariant</item>
         <item name="colorOnSecondary">@color/colorOnSecondary</item>
+
         <item name="colorSurface">@color/colorSurface</item>
         <item name="colorOnSurface">@color/colorOnSurface</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
-        <item name="android:windowBackground">@drawable/bg_app_surface_dark</item>
-        <item name="materialButtonStyle">@style/Widget.QuantiAgents.Button</item>
-        <item name="materialCardViewStyle">@style/Widget.QuantiAgents.Card</item>
-        <item name="textInputStyle">@style/Widget.QuantiAgents.TextInputLayout</item>
+
+        <item name="android:statusBarColor">@color/statusBarColor</item>
+        <item name="android:navigationBarColor">@color/navigationBarColor</item>
+
+        <item name="materialButtonStyle">@style/Widget.MaterialComponents.Button</item>
+        <item name="materialButtonOutlinedStyle">@style/Widget.MaterialComponents.Button.OutlinedButton</item>
+        <item name="materialCardViewStyle">@style/Widget.MaterialComponents.CardView</item>
     </style>
 
-    <style name="Theme.QuantiAgents.Splash" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="android:windowBackground">@drawable/bg_splash_dark</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+    <style name="Theme.QuantiAgents.Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@color/statusBarColor</item>
+        <item name="android:navigationBarColor">@color/navigationBarColor</item>
     </style>
 </resources>

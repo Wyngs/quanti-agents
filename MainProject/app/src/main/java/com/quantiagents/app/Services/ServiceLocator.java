@@ -27,7 +27,7 @@ public class ServiceLocator {
     public synchronized UserService userService() {
         if (userService == null) {
             // UserService instantiates its own repositories internally
-            userService = new UserService(appContext);
+            userService = new UserService(appContext, null);
         }
         return userService;
     }
@@ -110,5 +110,18 @@ public class ServiceLocator {
             deviceIdManager = new DeviceIdManager(appContext);
         }
         return deviceIdManager;
+    }
+    // In com.quantiagents.app.Services.ServiceLocator
+    public void replaceUserService(UserService svc) { this.userService = svc; }
+    public void replaceEventService(EventService svc) { this.eventService = svc; }
+    public void replaceRegistrationHistoryService(RegistrationHistoryService svc) { this.registrationHistoryService = svc; }
+    /** Override the default EventService instance (useful for tests/mocks). */
+    public synchronized void setEventService(EventService svc) {
+        this.eventService = svc;
+    }
+
+    /** Override the default RegistrationHistoryService instance (useful for tests/mocks). */
+    public synchronized void setRegistrationHistoryService(RegistrationHistoryService svc) {
+        this.registrationHistoryService = svc;
     }
 }
