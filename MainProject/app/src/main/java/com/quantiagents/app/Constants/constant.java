@@ -1,5 +1,8 @@
 package com.quantiagents.app.Constants;
 
+/**
+ * This class is a collection of constants used across the app
+ */
 public class constant {
 
     public enum UserRole{

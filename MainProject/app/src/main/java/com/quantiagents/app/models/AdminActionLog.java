@@ -2,6 +2,9 @@ package com.quantiagents.app.models;
 
 import java.io.Serializable;
 
+/**
+ * Creates a admin action log, which contains kind of deletion, id of deletion, timestamp, id of deletion item's user, and an optional message
+ */
 public class AdminActionLog implements Serializable {
 
     public static final String KIND_EVENT = "EVENT";

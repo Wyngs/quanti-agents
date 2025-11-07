@@ -20,6 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Manages saving and locating events
+ */
 public class EventRepository {
 
     private final CollectionReference context;
@@ -28,6 +31,13 @@ public class EventRepository {
         this.context = fireBaseRepository.getEventCollectionRef();
     }
 
+    /**
+     * Finds an event from it's id
+     * @param eventId
+     * Id to locate
+     * @return
+     * Returns located event if it exists, otherwise null
+     */
     public Event getEventById(String eventId) {
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(eventId).get());
@@ -47,6 +57,11 @@ public class EventRepository {
         }
     }
 
+    /**
+     * Gets all events
+     * @return
+     * Returns a list of events
+     */
     public List<Event> getAllEvents() {
         try {
             QuerySnapshot snapshot = Tasks.await(context.get());
@@ -67,6 +82,7 @@ public class EventRepository {
         }
     }
 
+
     public void getAllEvents(OnSuccessListener<List<Event>> onSuccess,
                              OnFailureListener onFailure) {
         context.get()
@@ -85,6 +101,7 @@ public class EventRepository {
                 })
                 .addOnFailureListener(onFailure);
     }
+
 
     public void saveEvent(Event event, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         // If eventId is null or empty, let Firebase auto-generate an ID
@@ -133,6 +150,15 @@ public class EventRepository {
         }
     }
 
+    /**
+     * Updates event in the firebase
+     * @param event
+     * Event to update
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void updateEvent(@NonNull Event event,
                            @NonNull OnSuccessListener<Void> onSuccess,
                            @NonNull OnFailureListener onFailure) {
@@ -148,6 +174,15 @@ public class EventRepository {
                 });
     }
 
+    /**
+     * Deletes event by id from firebase
+     * @param eventId
+     * Event id to delete
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void deleteEventById(String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         context.document(eventId)
                 .delete()
@@ -155,6 +190,13 @@ public class EventRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Deletes event by id from firebase
+     * @param eventId
+     * Event id to delete
+     * @return
+     * Returns boolean for success
+     */
     public boolean deleteEventById(String eventId) {
         try {
             Tasks.await(context.document(eventId).delete());

@@ -12,6 +12,9 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Manages functions related to admin logs
+ */
 public class AdminLogRepository {
 
     private static final String PREF_NAME = "admin_log_store";
@@ -23,6 +26,11 @@ public class AdminLogRepository {
         this.preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
+    /**
+     * Adds log to admin log
+     * @param log
+     * AdminActionLog to add
+     */
     public synchronized void append(AdminActionLog log) {
         try {
             JSONArray arr = new JSONArray(preferences.getString(KEY_LOGS, "[]"));
@@ -33,6 +41,11 @@ public class AdminLogRepository {
         }
     }
 
+    /**
+     * Gets list of all logs in admin log
+     * @return
+     * Returns list of AdminActionLogs
+     */
     public synchronized List<AdminActionLog> listAll() {
         String raw = preferences.getString(KEY_LOGS, "[]");
         List<AdminActionLog> out = new ArrayList<>();
@@ -54,6 +67,15 @@ public class AdminLogRepository {
         return out;
     }
 
+    /**
+     * Converts a log into a JSON format
+     * @param log
+     * Log to be converted
+     * @return
+     * Returns a JSONObject
+     * @throws JSONException
+     * If JSON conversion fails
+     */
     private JSONObject toJson(AdminActionLog log) throws JSONException {
         JSONObject o = new JSONObject();
         o.put("kind", log.getKind());

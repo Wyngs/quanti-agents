@@ -20,6 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Manages functions for locating and saving images
+ */
 public class ImageRepository {
 
     private final CollectionReference context;
@@ -28,6 +31,13 @@ public class ImageRepository {
         this.context = fireBaseRepository.getPosterCollectionRef();
     }
 
+    /**
+     * Finds image by it's id
+     * @param imageId
+     * Image id to locate
+     * @return
+     * Returns Image if exists, null otherwise
+     */
     public Image getImageById(String imageId) {
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(imageId).get());
@@ -43,6 +53,11 @@ public class ImageRepository {
         }
     }
 
+    /**
+     * Gets a list of all images
+     * @return
+     * Returns list of images
+     */
     public List<Image> getAllImages() {
         try {
             QuerySnapshot snapshot = Tasks.await(context.get());
@@ -60,6 +75,15 @@ public class ImageRepository {
         }
     }
 
+    /**
+     * Saves image to the firebase
+     * @param image
+     * Image to save
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void saveImage(Image image, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         // If imageId is null or empty, let Firebase auto-generate an ID
         if (image.getImageId() == null || image.getImageId().trim().isEmpty()) {
@@ -107,6 +131,15 @@ public class ImageRepository {
         }
     }
 
+    /**
+     * Updates image in the firebase
+     * @param image
+     * Image to update
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void updateImage(@NonNull Image image,
                            @NonNull OnSuccessListener<Void> onSuccess,
                            @NonNull OnFailureListener onFailure) {
@@ -126,6 +159,15 @@ public class ImageRepository {
                 });
     }
 
+    /**
+     * Deletes image via image id from the firebase
+     * @param imageId
+     * Image id to delete
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void deleteImageById(String imageId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         context.document(imageId)
                 .delete()
@@ -133,6 +175,13 @@ public class ImageRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Deletes image via image id from the firebase
+     * @param imageId
+     * Image id to delete
+     * @return
+     * Returns boolean if success
+     */
     public boolean deleteImageById(String imageId) {
         try {
             Tasks.await(context.document(imageId).delete());
@@ -144,6 +193,13 @@ public class ImageRepository {
         }
     }
 
+    /**
+     * Deletes multiple images via the event's id from the firebase
+     * @param eventId
+     * Event id to delete images from
+     * @return
+     * Returns amount of images deleted
+     */
     public int deleteImagesByEventId(String eventId) {
         if (eventId == null || eventId.isEmpty()) {
             return 0;

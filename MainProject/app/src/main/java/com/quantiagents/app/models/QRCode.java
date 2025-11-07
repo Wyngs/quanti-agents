@@ -1,5 +1,8 @@
 package com.quantiagents.app.models;
 
+/**
+ * Representation of an qr code, with getters and setters for each variable
+ */
 public class QRCode {
     private int id;
     private String qrCodeValue;
