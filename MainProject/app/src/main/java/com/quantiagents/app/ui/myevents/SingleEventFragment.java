@@ -237,6 +237,11 @@ public class SingleEventFragment extends Fragment {
      * Sets up action buttons for the current status.
      * If assignable is false, the row is read-only.
      */
+    /**
+     * Sets up action buttons for the current status.
+     * If assignable is false, the row is read-only.
+     * Buttons currently do nothing – click listeners contain // TODO hooks.
+     */
     private void bindActions() {
         if (!assignable) {
             actionsContainer.setVisibility(View.GONE);
@@ -249,30 +254,47 @@ public class SingleEventFragment extends Fragment {
         secondaryAction.setVisibility(View.GONE);
         neutralAction.setVisibility(View.GONE);
 
-        // Status-driven actions
+        // Status-driven actions (labels match the mock)
         if (currentStatus == constant.EventRegistrationStatus.WAITLIST) {
             // Leave waiting list
-            primaryAction.setText("Leave Waitlist");
+            primaryAction.setText("Leave Waiting List");
             primaryAction.setVisibility(View.VISIBLE);
-            primaryAction.setOnClickListener(v -> applyStatusChange(constant.EventRegistrationStatus.CANCELLED));
+            primaryAction.setOnClickListener(v -> {
+                // TODO: hook up "leave waiting list" action
+                // e.g., applyStatusChange(constant.EventRegistrationStatus.CANCELLED);
+            });
+
         } else if (currentStatus == constant.EventRegistrationStatus.SELECTED) {
             // Accept or Decline
             primaryAction.setText("Accept");
             secondaryAction.setText("Decline");
             primaryAction.setVisibility(View.VISIBLE);
             secondaryAction.setVisibility(View.VISIBLE);
-            primaryAction.setOnClickListener(v -> applyStatusChange(constant.EventRegistrationStatus.CONFIRMED));
-            secondaryAction.setOnClickListener(v -> applyStatusChange(constant.EventRegistrationStatus.CANCELLED));
+
+            primaryAction.setOnClickListener(v -> {
+                // TODO: hook up "accept" action
+                // e.g., applyStatusChange(constant.EventRegistrationStatus.CONFIRMED);
+            });
+            secondaryAction.setOnClickListener(v -> {
+                // TODO: hook up "decline" action
+                // e.g., applyStatusChange(constant.EventRegistrationStatus.CANCELLED);
+            });
+
         } else if (currentStatus == constant.EventRegistrationStatus.CONFIRMED) {
             // Cancel
             primaryAction.setText("Cancel");
             primaryAction.setVisibility(View.VISIBLE);
-            primaryAction.setOnClickListener(v -> applyStatusChange(constant.EventRegistrationStatus.CANCELLED));
+            primaryAction.setOnClickListener(v -> {
+                // TODO: hook up "cancel" action
+                // e.g., applyStatusChange(constant.EventRegistrationStatus.CANCELLED);
+            });
+
         } else {
-            // Cancelled or anything else. No actions.
+            // CANCELLED or anything else: no actions
             actionsContainer.setVisibility(View.GONE);
         }
     }
+
 
     /**
      * Main handler to reassign the registration status and keep Event lists in sync.

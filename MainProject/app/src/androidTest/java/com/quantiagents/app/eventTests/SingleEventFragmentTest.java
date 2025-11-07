@@ -8,6 +8,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
 import android.os.Bundle;
 
+import androidx.annotation.Nullable;
 import androidx.fragment.app.testing.FragmentScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
@@ -72,5 +73,16 @@ public class SingleEventFragmentTest {
         onView(withId(R.id.single_action_primary)).check(matches(withText("Accept"))).perform(click());
 
         onView(withId(R.id.single_status_chip)).check(matches(withText("Confirmed")));
+    }
+
+    public static SingleEventFragment newInstance(String eventId, @Nullable String registrationStatus,
+                                                  boolean assignable) {
+        SingleEventFragment f = new SingleEventFragment();
+        Bundle b = new Bundle();
+        b.putString("eventId", eventId);
+        b.putString("registrationStatus", registrationStatus);
+        b.putBoolean("assignable", assignable);
+        f.setArguments(b);
+        return f;
     }
 }

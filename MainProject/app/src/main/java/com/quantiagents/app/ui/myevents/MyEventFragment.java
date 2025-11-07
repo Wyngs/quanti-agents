@@ -31,8 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import android.view.View;
-import android.view.ViewGroup;
 import androidx.fragment.app.FragmentTransaction;
 
 /**

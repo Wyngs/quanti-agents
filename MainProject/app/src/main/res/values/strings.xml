@@ -88,5 +88,10 @@
     <string name="tab_confirmed_fmt">Confirmed (%1$d)</string>
     <string name="tab_past_fmt">Past (%1$d)</string>
     <string name="my_events_empty_generic">Nothing to show here yet.</string>
-
+    <string name="browse_events_title">Browse Events</string>
+    <string name="search_events_hint">Search events…</string>
+    <string name="empty_browse_events">No events found.</string>
+    <string name="join_waitlist">Join Waitlist</string>
+    <string name="view_event">View Event</string>
+    <string name="event_closed">Event Closed</string>
 </resources>
