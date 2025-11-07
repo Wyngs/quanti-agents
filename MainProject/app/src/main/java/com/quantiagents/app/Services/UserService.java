@@ -3,8 +3,6 @@ package com.quantiagents.app.Services;
 import android.content.Context;
 import android.util.Log;
 
-import androidx.annotation.Nullable;
-
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.quantiagents.app.Repository.FireBaseRepository;
@@ -24,7 +22,7 @@ public class UserService {
     private final DeviceIdManager deviceIdManager;
     private final Pattern emailPattern = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
 
-    public UserService(Context context) {
+    public UserService(Context context, Object o) {
         // Instantiate repositories and dependencies internally
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
         this.repository = new UserRepository(fireBaseRepository);

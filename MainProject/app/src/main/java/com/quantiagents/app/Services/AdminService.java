@@ -1,7 +1,6 @@
 package com.quantiagents.app.Services;
 
 import android.content.Context;
-import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -32,7 +31,7 @@ public class AdminService {
         this.profilesRepository = new ProfilesRepository(context);
         this.logRepository = new AdminLogRepository(context);
         this.deviceIdManager = new DeviceIdManager(context);
-        this.userService = new UserService(context);
+        this.userService = new UserService(context, null);
     }
 
     //us 03.01.01a: browse all events
