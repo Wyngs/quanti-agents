@@ -60,6 +60,20 @@ public class EventRepository {
         }
     }
 
+    public void getAllEvents(OnSuccessListener<List<Event>> onSuccess,
+                             OnFailureListener onFailure) {
+        context.get()
+                .addOnSuccessListener(qs -> {
+                    List<Event> out = new ArrayList<>();
+                    for (QueryDocumentSnapshot d : qs) {
+                        Event e = d.toObject(Event.class);
+                        if (e != null) out.add(e);
+                    }
+                    onSuccess.onSuccess(out);
+                })
+                .addOnFailureListener(onFailure);
+    }
+
     public void saveEvent(Event event, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         // If eventId is null or empty, let Firebase auto-generate an ID
         if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {

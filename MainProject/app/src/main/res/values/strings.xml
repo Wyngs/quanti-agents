@@ -95,5 +95,6 @@
     <string name="join_waitlist">Join Waitlist</string>
     <string name="view_event">View Event</string>
     <string name="event_closed">Event Closed</string>
+    <string name="label_geolocation_required">Require geolocation check-in</string>
 
 </resources>

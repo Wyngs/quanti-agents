@@ -31,6 +31,10 @@ public class EventService {
         return repository.getAllEvents();
     }
 
+    public void getAllEvents(OnSuccessListener<List<Event>> onSuccess,
+                             OnFailureListener onFailure) {
+        repository.getAllEvents(onSuccess, onFailure);
+    }
     public void saveEvent(Event event, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         // Validate event before saving
         if (event == null) {
