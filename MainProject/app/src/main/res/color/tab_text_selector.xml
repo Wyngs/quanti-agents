@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Checked: light text on primary background -->
+    <item android:state_checked="true" android:color="@color/colorOnPrimary"/>
+    <!-- Unchecked: regular surface text -->
+    <item android:color="@color/colorOnSurface"/>
+</selector>
