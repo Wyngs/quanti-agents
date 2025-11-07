@@ -9,11 +9,10 @@ import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.UserRepository;
 import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.models.User;
-
+import com.quantiagents.app.Constants.constant;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.List;
 import java.util.regex.Pattern;
 
 public class UserService {
@@ -21,6 +20,7 @@ public class UserService {
     private final UserRepository repository;
     private final DeviceIdManager deviceIdManager;
     private final Pattern emailPattern = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
+    private User currentUserCache;
 
     public UserService(Context context, Object o) {
         // Instantiate repositories and dependencies internally
@@ -29,197 +29,111 @@ public class UserService {
         this.deviceIdManager = new DeviceIdManager(context);
     }
 
-    public User getCurrentUser() {
-        // Find current user by device ID
-        String deviceId = deviceIdManager.ensureDeviceId();
-        List<User> allUsers = repository.getAllUsers();
-        for (User user : allUsers) {
-            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                return user;
-            }
-        }
-        return null;
+    public Task<QuerySnapshot> getAllUsers() {
+        return repository.getAllUsers();
     }
 
-    public User createUser(String name, String email, String phone, String password) {
-        // Validate everything once before I write to prefs.
-        validateName(name);
-        validateEmail(email);
-        validatePassword(password);
+    public Task<User> getCurrentUser() {
+        if (currentUserCache != null) {
+            return com.google.android.gms.tasks.Tasks.forResult(currentUserCache);
+        }
+        String deviceId = deviceIdManager.ensureDeviceId();
+        return repository.findUserByDeviceId(deviceId).onSuccessTask(querySnapshot -> {
+            if (!querySnapshot.isEmpty()) {
+                currentUserCache = querySnapshot.getDocuments().get(0).toObject(User.class);
+                return com.google.android.gms.tasks.Tasks.forResult(currentUserCache);
+            }
+            return com.google.android.gms.tasks.Tasks.forResult(null);
+        });
+    }
+
+    public void saveUser(User user, com.google.android.gms.tasks.OnSuccessListener<String> onSuccess, com.google.android.gms.tasks.OnFailureListener onFailure) {
+        validateName(user.getName());
+        validateEmail(user.getEmail());
+        if (user.getPasswordHash() == null || user.getPasswordHash().isEmpty()) {
+            onFailure.onFailure(new IllegalArgumentException("Password hash missing"));
+            return;
+        }
+        repository.saveUser(user, onSuccess, onFailure);
+    }
+
+    public Task<Void> updateUser(User user) {
+        validateName(user.getName());
+        validateEmail(user.getEmail());
+        if (currentUserCache != null && currentUserCache.getUserId().equals(user.getUserId())) {
+            currentUserCache = user;
+        }
+        return repository.updateUser(user);
+    }
+
+    public Task<Boolean> authenticate(String email, String password) {
+        return repository.findUserByEmail(email).onSuccessTask(querySnapshot -> {
+            if (querySnapshot.isEmpty()) {
+                return com.google.android.gms.tasks.Tasks.forResult(false);
+            }
+            User user = querySnapshot.getDocuments().get(0).toObject(User.class);
+            if (user == null) {
+                return com.google.android.gms.tasks.Tasks.forResult(false);
+            }
+            String hash = hashPassword(password);
+            boolean success = hash.equals(user.getPasswordHash());
+            if (success) {
+                currentUserCache = user;
+                attachDeviceToCurrentUser(user);
+            }
+            return com.google.android.gms.tasks.Tasks.forResult(success);
+        });
+    }
+
+    public Task<Boolean> authenticateDevice(String deviceId) {
+        return repository.findUserByDeviceId(deviceId).onSuccessTask(querySnapshot -> {
+            if (!querySnapshot.isEmpty()) {
+                currentUserCache = querySnapshot.getDocuments().get(0).toObject(User.class);
+                return com.google.android.gms.tasks.Tasks.forResult(true);
+            }
+            return com.google.android.gms.tasks.Tasks.forResult(false);
+        });
+    }
+
+    private void attachDeviceToCurrentUser(User user) {
+        String deviceId = deviceIdManager.ensureDeviceId();
+        if (!deviceId.equals(user.getDeviceId())) {
+            user.setDeviceId(deviceId);
+            updateUser(user);
+        }
+    }
+
+    public void logout() {
+        currentUserCache = null;
+    }
+
+    public Task<Void> deleteUserProfile(String userId) {
+        if (currentUserCache != null && currentUserCache.getUserId().equals(userId)) {
+            currentUserCache = null;
+        }
+        return repository.deleteUserById(userId);
+    }
+
+    public void createNewUser(String name, String email, String phone, String password, com.google.android.gms.tasks.OnSuccessListener<String> onSuccess, com.google.android.gms.tasks.OnFailureListener onFailure) {
+        try {
+            validateName(name);
+            validateEmail(email);
+            validatePassword(password);
+        } catch (IllegalArgumentException e) {
+            onFailure.onFailure(e);
+            return;
+        }
+
         String trimmedPhone = phone == null ? "" : phone.trim();
         String deviceId = deviceIdManager.ensureDeviceId();
         String passwordHash = hashPassword(password);
-        // Create user with empty userId, Firebase will auto-generate an ID when saving
+
         User user = new User("", deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
+        user.setRole(constant.UserRole.ENTRANT);
 
-        // Save user - if userId is null or empty, Firebase will auto-generate an ID
-        // The user object will be updated with the generated ID after saving
-        repository.saveUser(user, aVoid -> Log.d("App", "User saved with ID: " + user.getUserId()),
-                e -> Log.e("App", "Failed to save", e));
-
-        return user;
+        repository.saveUser(user, onSuccess, onFailure);
     }
 
-    public User updateUser(String name, String email, String phone) {
-        User current = requireUser();
-        validateName(name);
-        validateEmail(email);
-        if (current != null) {
-            current.setName(name.trim());
-            current.setEmail(email.trim());
-            current.setPhone(phone == null ? "" : phone.trim());
-            repository.updateUser(current,
-                    aVoid -> Log.d("App", "Update user"),
-                    e -> Log.e("App", "Failed to update user", e));
-        }
-        return current;
-    }
-
-    public boolean authenticate(String email, String password) {
-        // Quick email/password check for manual login.
-        // Find user by email
-        List<User> allUsers = repository.getAllUsers();
-        for (User user : allUsers) {
-            if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
-                String hash = hashPassword(password);
-                return hash.equals(user.getPasswordHash());
-            }
-        }
-        return false;
-    }
-
-    public void authenticate(String email, String password, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
-        // Async version for UI thread
-        repository.getAllUsers(
-                users -> {
-                    for (User user : users) {
-                        if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
-                            String hash = hashPassword(password);
-                            boolean success = hash.equals(user.getPasswordHash());
-                            onSuccess.onSuccess(success);
-                            return;
-                        }
-                    }
-                    onSuccess.onSuccess(false);
-                },
-                onFailure
-        );
-    }
-
-    public boolean authenticateDevice(String deviceId) {
-        // Device-only gate for auto login.
-        // Find user by device ID by checking all users
-        List<User> allUsers = repository.getAllUsers();
-        for (User user : allUsers) {
-            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public void authenticateDevice(String deviceId, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
-        // Async version for UI thread
-        repository.getAllUsers(
-                users -> {
-                    for (User user : users) {
-                        if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                            onSuccess.onSuccess(true);
-                            return;
-                        }
-                    }
-                    onSuccess.onSuccess(false);
-                },
-                onFailure
-        );
-    }
-
-    public void getCurrentUser(OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
-        // Async version for UI thread
-        String deviceId = deviceIdManager.ensureDeviceId();
-        repository.getAllUsers(
-                users -> {
-                    for (User user : users) {
-                        if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                            onSuccess.onSuccess(user);
-                            return;
-                        }
-                    }
-                    onSuccess.onSuccess(null);
-                },
-                onFailure
-        );
-    }
-
-    public void attachDeviceToCurrentUser() {
-        // Make sure the stored profile follows the latest device id.
-        User current = getCurrentUser();
-        if (current == null) {
-            return;
-        }
-        String deviceId = deviceIdManager.ensureDeviceId();
-        if (!deviceId.equals(current.getDeviceId())) {
-            User updated = new User(
-                    current.getUserId(),
-                    deviceId,
-                    current.getName(),
-                    current.getEmail(),
-                    current.getPhone(),
-                    current.getPasswordHash()
-            );
-            updated.setNotificationsOn(current.hasNotificationsOn());
-            updated.setCreatedOn(current.getCreatedOn());
-            repository.updateUser(updated,
-                    aVoid -> Log.d("App", "Update user"),
-                    e -> Log.e("App", "Failed to update user", e));
-        }
-    }
-
-    public void updatePassword(String newPassword) {
-        // Allow password refresh on demand.
-        validatePassword(newPassword);
-        User current = requireUser();
-        if (current != null) {
-            current.setPasswordHash(hashPassword(newPassword));
-            repository.updateUser(current,
-                    aVoid -> Log.d("App", "Update user"),
-                    e -> Log.e("App", "Failed to update user", e));
-        }
-    }
-
-    public void updateNotificationPreference(boolean enabled) {
-        // Keep notification toggle in sync.
-        User current = requireUser();
-        if (current != null) {
-            current.setNotificationsOn(enabled);
-            repository.updateUser(current,
-                    aVoid -> Log.d("App", "Update user"),
-                    e -> Log.e("App", "Failed to update user", e));
-        }
-    }
-
-    public void deleteUserProfile() {
-        // Hard delete wipes local profile entirely.
-        User current = getCurrentUser();
-        if (current != null && current.getUserId() != null && !current.getUserId().trim().isEmpty()) {
-            repository.deleteUserById(
-                    current.getUserId(),
-                    aVoid -> Log.d("App", "Deleted user"),
-                    e -> Log.e("App", "Failed to delete user", e));
-        }
-    }
-
-    public User getUserById(String userId) {
-        return repository.getUserById(userId);
-    }
-
-    private User requireUser() {
-        User current = getCurrentUser();
-        if (current == null) {
-            throw new IllegalStateException("Profile missing");
-        }
-        return current;
-    }
 
     private void validateName(String name) {
         if (name == null || name.trim().isEmpty()) {
@@ -242,7 +156,7 @@ public class UserService {
         }
     }
 
-    private String hashPassword(String password) {
+    public String hashPassword(String password) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(password.trim().getBytes(StandardCharsets.UTF_8));

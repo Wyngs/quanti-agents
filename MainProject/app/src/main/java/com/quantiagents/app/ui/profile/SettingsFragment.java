@@ -1,24 +1,17 @@
 package com.quantiagents.app.ui.profile;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.models.User;
 import com.quantiagents.app.Services.UserService;
-import com.quantiagents.app.ui.auth.SignUpActivity;
 
 public class SettingsFragment extends Fragment {
 
@@ -38,46 +31,40 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        userService = ((App) requireActivity().getApplication()).locator().userService();
+        App app = (App) requireActivity().getApplication();
+        userService = app.locator().userService();
+
         notificationSwitch = view.findViewById(R.id.switch_notifications);
-        MaterialButton deleteButton = view.findViewById(R.id.button_delete_profile);
-        // Toggle directly writes back to the stored profile.
-        notificationSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> userService.updateNotificationPreference(isChecked));
-        deleteButton.setOnClickListener(v -> confirmDeletion());
+
+        loadSettings();
+
+        notificationSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            updateNotificationPreference(isChecked);
+        });
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        // Use async getCurrentUser to avoid blocking the main thread
-        userService.getCurrentUser(
-                user -> {
-                    if (user != null) {
-                        notificationSwitch.setChecked(user.hasNotificationsOn());
+    private void loadSettings() {
+        userService.getCurrentUser().addOnSuccessListener(user -> {
+            if (user != null) {
+                notificationSwitch.setChecked(user.hasNotificationsOn());
+            }
+        }).addOnFailureListener(e -> {
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Failed to load settings", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void updateNotificationPreference(boolean isEnabled) {
+        userService.getCurrentUser().addOnSuccessListener(user -> {
+            if (user != null) {
+                user.setNotificationsOn(isEnabled);
+                userService.updateUser(user).addOnFailureListener(e -> {
+                    if (getContext() != null) {
+                        Toast.makeText(getContext(), "Failed to save preference", Toast.LENGTH_SHORT).show();
                     }
-                },
-                e -> {
-                    // On error, do nothing - switch will remain in its current state
-                }
-        );
-    }
-
-    private void confirmDeletion() {
-        // Quick confirmation before wiping the profile.
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.delete_profile_title)
-                .setMessage(R.string.delete_profile_body)
-                .setPositiveButton(R.string.delete_profile_confirm, (dialog, which) -> deleteProfile())
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
-    private void deleteProfile() {
-        userService.deleteUserProfile();
-        Toast.makeText(requireContext(), R.string.message_profile_deleted, Toast.LENGTH_SHORT).show();
-        Intent intent = new Intent(requireContext(), SignUpActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        requireActivity().finish();
+                });
+            }
+        });
     }
 }

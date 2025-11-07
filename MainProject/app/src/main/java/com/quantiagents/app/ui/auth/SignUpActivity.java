@@ -4,18 +4,17 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.Toast;
-
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
+import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.LoginService;
-import com.quantiagents.app.models.User;
 import com.quantiagents.app.Services.UserService;
+import com.quantiagents.app.ui.admin.AdminDashboardActivity;
 import com.quantiagents.app.ui.main.MainActivity;
 
 public class SignUpActivity extends AppCompatActivity {
@@ -57,7 +56,6 @@ public class SignUpActivity extends AppCompatActivity {
     }
 
     private void handleCreateProfile() {
-        // Clean previous errors before re-validating.
         clearErrors();
         String name = safeText(nameField);
         String email = safeText(emailField);
@@ -88,28 +86,51 @@ public class SignUpActivity extends AppCompatActivity {
         }
 
         try {
-            // Save profile, hash password, and auto-login.
-            User user = userService.createUser(name, email, phone, password);
-            // Use async login to avoid blocking the main thread
-            loginService.login(email, password,
-                    success -> {
-                        if (success) {
-                            Toast.makeText(this, getString(R.string.message_profile_created, user.getName()), Toast.LENGTH_SHORT).show();
-                            Intent intent = new Intent(this, MainActivity.class);
-                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            emailLayout.setError(getString(R.string.error_email_invalid));
-                        }
+            userService.createNewUser(name, email, phone, password,
+                    userId -> {
+                        loginService.login(email, password).addOnSuccessListener(success -> {
+                            if (success) {
+                                Toast.makeText(this, getString(R.string.message_profile_created, name), Toast.LENGTH_SHORT).show();
+                                userService.getCurrentUser().addOnSuccessListener(user -> {
+                                    if (user != null && user.getRole() == constant.UserRole.ADMIN) {
+                                        openAdminHome();
+                                    } else {
+                                        openHome();
+                                    }
+                                    finish();
+                                }).addOnFailureListener(e -> {
+                                    openHome();
+                                    finish();
+
+                                });
+                            } else {
+                                emailLayout.setError(getString(R.string.error_login_invalid));
+                            }
+                        }).addOnFailureListener(e -> {
+                            emailLayout.setError(getString(R.string.error_login_invalid));
+                        });
                     },
                     e -> {
-                        emailLayout.setError(getString(R.string.error_email_invalid));
+                        emailLayout.setError("Failed to create user: " + e.getMessage());
                     }
             );
         } catch (IllegalArgumentException exception) {
             emailLayout.setError(getString(R.string.error_email_invalid));
         }
+    }
+
+    private void openHome() {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
+    private void openAdminHome() {
+        Intent intent = new Intent(this, AdminDashboardActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private void clearErrors() {

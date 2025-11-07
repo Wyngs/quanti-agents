@@ -5,18 +5,18 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
+import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.LoginService;
 import com.quantiagents.app.models.User;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.ui.main.MainActivity;
+import com.quantiagents.app.ui.admin.AdminDashboardActivity;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -35,32 +35,27 @@ public class LoginActivity extends AppCompatActivity {
         userService = app.locator().userService();
         loginService = app.locator().loginService();
         bindViews();
-        // Use async getCurrentUser to avoid blocking the main thread
-        userService.getCurrentUser(
-                user -> {
-                    if (user == null) {
-                        Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
-                        startActivity(new Intent(this, SignUpActivity.class));
-                        finish();
-                        return;
-                    }
-                    preloadInputs(user);
-                    // Set up buttons after user is loaded
-                    findViewById(R.id.button_continue).setOnClickListener(v -> handleLogin());
-                    findViewById(R.id.button_switch_user).setOnClickListener(v -> resetProfile());
-                    TextView forgotView = findViewById(R.id.text_forgot_password);
-                    forgotView.setOnClickListener(v -> Toast.makeText(this, R.string.message_password_hint, Toast.LENGTH_SHORT).show());
-                },
-                e -> {
-                    Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
-                    startActivity(new Intent(this, SignUpActivity.class));
-                    finish();
-                }
-        );
+
+        userService.getCurrentUser().addOnSuccessListener(user -> {
+            if (user == null) {
+                Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(this, SignUpActivity.class));
+                finish();
+                return;
+            }
+            preloadInputs(user);
+            findViewById(R.id.button_continue).setOnClickListener(v -> handleLogin());
+            findViewById(R.id.button_switch_user).setOnClickListener(v -> resetProfile());
+            TextView forgotView = findViewById(R.id.text_forgot_password);
+            forgotView.setOnClickListener(v -> Toast.makeText(this, R.string.message_password_hint, Toast.LENGTH_SHORT).show());
+        }).addOnFailureListener(e -> {
+            Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, SignUpActivity.class));
+            finish();
+        });
     }
 
     private void bindViews() {
-        // Cache the fields so I can toggle errors quickly.
         emailLayout = findViewById(R.id.login_username_layout);
         passwordLayout = findViewById(R.id.login_password_layout);
         emailField = findViewById(R.id.input_username);
@@ -68,7 +63,6 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void preloadInputs(User user) {
-        // Prefill email, leave password blank to prompt entry.
         emailField.setText(user.getEmail());
         passwordField.setText("");
     }
@@ -83,20 +77,26 @@ public class LoginActivity extends AppCompatActivity {
             passwordLayout.setError(getString(R.string.error_login_required));
             return;
         }
-        // Let LoginService verify credentials.
-        // Use async login to avoid blocking the main thread
-        loginService.login(email, password,
-                success -> {
-                    if (success) {
-                        openHome();
+
+        loginService.login(email, password).addOnSuccessListener(success -> {
+            if (success) {
+                userService.getCurrentUser().addOnSuccessListener(user -> {
+                    if (user != null && user.getRole() == constant.UserRole.ADMIN) {
+                        openAdminHome();
                     } else {
-                        passwordLayout.setError(getString(R.string.error_login_invalid));
+                        openHome();
                     }
-                },
-                e -> {
-                    passwordLayout.setError(getString(R.string.error_login_invalid));
-                }
-        );
+                    finish();
+                }).addOnFailureListener(e -> {
+                    openHome();
+                    finish();
+                });
+            } else {
+                passwordLayout.setError(getString(R.string.error_login_invalid));
+            }
+        }).addOnFailureListener(e -> {
+            passwordLayout.setError(getString(R.string.error_login_invalid));
+        });
     }
 
     private void openHome() {
@@ -106,13 +106,29 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
-    private void resetProfile() {
-        loginService.logout();
-        userService.deleteUserProfile();
-        Intent intent = new Intent(this, SignUpActivity.class);
+    private void openAdminHome() {
+        Intent intent = new Intent(this, AdminDashboardActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void resetProfile() {
+        loginService.logout();
+        userService.getCurrentUser().addOnSuccessListener(user-> {
+            if (user != null) {
+                userService.deleteUserProfile(user.getUserId());
+            }
+            Intent intent = new Intent(this, SignUpActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+        }).addOnFailureListener(e -> {
+            Intent intent = new Intent(this, SignUpActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+        });
     }
 
     private String safeText(TextInputEditText field) {
