@@ -3,28 +3,25 @@ package com.quantiagents.app.Repository;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.quantiagents.app.Constants.constant;
-import com.quantiagents.app.models.User;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class FireBaseRepository {
     private final FirebaseFirestore db;
     private final CollectionReference UserCollectionRef;
     private final CollectionReference EventCollectionRef;
-    private final CollectionReference PosterCollectionRef;
+    private final CollectionReference ImageCollectionRef;
     private final CollectionReference LotteryCollectionRef;
     private final CollectionReference QrCodeCollectionRef;
     private final CollectionReference NotificationCollectionRef;
     private final CollectionReference GeoLocationCollectionRef;
     private final CollectionReference RegistrationHistoryCollectionRef;
     private final CollectionReference DeviceIdCollectionRef;
+
     public FireBaseRepository() {
         this.db = FirebaseFirestore.getInstance();
 
         UserCollectionRef = db.collection(constant.UserCollectionName);
         EventCollectionRef = db.collection(constant.EventCollectionName);
-        PosterCollectionRef = db.collection(constant.PosterCollectionName);
+        ImageCollectionRef = db.collection(constant.ImageCollectionName);
         LotteryCollectionRef = db.collection(constant.LotteryCollectionName);
         QrCodeCollectionRef = db.collection(constant.QrCodeCollectionName);
         NotificationCollectionRef = db.collection(constant.NotificationCollectionName);
@@ -42,8 +39,8 @@ public class FireBaseRepository {
         return EventCollectionRef;
     }
 
-    public CollectionReference getPosterCollectionRef() {
-        return PosterCollectionRef;
+    public CollectionReference getImageCollectionRef() {
+        return ImageCollectionRef;
     }
 
     public CollectionReference getLotteryCollectionRef() {

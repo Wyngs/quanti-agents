@@ -14,8 +14,6 @@ public class User implements Serializable {
     private boolean notificationsOn;
     private Date createdOn;
     private constant.UserRole role;
-    private RegistrationHistory registrationHistory;
-
 
     public User(){
         this.userId = "";
@@ -34,7 +32,6 @@ public class User implements Serializable {
     }
 
     public User(String userId, String deviceId, String name, String email, String phone, String passwordHash) {
-        // Capture the snapshot of my profile at creation.
         this.userId = userId;
         this.deviceId = deviceId;
         this.name = name;
@@ -109,14 +106,6 @@ public class User implements Serializable {
         this.createdOn = createdOn;
     }
 
-    public RegistrationHistory getRegistrationHistory() {
-        return registrationHistory;
-    }
-
-    public void setRegistrationHistory(RegistrationHistory registrationHistory) {
-        this.registrationHistory = registrationHistory;
-    }
-
     public constant.UserRole getRole() {
         return role;
     }
@@ -124,5 +113,4 @@ public class User implements Serializable {
     public void setRole(constant.UserRole role) {
         this.role = role;
     }
-
 }

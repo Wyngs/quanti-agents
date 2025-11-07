@@ -1,6 +1,5 @@
 package com.quantiagents.app.ui.profile;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -11,24 +10,21 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.Services.LoginService;
 import com.quantiagents.app.Services.UserService;
-import com.quantiagents.app.ui.auth.SignUpActivity;
+import com.quantiagents.app.models.User;
 
 /**
- * Houses the simple profile settings: notification toggle and the nuke profile button.
+ * Profile settings: currently just a notifications on/off toggle.
+ * Uses Task-based async calls so it’s consistent with the shared UserService.
  */
 public class SettingsFragment extends Fragment {
 
     private UserService userService;
-    private LoginService loginService;
     private MaterialSwitch notificationSwitch;
-    private boolean suppressSwitchListener;
+    private boolean suppressSwitchListener = false;
 
     public static SettingsFragment newInstance() {
         return new SettingsFragment();
@@ -36,86 +32,81 @@ public class SettingsFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_settings, container, false);
     }
 
-    /**
-     * Hooks up the toggle and delete button once the view hierarchy exists.
-     */
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
         App app = (App) requireActivity().getApplication();
         userService = app.locator().userService();
-        loginService = app.locator().loginService();
+
         notificationSwitch = view.findViewById(R.id.switch_notifications);
-        MaterialButton deleteButton = view.findViewById(R.id.button_delete_profile);
-        notificationSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (suppressSwitchListener) {
-                return;
-            }
-            buttonView.setEnabled(false);
-            userService.updateNotificationPreference(
-                    isChecked,
-                    aVoid -> buttonView.post(() -> buttonView.setEnabled(true)),
-                    e -> buttonView.post(() -> {
-                        buttonView.setEnabled(true);
-                        suppressSwitchListener = true;
-                        notificationSwitch.setChecked(!isChecked);
-                        suppressSwitchListener = false;
-                        Toast.makeText(requireContext(), R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
-                    })
-            );
+
+        // Load current settings into the UI
+        loadSettings();
+
+        // Persist changes when the user toggles the switch
+        notificationSwitch.setOnCheckedChangeListener((button, isChecked) -> {
+            if (suppressSwitchListener) return;
+            persistNotificationPref(isChecked);
         });
-        deleteButton.setOnClickListener(v -> confirmDeletion());
     }
 
-    /**
-     * Refreshes the switch state whenever we return from another screen.
-     */
     @Override
     public void onResume() {
         super.onResume();
-        userService.getCurrentUser(
-                user -> {
+        // Refresh toggle when returning to this screen
+        loadSettings();
+    }
+
+    private void loadSettings() {
+        userService.getCurrentUser()
+                .addOnSuccessListener(user -> {
                     if (user != null) {
                         suppressSwitchListener = true;
                         notificationSwitch.setChecked(user.hasNotificationsOn());
                         suppressSwitchListener = false;
                     }
-                },
-                e -> notificationSwitch.setChecked(true)
-        );
+                })
+                .addOnFailureListener(e -> {
+                    if (getContext() != null) {
+                        Toast.makeText(getContext(), "Failed to load settings", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
-    /**
-     * Shows the confirmation dialog before we wipe the profile.
-     */
-    private void confirmDeletion() {
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.delete_profile_title)
-                .setMessage(R.string.delete_profile_body)
-                .setPositiveButton(R.string.delete_profile_confirm, (dialog, which) -> deleteProfile())
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
+    private void persistNotificationPref(boolean enabled) {
+        // Fetch, mutate, save
+        userService.getCurrentUser()
+                .addOnSuccessListener(user -> {
+                    if (user == null) return;
 
-    /**
-     * Clears local session, deletes the profile, and routes back to sign-up.
-     */
-    private void deleteProfile() {
-        loginService.logout();
-        userService.deleteUserProfile(
-                aVoid -> {
-                    ((App) requireActivity().getApplication()).locator().deviceIdManager().reset();
-                    Toast.makeText(requireContext(), R.string.message_profile_deleted, Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(requireContext(), SignUpActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
-                    requireActivity().finish();
-                },
-                e -> Toast.makeText(requireContext(), R.string.error_profile_missing, Toast.LENGTH_SHORT).show()
-        );
+                    user.setNotificationsOn(enabled);
+                    userService.updateUser(user)
+                            .addOnFailureListener(e -> {
+                                if (getContext() != null) {
+                                    Toast.makeText(getContext(), "Failed to save preference", Toast.LENGTH_SHORT).show();
+                                }
+                                // Revert UI if save fails
+                                suppressSwitchListener = true;
+                                notificationSwitch.setChecked(!enabled);
+                                suppressSwitchListener = false;
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    if (getContext() != null) {
+                        Toast.makeText(getContext(), "Failed to save preference", Toast.LENGTH_SHORT).show();
+                    }
+                    // Revert UI if lookup fails
+                    suppressSwitchListener = true;
+                    notificationSwitch.setChecked(!enabled);
+                    suppressSwitchListener = false;
+                });
     }
 }

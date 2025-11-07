@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.TaskCompletionSource;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
@@ -22,160 +23,192 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Direct Firestore access layer so I keep the SDK details out of the services.
+ * Repository for Firestore {@code USER} documents.
+ * Exposes both Task-based and listener-based helpers so all call sites stay compatible.
+ *
+ * NOTE: Any {@code Tasks.await(...)} method here is for tests/background threads only.
+ * Do NOT call them on the main thread.
  */
 public class UserRepository {
 
+    private static final String TAG = "UserRepository";
     private final CollectionReference context;
 
     /**
-     * @param fireBaseRepository wrapper I built around the Firebase entry points.
+     * @param fireBaseRepository App wrapper around Firebase entry points.
      */
-    public UserRepository(FireBaseRepository fireBaseRepository) {
+    public UserRepository(@NonNull FireBaseRepository fireBaseRepository) {
         this.context = fireBaseRepository.getUserCollectionRef();
     }
 
+    // ---------------------------------------------------------------------
+    // Query APIs (Task-returning)
+    // ---------------------------------------------------------------------
+
+    /** Get a user doc by its document id. */
+    public Task<DocumentSnapshot> getUserById(@NonNull String userId) {
+        return context.document(userId).get();
+    }
+
+    /** Find the first user with a matching deviceId. */
+    public Task<QuerySnapshot> findUserByDeviceId(@NonNull String deviceId) {
+        return context.whereEqualTo("deviceId", deviceId).limit(1).get();
+    }
+
+    /** Find the first user with a matching (lowercased, trimmed) email. */
+    public Task<QuerySnapshot> findUserByEmail(@NonNull String email) {
+        return context.whereEqualTo("email", email.trim().toLowerCase()).limit(1).get();
+    }
+
+    /** Get all users (default cache policy). */
+    public Task<QuerySnapshot> getAllUsers() {
+        return context.get();
+    }
+
+    /** Get all users, forcing server fetch (useful for tests). */
+    public Task<QuerySnapshot> getAllUsersFromServerTask() {
+        return context.get(Source.SERVER);
+    }
+
+    // ---------------------------------------------------------------------
+    // Mutations (Task-returning)
+    // ---------------------------------------------------------------------
+
     /**
-     * Fetches a user document by id. Used sparingly since most flows key off device id.
+     * Upsert a user. If {@code userId} is empty, creates a new document and writes the generated id back
+     * to the document field {@code userId}. Returns a Task that resolves with the effective userId.
      */
-    public User getUserById(String userId) {
+    public Task<String> saveUserTask(@NonNull User user) {
+        TaskCompletionSource<String> tcs = new TaskCompletionSource<>();
+
+        String userId = user.getUserId();
+        if (userId == null || userId.trim().isEmpty()) {
+            // Auto-create
+            context.add(user)
+                    .addOnSuccessListener(ref -> {
+                        String docId = ref.getId();
+                        user.setUserId(docId);
+                        // Persist userId field for consistency
+                        context.document(docId).update("userId", docId)
+                                .addOnSuccessListener(v -> tcs.setResult(docId))
+                                // Even if this minor update fails, the doc exists; return id
+                                .addOnFailureListener(e -> {
+                                    Log.w(TAG, "Failed to write generated userId to doc", e);
+                                    tcs.setResult(docId);
+                                });
+                    })
+                    .addOnFailureListener(tcs::setException);
+        } else {
+            // Upsert specific id
+            DocumentReference doc = context.document(userId);
+            doc.get().addOnSuccessListener(snap -> {
+                Task<Void> write = snap.exists()
+                        ? doc.set(user, SetOptions.merge())
+                        : doc.set(user);
+                write.addOnSuccessListener(v -> tcs.setResult(userId))
+                     .addOnFailureListener(tcs::setException);
+            }).addOnFailureListener(tcs::setException);
+        }
+
+        return tcs.getTask();
+    }
+
+    /** Merge-update the given user (must have a non-empty userId). */
+    public Task<Void> updateUser(@NonNull User user) {
+        return context.document(user.getUserId()).set(user, SetOptions.merge());
+    }
+
+    /** Delete by id. Returns a failed Task if id is empty. */
+    public Task<Void> deleteUserById(String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            return Tasks.forException(new IllegalArgumentException("userId cannot be null or empty"));
+        }
+        return context.document(userId).delete();
+    }
+
+    // ---------------------------------------------------------------------
+    // Listener-based convenience wrappers (compatibility with existing code)
+    // ---------------------------------------------------------------------
+
+    /** Callback wrapper for {@link #saveUserTask(User)} that returns the effective userId. */
+    public void saveUser(@NonNull User user,
+                         @NonNull OnSuccessListener<String> onSuccess,
+                         @NonNull OnFailureListener onFailure) {
+        saveUserTask(user).addOnSuccessListener(onSuccess).addOnFailureListener(onFailure);
+    }
+
+    /** Callback wrapper for merge update. */
+    public void updateUser(@NonNull User user,
+                           @NonNull OnSuccessListener<Void> onSuccess,
+                           @NonNull OnFailureListener onFailure) {
+        updateUser(user).addOnSuccessListener(onSuccess).addOnFailureListener(onFailure);
+    }
+
+    /** Callback wrapper for delete. */
+    public void deleteUserById(@NonNull String userId,
+                               @NonNull OnSuccessListener<Void> onSuccess,
+                               @NonNull OnFailureListener onFailure) {
+        deleteUserById(userId).addOnSuccessListener(onSuccess).addOnFailureListener(onFailure);
+    }
+
+    /**
+     * Callback wrapper to fetch all users and materialize as {@code List<User>}.
+     * (Default cache policy.)
+     */
+    public void getAllUsers(@NonNull OnSuccessListener<List<User>> onSuccess,
+                            @NonNull OnFailureListener onFailure) {
+        context.get()
+                .addOnSuccessListener(snap -> onSuccess.onSuccess(toUsers(snap)))
+                .addOnFailureListener(onFailure);
+    }
+
+    // ---------------------------------------------------------------------
+    // Blocking helpers for tests/background (NEVER on main thread)
+    // ---------------------------------------------------------------------
+
+    /** Blocking helper used in tests/background to fetch by id. */
+    public User getUserByIdBlocking(@NonNull String userId) {
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(userId).get());
-            if (snapshot.exists()) {
-                return snapshot.toObject(User.class);
-            } else {
-                Log.d("Firestore", "No user found for ID: " + userId);
-                return null;
-            }
+            return snapshot.exists() ? snapshot.toObject(User.class) : null;
         } catch (ExecutionException | InterruptedException e) {
-            Log.e("Firestore", "Error getting user", e);
+            Log.e(TAG, "getUserByIdBlocking failed", e);
             return null;
         }
     }
 
-    /**
-     * Upserts the user document, auto-generating an id if none was provided.
-     */
-    public void saveUser(User user, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        if (user.getUserId() == null || user.getUserId().trim().isEmpty()) {
-            Task<DocumentReference> addTask = context.add(user);
-            addTask.addOnSuccessListener(documentReference -> {
-                String docId = documentReference.getId();
-                user.setUserId(docId);
-                context.document(docId).update("userId", docId)
-                        .addOnSuccessListener(aVoid -> {
-                            Log.d("Firestore", "User created with auto-generated ID: " + docId);
-                            onSuccess.onSuccess(aVoid);
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.e("Firestore", "Error updating user with generated ID", e);
-                            onSuccess.onSuccess(null);
-                        });
-            }).addOnFailureListener(onFailure);
-        } else {
-            DocumentReference docRef = context.document(user.getUserId());
-            docRef.get().addOnSuccessListener(documentSnapshot -> {
-                if (documentSnapshot.exists()) {
-                    docRef.set(user, SetOptions.merge())
-                            .addOnSuccessListener(onSuccess)
-                            .addOnFailureListener(onFailure);
-                } else {
-                    docRef.set(user)
-                            .addOnSuccessListener(onSuccess)
-                            .addOnFailureListener(onFailure);
-                }
-            }).addOnFailureListener(onFailure);
-        }
-    }
-
-    /**
-     * Writes a merge update for the supplied user id.
-     */
-    public void updateUser(@NonNull User user,
-                           @NonNull OnSuccessListener<Void> onSuccess,
-                           @NonNull OnFailureListener onFailure) {
-        context.document(user.getUserId())
-                .set(user, SetOptions.merge())
-                .addOnSuccessListener(aVoid -> {
-                    Log.d("Firestore", "User updated: " + user.getUserId());
-                    onSuccess.onSuccess(aVoid);
-                })
-                .addOnFailureListener(e -> {
-                    Log.e("Firestore", "Error updating user", e);
-                    onFailure.onFailure(e);
-                });
-    }
-
-    /**
-     * Deletes the given user document outright.
-     */
-    public void deleteUserById(String userId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        if (userId == null || userId.trim().isEmpty()) {
-            Log.e("Firestore", "Cannot delete user: userId is null or empty");
-            onFailure.onFailure(new IllegalArgumentException("userId cannot be null or empty"));
-            return;
-        }
-        context.document(userId)
-                .delete()
-                .addOnSuccessListener(onSuccess)
-                .addOnFailureListener(onFailure);
-    }
-
-    /**
-     * Reads using the default cache policy; fine for most UI flows.
-     */
-    public List<User> getAllUsers() {
+    /** Blocking helper: all users (default cache policy). */
+    public List<User> getAllUsersBlocking() {
         try {
-            QuerySnapshot snapshot = Tasks.await(context.get());
-            List<User> users = new ArrayList<>();
-            for (QueryDocumentSnapshot document : snapshot) {
-                User user = document.toObject(User.class);
-                if (user != null) {
-                    users.add(user);
-                }
-            }
-            return users;
+            QuerySnapshot snap = Tasks.await(context.get());
+            return toUsers(snap);
         } catch (ExecutionException | InterruptedException e) {
-            Log.e("Firestore", "Error getting all users", e);
+            Log.e(TAG, "getAllUsersBlocking failed", e);
             return new ArrayList<>();
         }
     }
 
-    /**
-     * Forces a server fetch; I only call this when tests need the absolute latest state.
-     */
-    public List<User> getAllUsersFromServer() {
+    /** Blocking helper: all users (force server). */
+    public List<User> getAllUsersFromServerBlocking() {
         try {
-            QuerySnapshot snapshot = Tasks.await(context.get(Source.SERVER));
-            List<User> users = new ArrayList<>();
-            for (QueryDocumentSnapshot document : snapshot) {
-                User user = document.toObject(User.class);
-                if (user != null) {
-                    users.add(user);
-                }
-            }
-            return users;
+            QuerySnapshot snap = Tasks.await(context.get(Source.SERVER));
+            return toUsers(snap);
         } catch (ExecutionException | InterruptedException e) {
-            Log.e("Firestore", "Error getting all users from server", e);
+            Log.e(TAG, "getAllUsersFromServerBlocking failed", e);
             return new ArrayList<>();
         }
     }
 
-    public void getAllUsers(OnSuccessListener<List<User>> onSuccess, OnFailureListener onFailure) {
-        context.get()
-                .addOnSuccessListener(querySnapshot -> {
-                    List<User> users = new ArrayList<>();
-                    for (QueryDocumentSnapshot document : querySnapshot) {
-                        User user = document.toObject(User.class);
-                        if (user != null) {
-                            users.add(user);
-                        }
-                    }
-                    onSuccess.onSuccess(users);
-                })
-                .addOnFailureListener(e -> {
-                    Log.e("Firestore", "Error getting all users", e);
-                    onFailure.onFailure(e);
-                });
+    // ---------------------------------------------------------------------
+    // Utilities
+    // ---------------------------------------------------------------------
+
+    private static List<User> toUsers(@NonNull QuerySnapshot snapshot) {
+        List<User> out = new ArrayList<>();
+        for (QueryDocumentSnapshot doc : snapshot) {
+            User u = doc.toObject(User.class);
+            if (u != null) out.add(u);
+        }
+        return out;
     }
 }
