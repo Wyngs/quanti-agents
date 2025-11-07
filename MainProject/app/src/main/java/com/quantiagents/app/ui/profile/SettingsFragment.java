@@ -13,7 +13,7 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.LoginService;
@@ -27,7 +27,7 @@ public class SettingsFragment extends Fragment {
 
     private UserService userService;
     private LoginService loginService;
-    private MaterialSwitch notificationSwitch;
+    private SwitchMaterial notificationSwitch;
     private boolean suppressSwitchListener;
 
     public static SettingsFragment newInstance() {

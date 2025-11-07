@@ -42,7 +42,11 @@ public class EventRepository {
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(eventId).get());
             if (snapshot.exists()) {
-                return snapshot.toObject(Event.class);
+                Event event = snapshot.toObject(Event.class);
+                if (event != null && (event.getEventId() == null || event.getEventId().trim().isEmpty())) {
+                    event.setEventId(snapshot.getId());
+                }
+                return event;
             } else {
                 Log.d("Firestore", "No event found for ID: " + eventId);
                 return null;
@@ -65,6 +69,9 @@ public class EventRepository {
             for (QueryDocumentSnapshot document : snapshot) {
                 Event event = document.toObject(Event.class);
                 if (event != null) {
+                    if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
+                        event.setEventId(document.getId());
+                    }
                     events.add(event);
                 }
             }
@@ -75,15 +82,27 @@ public class EventRepository {
         }
     }
 
-    /**
-     * Saves event to the firebase
-     * @param event
-     * Event to save
-     * @param onSuccess
-     * Calls a function on success
-     * @param onFailure
-     * Calls a function on failure
-     */
+
+    public void getAllEvents(OnSuccessListener<List<Event>> onSuccess,
+                             OnFailureListener onFailure) {
+        context.get()
+                .addOnSuccessListener(qs -> {
+                    List<Event> out = new ArrayList<>();
+                    for (QueryDocumentSnapshot d : qs) {
+                        Event e = d.toObject(Event.class);
+                        if (e != null) {
+                            if (e.getEventId() == null || e.getEventId().trim().isEmpty()) {
+                                e.setEventId(d.getId());
+                            }
+                            out.add(e);
+                        }
+                    }
+                    onSuccess.onSuccess(out);
+                })
+                .addOnFailureListener(onFailure);
+    }
+
+
     public void saveEvent(Event event, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         // If eventId is null or empty, let Firebase auto-generate an ID
         if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {

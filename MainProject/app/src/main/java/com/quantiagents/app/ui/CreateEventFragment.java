@@ -14,7 +14,9 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
+//import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
@@ -37,6 +39,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+
 
 public class CreateEventFragment extends Fragment {
 
@@ -71,7 +74,8 @@ public class CreateEventFragment extends Fragment {
     private TextInputEditText waitingListField;
     private TextInputEditText posterField;
 
-    private MaterialSwitch geolocationSwitch;
+    //private MaterialSwitch geolocationSwitch;
+    private SwitchMaterial geolocationSwitch;
     private MaterialButton createButton;
 
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.US);

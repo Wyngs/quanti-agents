@@ -111,4 +111,18 @@ public class ServiceLocator {
         }
         return deviceIdManager;
     }
+
+    // In com.quantiagents.app.Services.ServiceLocator
+    public void replaceUserService(UserService svc) { this.userService = svc; }
+    public void replaceEventService(EventService svc) { this.eventService = svc; }
+    public void replaceRegistrationHistoryService(RegistrationHistoryService svc) { this.registrationHistoryService = svc; }
+    /** Override the default EventService instance (useful for tests/mocks). */
+    public synchronized void setEventService(EventService svc) {
+        this.eventService = svc;
+    }
+
+    /** Override the default RegistrationHistoryService instance (useful for tests/mocks). */
+    public synchronized void setRegistrationHistoryService(RegistrationHistoryService svc) {
+        this.registrationHistoryService = svc;
+    }
 }
