@@ -82,7 +82,6 @@ public class EventRepository {
         }
     }
 
-
     public void getAllEvents(OnSuccessListener<List<Event>> onSuccess,
                              OnFailureListener onFailure) {
         context.get()
