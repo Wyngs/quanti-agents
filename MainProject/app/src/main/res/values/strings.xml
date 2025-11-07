@@ -23,7 +23,7 @@
     <string name="login_reset_action">Reset profile on this device</string>
     <string name="login_forgot_password">Forgot password?</string>
     <string name="error_login_required">Need email and password</string>
-    <string name="error_login_invalid">That combo didn\'t work</string>
+    <string name="error_login_invalid">That combo didn’t work</string>
     <string name="message_password_hint">Still using device sign-in. Reach out to support to reset.</string>
     <string name="error_profile_missing">Profile not found</string>
     <string name="profile_title">My profile</string>
@@ -83,61 +83,6 @@
     <string name="create_event_geolocation_label">Require Geolocation</string>
     <string name="create_event_geolocation_description">Track where entrants join the waiting list</string>
     <string name="create_event_button">Create Event</string>
-    <string name="view_event_back_button">Back to events</string>
-    <string name="view_event_error_title">Event unavailable</string>
-    <string name="view_event_error_message">We can\'t load this event right now. Try again later or return to the events list.</string>
-    <string name="view_event_show_qr">Show QR</string>
-    <string name="view_event_hide_qr">Hide QR</string>
-    <string name="view_event_qr_content_description">Event QR code</string>
-    <string name="view_event_details_header">Event details</string>
-    <string name="view_event_registration_header">Registration period</string>
-    <string name="view_event_lottery_title">How the lottery works</string>
-    <string name="view_event_lottery_description">All entrants on the waiting list have an equal chance of being selected. When registration closes, the organizer will randomly draw participants. Selected entrants will be notified and can accept or decline.</string>
-    <string name="view_event_join_waitlist">Join waiting list</string>
-    <string name="view_event_leave_waitlist">Leave waiting list</string>
-    <string name="view_event_registration_closed">Registration closed</string>
-    <string name="view_event_price_label">Price: %1$s</string>
-    <string name="view_event_price_free">Free</string>
-    <string name="view_event_capacity_label">Capacity: %1$s</string>
-    <string name="view_event_capacity_format">%1$s participants</string>
-    <string name="view_event_waiting_list_count">Waiting list: %1$d entrants</string>
-    <string name="view_event_registration_opens">Opens %1$s</string>
-    <string name="view_event_registration_closes">Closes %1$s</string>
-    <string name="view_event_date_range">%1$s – %2$s</string>
-    <string name="view_event_organizer_format">Organizer: %1$s</string>
-    <string name="view_event_qr_not_available">QR code is not available for this event.</string>
-    <string name="view_event_untitled">Untitled event</string>
-    <string name="view_event_capacity_unknown">Not specified</string>
-    <string name="view_event_status_waiting_heading">You\'re on the waiting list</string>
-    <string name="view_event_status_waiting_detail">We\'ll notify you when results are ready.</string>
-    <string name="view_event_status_selected_heading">You\'re selected!</string>
-    <string name="view_event_status_selected_detail">Check your notifications to accept or decline the invitation.</string>
-    <string name="view_event_status_confirmed_heading">You\'re confirmed!</string>
-    <string name="view_event_status_confirmed_detail">Thanks for responding. We\'ll see you there.</string>
-    <string name="view_event_status_cancelled_heading">Registration cancelled</string>
-    <string name="view_event_status_cancelled_detail">If this was unexpected, contact the organizer for help.</string>
-    <string name="view_event_status_not_joined">You haven\'t joined the waiting list yet.</string>
-    <string name="view_event_error_missing_user">We couldn\'t find your profile. Please sign in again.</string>
-    <string name="view_event_toast_join_success">Added to the waiting list.</string>
-    <string name="view_event_toast_join_failure">Unable to join the waiting list. Please try again.</string>
-    <string name="view_event_toast_leave_success">Removed from the waiting list.</string>
-    <string name="view_event_toast_leave_failure">Unable to leave the waiting list. Please try again.</string>
-    <string name="view_event_toast_waitlist_full">The waiting list is full.</string>
-    <string name="search_events_hint">Search events…</string>
-    <string name="empty_browse_events">No events found.</string>
-
-    <!-- Create Event -->
-    <string name="label_geolocation_required">Require geolocation at check-in</string>
-
-    <!-- My Events tabs (use with getString(..., count)) -->
-    <string name="tab_waiting_fmt">Waiting (%1$d)</string>
-    <string name="tab_selected_fmt">Selected (%1$d)</string>
-    <string name="tab_confirmed_fmt">Confirmed (%1$d)</string>
-    <string name="tab_past_fmt">Past (%1$d)</string>
-    <string name="my_events_empty_generic">Nothing here yet.</string>
-
-    <!-- Browse item actions -->
-    <string name="event_closed">Closed</string>
-    <string name="join_waitlist">Join waitlist</string>
-    <string name="view_event">View</string>
+    <string name="nav_role_admin">Administrator</string>
+    
 </resources>

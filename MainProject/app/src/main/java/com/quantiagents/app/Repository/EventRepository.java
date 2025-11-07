@@ -75,44 +75,38 @@ public class EventRepository {
     }
 
     public void saveEvent(Event event, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
-        // If eventId is null or empty, let Firebase auto-generate an ID
+
+        //if eventId is null or empty, let Firebase auto-generate an ID
         if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
-            // Use .add() to create a new document with auto-generated ID
-            Task<DocumentReference> addTask = context.add(event);
-            addTask.addOnSuccessListener(documentReference -> {
-                // Extract the auto-generated document ID
-                String docId = documentReference.getId();
-                
-                // Use the Firestore document ID as the eventId
-                String generatedId = docId;
-                
-                // Update the event object with the generated ID
-                event.setEventId(generatedId);
-                
-                // Update the document with the generated eventId field
-                context.document(docId).update("eventId", generatedId)
-                        .addOnSuccessListener(aVoid -> {
-                            Log.d("Firestore", "Event created with auto-generated ID: " + generatedId + " (docId: " + docId + ")");
-                            onSuccess.onSuccess(generatedId);
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.e("Firestore", "Error updating event with generated ID", e);
-                            // Still call success since document was created, just the ID update failed
-                            onSuccess.onSuccess(generatedId);
-                        });
-            }).addOnFailureListener(onFailure);
+
+            // Create a new document reference *first*
+            DocumentReference newEventRef = context.document();
+
+
+            String generatedId = newEventRef.getId();
+
+
+            event.setEventId(generatedId);
+
+
+            newEventRef.set(event)
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d("Firestore", "Event created with auto-generated ID: " + generatedId);
+                        onSuccess.onSuccess(generatedId);
+                    })
+                    .addOnFailureListener(onFailure);
         } else {
-            // Check if event with this ID already exists
+
             String eventId = event.getEventId();
             DocumentReference docRef = context.document(event.getEventId());
             docRef.get().addOnSuccessListener(documentSnapshot -> {
                 if (documentSnapshot.exists()) {
-                    // Document exists, update it
+                    //document exists, update it
                     docRef.set(event, SetOptions.merge())
                             .addOnSuccessListener(aVoid -> onSuccess.onSuccess(eventId))
                             .addOnFailureListener(onFailure);
                 } else {
-                    // Document doesn't exist, create it
+                    //document doesn't exist, create it
                     docRef.set(event)
                             .addOnSuccessListener(aVoid -> onSuccess.onSuccess(eventId))
                             .addOnFailureListener(onFailure);
@@ -120,7 +114,6 @@ public class EventRepository {
             }).addOnFailureListener(onFailure);
         }
     }
-
     public void updateEvent(@NonNull Event event,
                            @NonNull OnSuccessListener<Void> onSuccess,
                            @NonNull OnFailureListener onFailure) {
