@@ -20,6 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Manages locating and saving of notifications
+ */
 public class NotificationRepository {
 
     private final CollectionReference context;
@@ -28,6 +31,13 @@ public class NotificationRepository {
         this.context = fireBaseRepository.getNotificationCollectionRef();
     }
 
+    /**
+     * Find notification by id
+     * @param notificationId
+     * Notification id to locate
+     * @return
+     * Returns notification
+     */
     public Notification getNotificationById(int notificationId) {
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(String.valueOf(notificationId)).get());
@@ -43,6 +53,11 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Gets a list of all notifications
+     * @return
+     * Returns a list of notifications
+     */
     public List<Notification> getAllNotifications() {
         try {
             QuerySnapshot snapshot = Tasks.await(context.get());
@@ -60,6 +75,15 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Saves a notification to the firebase
+     * @param notification
+     * Notification to save
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void saveNotification(Notification notification, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         // If notificationId is 0 or negative, let Firebase auto-generate an ID
         if (notification.getNotificationId() <= 0) {
@@ -114,6 +138,15 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Updates a notification in the firebase
+     * @param notification
+     * Notification to update
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void updateNotification(@NonNull Notification notification,
                                    @NonNull OnSuccessListener<Void> onSuccess,
                                    @NonNull OnFailureListener onFailure) {
@@ -129,6 +162,15 @@ public class NotificationRepository {
                 });
     }
 
+    /**
+     * Deletes a notification from the firebase
+     * @param notificationId
+     * Notification id to delete
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void deleteNotificationById(int notificationId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         context.document(String.valueOf(notificationId))
                 .delete()
@@ -136,6 +178,13 @@ public class NotificationRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Deletes a notification via it's id from the firebase
+     * @param notificationId
+     * Notification id to delete
+     * @return
+     * Returns boolean if success
+     */
     public boolean deleteNotificationById(int notificationId) {
         try {
             Tasks.await(context.document(String.valueOf(notificationId)).delete());
@@ -147,6 +196,13 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Gets a list of notifications from recipient id
+     * @param recipientId
+     * Recipient id to locate
+     * @return
+     * Returns list of notifications
+     */
     public List<Notification> getNotificationsByRecipientId(int recipientId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("recipientId", recipientId).get());
@@ -164,6 +220,13 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Gets list of unread notifications from recipient id
+     * @param recipientId
+     * Recipient id to locate
+     * @return
+     * Returns list of notifications
+     */
     public List<Notification> getUnreadNotificationsByRecipientId(int recipientId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("recipientId", recipientId)

@@ -18,6 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Manages functions for locating and saving geolocations
+ */
 public class GeoLocationRepository {
 
     private final CollectionReference context;
@@ -26,6 +29,15 @@ public class GeoLocationRepository {
         this.context = fireBaseRepository.getGeoLocationCollectionRef();
     }
 
+    /**
+     * Finds a geolocation by user id and event id
+     * @param userId
+     * User id to locate
+     * @param eventId
+     * Event id to locate
+     * @return
+     * Returns geolocation if exists, null otherwise
+     */
     public GeoLocation getGeoLocationByUserIdAndEventId(String userId, String eventId) {
         try {
             // Use composite key: userId_eventId
@@ -43,6 +55,11 @@ public class GeoLocationRepository {
         }
     }
 
+    /**
+     * Returns all geolocations
+     * @return
+     * Returns a list of geolocations
+     */
     public List<GeoLocation> getAllGeoLocations() {
         try {
             QuerySnapshot snapshot = Tasks.await(context.get());
@@ -60,6 +77,13 @@ public class GeoLocationRepository {
         }
     }
 
+    /**
+     * Gets a list of geolocations by event id
+     * @param eventId
+     * Event id to locate
+     * @return
+     * Returns a list of geolocations
+     */
     public List<GeoLocation> getGeoLocationsByEventId(String eventId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId).get());
@@ -77,6 +101,13 @@ public class GeoLocationRepository {
         }
     }
 
+    /**
+     * Gets a list of geolocations by user id
+     * @param userId
+     * User id to locate
+     * @return
+     * Returns a list of geolocations
+     */
     public List<GeoLocation> getGeoLocationsByUserId(String userId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("userId", userId).get());
@@ -94,6 +125,15 @@ public class GeoLocationRepository {
         }
     }
 
+    /**
+     * Gets a list of geolocations by event id and user id
+     * @param eventId
+     * Event id to locate
+     * @param userId
+     * User id to locate
+     * @return
+     * Returns a list of geolocations
+     */
     public List<GeoLocation> getGeoLocationsByEventIdAndUserId(String eventId, String userId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId)
@@ -112,6 +152,15 @@ public class GeoLocationRepository {
         }
     }
 
+    /**
+     * Saves a geolocation to the firebase
+     * @param geoLocation
+     * Geolocation to save
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void saveGeoLocation(GeoLocation geoLocation, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         if (geoLocation == null) {
             onFailure.onFailure(new IllegalArgumentException("Geo location cannot be null"));
@@ -128,6 +177,15 @@ public class GeoLocationRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Updates a geolocation in the firebase
+     * @param geoLocation
+     * Geolocation to update
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void updateGeoLocation(@NonNull GeoLocation geoLocation,
                                  @NonNull OnSuccessListener<Void> onSuccess,
                                  @NonNull OnFailureListener onFailure) {
@@ -145,6 +203,17 @@ public class GeoLocationRepository {
                 });
     }
 
+    /**
+     * Deletes a geolocation via user id and event id from the firebase
+     * @param userId
+     * User id to locate
+     * @param eventId
+     * Event id to locate
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void deleteGeoLocationByUserIdAndEventId(String userId, String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         // Use composite key: userId_eventId
         String docId = userId + "_" + eventId;
@@ -154,6 +223,15 @@ public class GeoLocationRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Deletes a geolocation via user id and event id from the firebase
+     * @param userId
+     * User id to locate
+     * @param eventId
+     * Event id to locate
+     * @return
+     * Returns boolean if success
+     */
     public boolean deleteGeoLocationByUserIdAndEventId(String userId, String eventId) {
         try {
             // Use composite key: userId_eventId

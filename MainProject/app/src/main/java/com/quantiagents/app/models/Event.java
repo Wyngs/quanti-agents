@@ -6,6 +6,9 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Representation of an event, with getters and setters for each variable
+ */
 public class Event implements Serializable {
 
     private String eventId;
