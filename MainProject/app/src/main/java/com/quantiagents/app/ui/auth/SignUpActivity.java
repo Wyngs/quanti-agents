@@ -4,22 +4,19 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.Toast;
-
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
+import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.LoginService;
 import com.quantiagents.app.Services.UserService;
+import com.quantiagents.app.ui.admin.AdminDashboardActivity;
 import com.quantiagents.app.ui.main.MainActivity;
 
-/**
- * Simple entrant sign-up form so I can capture name, email, and password on device.
- */
 public class SignUpActivity extends AppCompatActivity {
 
     private TextInputLayout nameLayout;
@@ -30,14 +27,10 @@ public class SignUpActivity extends AppCompatActivity {
     private TextInputEditText emailField;
     private TextInputEditText passwordField;
     private TextInputEditText phoneField;
-    private MaterialButton createButton;
     private UserService userService;
     private LoginService loginService;
 
     @Override
-    /**
-     * Wires up the form and hooks the create/cancel buttons; nothing fancy happens before this.
-     */
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sign_up);
@@ -45,15 +38,12 @@ public class SignUpActivity extends AppCompatActivity {
         userService = app.locator().userService();
         loginService = app.locator().loginService();
         bindViews();
-        createButton = findViewById(R.id.button_create_profile);
+        MaterialButton createButton = findViewById(R.id.button_create_profile);
         MaterialButton cancelButton = findViewById(R.id.button_cancel_sign_up);
         createButton.setOnClickListener(v -> handleCreateProfile());
         cancelButton.setOnClickListener(v -> finish());
     }
 
-    /**
-     * Centralizes all findViewById calls for readability.
-     */
     private void bindViews() {
         nameLayout = findViewById(R.id.input_name_layout);
         emailLayout = findViewById(R.id.input_email_layout);
@@ -65,9 +55,6 @@ public class SignUpActivity extends AppCompatActivity {
         phoneField = findViewById(R.id.input_phone);
     }
 
-    /**
-     * Validates the form then kicks off the async create/login chain.
-     */
     private void handleCreateProfile() {
         clearErrors();
         String name = safeText(nameField);
@@ -98,55 +85,54 @@ public class SignUpActivity extends AppCompatActivity {
             return;
         }
 
-        createButton.setEnabled(false);
-        userService.createUser(
-                name,
-                email,
-                phone,
-                password,
-                user -> loginService.login(
-                        email,
-                        password,
-                        success -> {
-                            createButton.setEnabled(true);
+        try {
+            userService.createNewUser(name, email, phone, password,
+                    userId -> {
+                        loginService.login(email, password).addOnSuccessListener(success -> {
                             if (success) {
-                                Toast.makeText(
-                                        this,
-                                        getString(R.string.message_profile_created, user.getName()),
-                                        Toast.LENGTH_SHORT
-                                ).show();
-                                openHome();
+                                Toast.makeText(this, getString(R.string.message_profile_created, name), Toast.LENGTH_SHORT).show();
+                                userService.getCurrentUser().addOnSuccessListener(user -> {
+                                    if (user != null && user.getRole() == constant.UserRole.ADMIN) {
+                                        openAdminHome();
+                                    } else {
+                                        openHome();
+                                    }
+                                    finish();
+                                }).addOnFailureListener(e -> {
+                                    openHome();
+                                    finish();
+
+                                });
                             } else {
-                                passwordLayout.setError(getString(R.string.error_login_invalid));
+                                emailLayout.setError(getString(R.string.error_login_invalid));
                             }
-                        },
-                        e -> {
-                            createButton.setEnabled(true);
-                            passwordLayout.setError(getString(R.string.error_login_invalid));
-                        }
-                ),
-                e -> {
-                    createButton.setEnabled(true);
-                    emailLayout.setError(getString(R.string.error_email_invalid));
-                }
-        );
+                        }).addOnFailureListener(e -> {
+                            emailLayout.setError(getString(R.string.error_login_invalid));
+                        });
+                    },
+                    e -> {
+                        emailLayout.setError("Failed to create user: " + e.getMessage());
+                    }
+            );
+        } catch (IllegalArgumentException exception) {
+            emailLayout.setError(getString(R.string.error_email_invalid));
+        }
     }
 
-    /**
-     * Opens MainActivity while clearing the back stack so the user can't return to auth screens.
-     */
     private void openHome() {
         Intent intent = new Intent(this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
-                | Intent.FLAG_ACTIVITY_NEW_TASK
-                | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
     }
 
-    /**
-     * Resets all TextInputLayout errors in one shot.
-     */
+    private void openAdminHome() {
+        Intent intent = new Intent(this, AdminDashboardActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
     private void clearErrors() {
         nameLayout.setError(null);
         emailLayout.setError(null);
@@ -154,9 +140,6 @@ public class SignUpActivity extends AppCompatActivity {
         phoneLayout.setError(null);
     }
 
-    /**
-     * Helper to handle null EditText content without littering null checks everywhere.
-     */
     private String safeText(TextInputEditText field) {
         return field.getText() == null ? "" : field.getText().toString().trim();
     }

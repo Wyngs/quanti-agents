@@ -4,6 +4,7 @@ public class constant {
 
     public enum UserRole{
         ENTRANT,
+        ORGANIZER,
         ADMIN
     }
     public enum EventRegistrationStatus{
@@ -27,7 +28,7 @@ public class constant {
 
     public static final String UserCollectionName = "USER";
     public static final String EventCollectionName = "EVENT";
-    public static final String PosterCollectionName = "POSTER";
+    public static final String ImageCollectionName = "IMAGE";
     public static final String LotteryCollectionName = "LOTTERY";
     public static final String QrCodeCollectionName = "QRCODE";
     public static final String NotificationCollectionName = "NOTIFICATION";
@@ -35,4 +36,3 @@ public class constant {
     public static final String RegistrationHistoryCollectionName = "REGISTRATION_HISTORY";
     public static final String DeviceIdCollectionName = "DEVICE_ID";
 }
-

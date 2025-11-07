@@ -4,37 +4,30 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-
+import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-
 import com.quantiagents.app.App;
+import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
+import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.Services.LoginService;
 import com.quantiagents.app.Services.UserService;
-import com.quantiagents.app.models.DeviceIdManager;
+import com.quantiagents.app.ui.admin.AdminDashboardActivity;
 import com.quantiagents.app.ui.main.MainActivity;
 
-/**
- * Bootstraps the app by checking device login first, then routing to login or home.
- */
 public class SplashActivity extends AppCompatActivity {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private static final String TAG = "SplashActivity";
 
     @Override
-    /**
-     * Shows the splash layout briefly, then hands control to {@link #routeToNextScreen()}.
-     */
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
-        handler.post(this::routeToNextScreen);
+        handler.postDelayed(this::routeToNextScreen, 1000);
     }
 
-    /**
-     * Determines the correct destination based on device login and stored profile state.
-     */
     private void routeToNextScreen() {
         App app = (App) getApplication();
         DeviceIdManager deviceIdManager = app.locator().deviceIdManager();
@@ -42,63 +35,53 @@ public class SplashActivity extends AppCompatActivity {
         LoginService loginService = app.locator().loginService();
         String deviceId = deviceIdManager.ensureDeviceId();
 
-        loginService.loginWithDevice(
-                deviceId,
-                success -> {
-                    if (success) {
+        loginService.loginWithDevice(deviceId).addOnSuccessListener(success -> {
+            if (success) {
+                userService.getCurrentUser().addOnSuccessListener(user -> {
+                    if (user != null && user.getRole() == constant.UserRole.ADMIN) {
+                        launchAdminHome();
+                    } else {
                         launchHome();
-                        finish();
-                        return;
                     }
-                    userService.getCurrentUser(
-                            user -> {
-                                if (user == null) {
-                                    launchSignUp();
-                                } else {
-                                    launchLogin();
-                                }
-                                finish();
-                            },
-                            e -> {
-                                launchLogin();
-                                finish();
-                            }
-                    );
-                },
-                e -> userService.getCurrentUser(
-                        user -> {
-                            if (user == null) {
-                                launchSignUp();
-                            } else {
-                                launchLogin();
-                            }
-                            finish();
-                        },
-                        ignored -> {
-                            launchLogin();
-                            finish();
-                        }
-                )
-        );
+                    finish();
+                }).addOnFailureListener(e -> {
+                    Log.e(TAG, "Device login success but failed to get user", e);
+                    launchLogin();
+                    finish();
+                });
+            } else {
+                userService.getCurrentUser().addOnSuccessListener(user -> {
+                    if (user == null) {
+                        launchSignUp();
+                    } else {
+                        launchLogin();
+                    }
+                    finish();
+                }).addOnFailureListener(e -> {
+                    Log.e(TAG, "No device login and failed to get user", e);
+                    launchSignUp();
+                    finish();
+                });
+            }
+        }).addOnFailureListener(e -> {
+            Log.e(TAG, "Device login task failed", e);
+            launchLogin();
+            finish();
+        });
     }
 
-    /**
-     * Sends the user to SignUpActivity without clearing task (splash already finishes).
-     */
     private void launchSignUp() {
         startActivity(new Intent(this, SignUpActivity.class));
     }
 
-    /**
-     * Opens LoginActivity when we have a profile but still need credentials.
-     */
+    private void launchAdminHome() {
+        startActivity(new Intent(this, AdminDashboardActivity.class));
+    }
+
     private void launchLogin() {
         startActivity(new Intent(this, LoginActivity.class));
     }
 
-    /**
-     * Launches MainActivity directly when device login succeeds.
-     */
     private void launchHome() {
         startActivity(new Intent(this, MainActivity.class));
     }

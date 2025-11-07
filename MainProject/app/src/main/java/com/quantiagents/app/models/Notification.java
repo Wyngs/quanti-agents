@@ -5,16 +5,16 @@ import com.quantiagents.app.Constants.constant;
 import java.util.Date;
 
 public class Notification {
-    private int notificationId;
+    private String notificationId;
     private constant.NotificationType type;
-    private int recipientId;
-    private int senderId;
-    private int affiliatedEventId;
+    private String recipientId;
+    private String senderId;
+    private String affiliatedEventId;
     private Date timestamp;
     private boolean hasRead;
 
     public Notification(){}
-    public Notification(int notificationId, constant.NotificationType type, int recipientId, int senderId, int affiliatedEventId  ) {
+    public Notification(String notificationId, constant.NotificationType type, String recipientId, String senderId, String affiliatedEventId) {
         this.notificationId = notificationId;
         this.type = type;
         this.recipientId = recipientId;
@@ -23,7 +23,7 @@ public class Notification {
         this.timestamp = new Date();
         this.hasRead = false;
     }
-    public Notification(int notificationId, constant.NotificationType type, int recipientId, int senderId, int affiliatedEventId, Date timestamp, boolean hasRead) {
+    public Notification(String notificationId, constant.NotificationType type, String recipientId, String senderId, String affiliatedEventId, Date timestamp, boolean hasRead) {
         this.notificationId = notificationId;
         this.type = type;
         this.recipientId = recipientId;
@@ -33,11 +33,11 @@ public class Notification {
         this.hasRead = hasRead;
     }
 
-    public int getNotificationId() {
+    public String getNotificationId() {
         return notificationId;
     }
 
-    public void setNotificationId(int notificationId) {
+    public void setNotificationId(String notificationId) {
         this.notificationId = notificationId;
     }
 
@@ -49,27 +49,27 @@ public class Notification {
         this.type = type;
     }
 
-    public int getRecipientId() {
+    public String getRecipientId() {
         return recipientId;
     }
 
-    public void setRecipientId(int recipientId) {
+    public void setRecipientId(String recipientId) {
         this.recipientId = recipientId;
     }
 
-    public int getSenderId() {
+    public String getSenderId() {
         return senderId;
     }
 
-    public void setSenderId(int senderId) {
+    public void setSenderId(String senderId) {
         this.senderId = senderId;
     }
 
-    public int getAffiliatedEventId() {
+    public String getAffiliatedEventId() {
         return affiliatedEventId;
     }
 
-    public void setAffiliatedEventId(int affiliatedEventId) {
+    public void setAffiliatedEventId(String affiliatedEventId) {
         this.affiliatedEventId = affiliatedEventId;
     }
 
