@@ -18,6 +18,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.regex.Pattern;
 
+/**
+ * Keeps entrant profiles tied to a device id so I can skip usernames and still edit or delete safely.
+ */
 public class UserService {
 
     private final UserRepository repository;
@@ -31,6 +34,9 @@ public class UserService {
         this.deviceIdManager = new DeviceIdManager(context);
     }
 
+    /**
+     * Synchronous helper for quick calls on background threads; still uses local cache.
+     */
     public User getCurrentUser() {
         // Find current user by device ID
         String deviceId = deviceIdManager.ensureDeviceId();
@@ -43,25 +49,61 @@ public class UserService {
         return null;
     }
 
-    public User createUser(String name, String email, String phone, String password) {
-        // Validate everything once before I write to prefs.
-        validateName(name);
-        validateEmail(email);
-        validatePassword(password);
-        String trimmedPhone = phone == null ? "" : phone.trim();
+    /**
+     * Forces a server read when I truly need the latest profile info (mainly for tests).
+     */
+    public User getCurrentUserFresh() {
         String deviceId = deviceIdManager.ensureDeviceId();
-        String passwordHash = hashPassword(password);
-        // Create user with empty userId, Firebase will auto-generate an ID when saving
-        User user = new User("", deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
+        List<User> allUsers = repository.getAllUsersFromServer();
+        for (User user : allUsers) {
+            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
+                return user;
+            }
+        }
+        return null;
+    }
 
-        // Save user - if userId is null or empty, Firebase will auto-generate an ID
-        // The user object will be updated with the generated ID after saving
-        repository.saveUser(user, aVoid -> Log.d("App", "User saved with ID: " + user.getUserId()),
+    /**
+     * Blocking create that I still lean on inside background work or tests.
+     *
+     * @return the created user snapshot (already contains the generated id)
+     */
+    public User createUser(String name, String email, String phone, String password) {
+        User user = buildUser(name, email, phone, password);
+        repository.saveUser(user,
+                aVoid -> Log.d("App", "User saved with ID: " + user.getUserId()),
                 e -> Log.e("App", "Failed to save", e));
-
         return user;
     }
 
+    /**
+     * Async create hook I call from the UI so Firestore work stays off the main thread.
+     */
+    public void createUser(String name,
+                           String email,
+                           String phone,
+                           String password,
+                           OnSuccessListener<User> onSuccess,
+                           OnFailureListener onFailure) {
+        User user = buildUser(name, email, phone, password);
+        repository.saveUser(user,
+                aVoid -> {
+                    Log.d("App", "User saved with ID: " + user.getUserId());
+                    if (onSuccess != null) {
+                        onSuccess.onSuccess(user);
+                    }
+                },
+                e -> {
+                    Log.e("App", "Failed to save", e);
+                    if (onFailure != null) {
+                        onFailure.onFailure(e);
+                    }
+                });
+    }
+
+    /**
+     * Simple blocking update for callers that are already off the main thread.
+     */
     public User updateUser(String name, String email, String phone) {
         User current = requireUser();
         validateName(name);
@@ -77,8 +119,54 @@ public class UserService {
         return current;
     }
 
+    /**
+     * Async update path used by edit profile so I can show success/failure to the user.
+     */
+    public void updateUser(String name,
+                           String email,
+                           String phone,
+                           OnSuccessListener<Void> onSuccess,
+                           OnFailureListener onFailure) {
+        validateName(name);
+        validateEmail(email);
+        getCurrentUser(
+                current -> {
+                    if (current == null) {
+                        if (onFailure != null) {
+                            onFailure.onFailure(new IllegalStateException("Profile missing"));
+                        }
+                        return;
+                    }
+                    current.setName(name.trim());
+                    current.setEmail(email.trim());
+                    current.setPhone(phone == null ? "" : phone.trim());
+                    repository.updateUser(current,
+                            aVoid -> {
+                                Log.d("App", "Update user");
+                                if (onSuccess != null) {
+                                    onSuccess.onSuccess(aVoid);
+                                }
+                            },
+                            e -> {
+                                Log.e("App", "Failed to update user", e);
+                                if (onFailure != null) {
+                                    onFailure.onFailure(e);
+                                }
+                            });
+                },
+                e -> {
+                    Log.e("App", "Failed to load user", e);
+                    if (onFailure != null) {
+                        onFailure.onFailure(e);
+                    }
+                }
+        );
+    }
+
+    /**
+     * Lightweight credential check; used mostly by tests or synchronous flows.
+     */
     public boolean authenticate(String email, String password) {
-        // Quick email/password check for manual login.
         // Find user by email
         List<User> allUsers = repository.getAllUsers();
         for (User user : allUsers) {
@@ -90,8 +178,10 @@ public class UserService {
         return false;
     }
 
+    /**
+     * Async credential check so LoginActivity can respond without blocking.
+     */
     public void authenticate(String email, String password, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
-        // Async version for UI thread
         repository.getAllUsers(
                 users -> {
                     for (User user : users) {
@@ -108,9 +198,10 @@ public class UserService {
         );
     }
 
+    /**
+     * Synchronous device-id matcher, mainly used before the async login wire-up.
+     */
     public boolean authenticateDevice(String deviceId) {
-        // Device-only gate for auto login.
-        // Find user by device ID by checking all users
         List<User> allUsers = repository.getAllUsers();
         for (User user : allUsers) {
             if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
@@ -120,8 +211,10 @@ public class UserService {
         return false;
     }
 
+    /**
+     * Async device auth that SplashActivity can await before routing.
+     */
     public void authenticateDevice(String deviceId, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
-        // Async version for UI thread
         repository.getAllUsers(
                 users -> {
                     for (User user : users) {
@@ -136,8 +229,10 @@ public class UserService {
         );
     }
 
+    /**
+     * Async getter that backs basically every UI screen needing the active profile.
+     */
     public void getCurrentUser(OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
-        // Async version for UI thread
         String deviceId = deviceIdManager.ensureDeviceId();
         repository.getAllUsers(
                 users -> {
@@ -153,32 +248,34 @@ public class UserService {
         );
     }
 
+    /**
+     * Ensures the stored profile mirrors whatever device id we have right now.
+     */
     public void attachDeviceToCurrentUser() {
-        // Make sure the stored profile follows the latest device id.
-        User current = getCurrentUser();
+        attachDeviceToCurrentUser(null);
+    }
+
+    /**
+     * Same as {@link #attachDeviceToCurrentUser()} but lets callers pass a cached user to avoid re-fetches.
+     */
+    public void attachDeviceToCurrentUser(@Nullable User cachedUser) {
+        User current = cachedUser != null ? cachedUser : getCurrentUser();
         if (current == null) {
             return;
         }
         String deviceId = deviceIdManager.ensureDeviceId();
         if (!deviceId.equals(current.getDeviceId())) {
-            User updated = new User(
-                    current.getUserId(),
-                    deviceId,
-                    current.getName(),
-                    current.getEmail(),
-                    current.getPhone(),
-                    current.getPasswordHash()
-            );
-            updated.setNotificationsOn(current.hasNotificationsOn());
-            updated.setCreatedOn(current.getCreatedOn());
-            repository.updateUser(updated,
+            current.setDeviceId(deviceId);
+            repository.updateUser(current,
                     aVoid -> Log.d("App", "Update user"),
                     e -> Log.e("App", "Failed to update user", e));
         }
     }
 
+    /**
+     * Blocking password update used outside the UI (e.g., tests, migrations).
+     */
     public void updatePassword(String newPassword) {
-        // Allow password refresh on demand.
         validatePassword(newPassword);
         User current = requireUser();
         if (current != null) {
@@ -189,26 +286,149 @@ public class UserService {
         }
     }
 
-    public void updateNotificationPreference(boolean enabled) {
-        // Keep notification toggle in sync.
-        User current = requireUser();
-        if (current != null) {
-            current.setNotificationsOn(enabled);
-            repository.updateUser(current,
-                    aVoid -> Log.d("App", "Update user"),
-                    e -> Log.e("App", "Failed to update user", e));
-        }
+    /**
+     * Async password update so EditProfileActivity can react via callbacks.
+     */
+    public void updatePassword(String newPassword,
+                               OnSuccessListener<Void> onSuccess,
+                               OnFailureListener onFailure) {
+        validatePassword(newPassword);
+        getCurrentUser(
+                current -> {
+                    if (current == null) {
+                        if (onFailure != null) {
+                            onFailure.onFailure(new IllegalStateException("Profile missing"));
+                        }
+                        return;
+                    }
+                    current.setPasswordHash(hashPassword(newPassword));
+                    repository.updateUser(current,
+                            aVoid -> {
+                                Log.d("App", "Update user");
+                                if (onSuccess != null) {
+                                    onSuccess.onSuccess(aVoid);
+                                }
+                            },
+                            e -> {
+                                Log.e("App", "Failed to update user", e);
+                                if (onFailure != null) {
+                                    onFailure.onFailure(e);
+                                }
+                            });
+                },
+                e -> {
+                    Log.e("App", "Failed to load user", e);
+                    if (onFailure != null) {
+                        onFailure.onFailure(e);
+                    }
+                }
+        );
     }
 
+    /**
+     * Fire-and-forget toggle for callers that don't care about result handling.
+     */
+    public void updateNotificationPreference(boolean enabled) {
+        updateNotificationPreference(enabled, null, null);
+    }
+
+    /**
+     * Full toggle variant so I can disable the UI switch until Firestore confirms.
+     */
+    public void updateNotificationPreference(boolean enabled,
+                                             @Nullable OnSuccessListener<Void> onSuccess,
+                                             @Nullable OnFailureListener onFailure) {
+        getCurrentUser(
+                current -> {
+                    if (current == null) {
+                        Log.w("App", "Profile missing while toggling notifications");
+                        if (onFailure != null) {
+                            onFailure.onFailure(new IllegalStateException("Profile missing"));
+                        }
+                        return;
+                    }
+                    current.setNotificationsOn(enabled);
+                    repository.updateUser(current,
+                            aVoid -> {
+                                Log.d("App", "Update user");
+                                if (onSuccess != null) {
+                                    onSuccess.onSuccess(aVoid);
+                                }
+                            },
+                            e -> {
+                                Log.e("App", "Failed to update user", e);
+                                if (onFailure != null) {
+                                    onFailure.onFailure(e);
+                                }
+                            });
+                },
+                e -> {
+                    Log.e("App", "Failed to load user", e);
+                    if (onFailure != null) {
+                        onFailure.onFailure(e);
+                    }
+                }
+        );
+    }
+
+    /**
+     * Background cleanup used when I just need the profile gone without UI callbacks.
+     */
     public void deleteUserProfile() {
-        // Hard delete wipes local profile entirely.
-        User current = getCurrentUser();
-        if (current != null && current.getUserId() != null && !current.getUserId().trim().isEmpty()) {
-            repository.deleteUserById(
-                    current.getUserId(),
-                    aVoid -> Log.d("App", "Deleted user"),
-                    e -> Log.e("App", "Failed to delete user", e));
-        }
+        getCurrentUser(
+                current -> {
+                    if (current == null
+                            || current.getUserId() == null
+                            || current.getUserId().trim().isEmpty()) {
+                        return;
+                    }
+                    repository.deleteUserById(
+                            current.getUserId(),
+                            aVoid -> Log.d("App", "Deleted user"),
+                            e -> Log.e("App", "Failed to delete user", e));
+                },
+                e -> Log.e("App", "Failed to load user", e)
+        );
+    }
+
+    /**
+     * Delete helper that surfaces callbacks so I can route success to the UI stack.
+     */
+    public void deleteUserProfile(OnSuccessListener<Void> onSuccess,
+                                  OnFailureListener onFailure) {
+        getCurrentUser(
+                current -> {
+                    if (current == null
+                            || current.getUserId() == null
+                            || current.getUserId().trim().isEmpty()) {
+                        if (onFailure != null) {
+                            onFailure.onFailure(new IllegalStateException("Profile missing"));
+                        }
+                        return;
+                    }
+                    repository.deleteUserById(
+                            current.getUserId(),
+                            aVoid -> {
+                                Log.d("App", "Deleted user");
+                                deviceIdManager.reset();
+                                if (onSuccess != null) {
+                                    onSuccess.onSuccess(aVoid);
+                                }
+                            },
+                            e -> {
+                                Log.e("App", "Failed to delete user", e);
+                                if (onFailure != null) {
+                                    onFailure.onFailure(e);
+                                }
+                            });
+                },
+                e -> {
+                    Log.e("App", "Failed to load user", e);
+                    if (onFailure != null) {
+                        onFailure.onFailure(e);
+                    }
+                }
+        );
     }
 
     public User getUserById(String userId) {
@@ -242,6 +462,16 @@ public class UserService {
         if (password == null || password.trim().length() < 6) {
             throw new IllegalArgumentException("Password weak");
         }
+    }
+
+    private User buildUser(String name, String email, String phone, String password) {
+        validateName(name);
+        validateEmail(email);
+        validatePassword(password);
+        String trimmedPhone = phone == null ? "" : phone.trim();
+        String deviceId = deviceIdManager.ensureDeviceId();
+        String passwordHash = hashPassword(password);
+        return new User("", deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
     }
 
     private String hashPassword(String password) {

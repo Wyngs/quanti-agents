@@ -12,9 +12,11 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
-import com.quantiagents.app.models.User;
 import com.quantiagents.app.Services.UserService;
 
+/**
+ * Lets entrants tweak name/email/phone and optionally refresh passwords in one place.
+ */
 public class EditProfileActivity extends AppCompatActivity {
 
     private UserService userService;
@@ -28,20 +30,27 @@ public class EditProfileActivity extends AppCompatActivity {
     private TextInputEditText phoneField;
     private TextInputEditText passwordField;
     private TextInputEditText confirmPasswordField;
+    private MaterialButton saveButton;
 
     @Override
+    /**
+     * Sets up the form, listeners, and then loads the current profile snapshot.
+     */
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_edit_profile);
         userService = ((App) getApplication()).locator().userService();
         bindViews();
-        bindUser();
-        MaterialButton saveButton = findViewById(R.id.button_save_profile);
-        saveButton.setOnClickListener(v -> handleSave());
+        saveButton = findViewById(R.id.button_save_profile);
         MaterialButton cancelButton = findViewById(R.id.button_cancel_edit);
+        saveButton.setOnClickListener(v -> handleSave());
         cancelButton.setOnClickListener(v -> finish());
+        bindUser();
     }
 
+    /**
+     * Collects all view references in one place to keep onCreate readable.
+     */
     private void bindViews() {
         nameLayout = findViewById(R.id.edit_name_layout);
         emailLayout = findViewById(R.id.edit_email_layout);
@@ -55,11 +64,15 @@ public class EditProfileActivity extends AppCompatActivity {
         confirmPasswordField = findViewById(R.id.edit_confirm_password);
     }
 
+    /**
+     * Fetches the active user asynchronously and hydrates the form.
+     */
     private void bindUser() {
-        // Use async getCurrentUser to avoid blocking the main thread
+        saveButton.setEnabled(false);
         userService.getCurrentUser(
                 user -> {
                     if (user == null) {
+                        Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
                         finish();
                         return;
                     }
@@ -68,23 +81,27 @@ public class EditProfileActivity extends AppCompatActivity {
                     phoneField.setText(user.getPhone());
                     passwordField.setText("");
                     confirmPasswordField.setText("");
+                    saveButton.setEnabled(true);
                 },
                 e -> {
+                    Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
                     finish();
                 }
         );
     }
 
+    /**
+     * Runs form validation, updates Firestore, and handles optional password changes.
+     */
     private void handleSave() {
-        // Run the same validations before writing back.
         clearErrors();
         String name = safeText(nameField);
         String email = safeText(emailField);
         String phone = safeText(phoneField);
         String newPassword = safeText(passwordField);
         String confirmPassword = safeText(confirmPasswordField);
-        boolean hasError = false;
 
+        boolean hasError = false;
         if (TextUtils.isEmpty(name)) {
             nameLayout.setError(getString(R.string.error_name_required));
             hasError = true;
@@ -115,18 +132,39 @@ public class EditProfileActivity extends AppCompatActivity {
             return;
         }
 
-        try {
-            userService.updateUser(name, email, phone);
-            if (!TextUtils.isEmpty(newPassword)) {
-                userService.updatePassword(newPassword);
-            }
-            Toast.makeText(this, R.string.message_profile_updated, Toast.LENGTH_SHORT).show();
-            finish();
-        } catch (IllegalArgumentException exception) {
-            emailLayout.setError(getString(R.string.error_email_invalid));
-        }
+        saveButton.setEnabled(false);
+        userService.updateUser(
+                name,
+                email,
+                phone,
+                aVoid -> {
+                    if (!TextUtils.isEmpty(newPassword)) {
+                        userService.updatePassword(
+                                newPassword,
+                                pass -> {
+                                    Toast.makeText(this, R.string.message_profile_updated, Toast.LENGTH_SHORT).show();
+                                    finish();
+                                },
+                                e -> {
+                                    saveButton.setEnabled(true);
+                                    passwordLayout.setError(getString(R.string.error_password_requirement));
+                                }
+                        );
+                    } else {
+                        Toast.makeText(this, R.string.message_profile_updated, Toast.LENGTH_SHORT).show();
+                        finish();
+                    }
+                },
+                e -> {
+                    saveButton.setEnabled(true);
+                    emailLayout.setError(getString(R.string.error_email_invalid));
+                }
+        );
     }
 
+    /**
+     * Resets error labels for every TextInputLayout on the screen.
+     */
     private void clearErrors() {
         nameLayout.setError(null);
         emailLayout.setError(null);
@@ -135,6 +173,9 @@ public class EditProfileActivity extends AppCompatActivity {
         confirmPasswordLayout.setError(null);
     }
 
+    /**
+     * Consistent way to read trimmed text without null checks.
+     */
     private String safeText(TextInputEditText editText) {
         return editText.getText() == null ? "" : editText.getText().toString().trim();
     }
