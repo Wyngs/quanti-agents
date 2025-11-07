@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Root lets header scroll separately from the lists -->
+<!-- Entrant Info screen: header (editable fields + actions) scrolls independently from lists -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- HEADER (scrollable on its own) -->
+    <!-- HEADER (own scroll area) -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/headerScroll"
         android:layout_width="match_parent"
@@ -34,7 +34,7 @@
                     android:text="Redraw Canceled" />
             </LinearLayout>
 
-            <!-- Your Edit Details card (exactly as you had it) -->
+            <!-- Edit Details card -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_event_details"
                 android:layout_width="match_parent"
@@ -87,7 +87,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginTop="12dp">
+                        android:layout_marginTop="12dp"
+                        android:baselineAligned="false">
 
                         <com.google.android.material.textfield.TextInputLayout
                             android:id="@+id/input_capacity_layout"

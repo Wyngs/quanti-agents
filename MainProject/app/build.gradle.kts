@@ -65,9 +65,8 @@ dependencies {
     androidTestImplementation("androidx.test:core:1.5.0")
 
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-
-
-
-    // Optional: fragment testing (debug only)
-    debugImplementation("androidx.fragment:fragment-testing:1.7.1")
+    implementation ("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }
+
+
+

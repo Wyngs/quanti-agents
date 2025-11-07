@@ -19,7 +19,7 @@ public class EntrantInfoHostActivity extends AppCompatActivity {
         if (savedInstanceState == null) {
             String eventId = getIntent().getStringExtra(EXTRA_EVENT_ID);
             if (eventId == null || eventId.trim().isEmpty()) {
-                eventId = "demo-event-1"; // Use an example Id for testing
+                eventId = "KIDgSssMAsqUlZJp5ek7"; // Use an example Id for testing
             }
 
             getSupportFragmentManager()
