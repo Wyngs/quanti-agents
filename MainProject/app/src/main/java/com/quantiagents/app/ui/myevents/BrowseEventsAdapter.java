@@ -69,7 +69,7 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
             subtitle = itemView.findViewById(R.id.text_subtitle);
             textClosed = itemView.findViewById(R.id.text_closed);
             join = itemView.findViewById(R.id.button_join);
-            view = itemView.findViewById(R.id.button_view);
+            view = itemView.findViewById(R.id.btn_view_event);
         }
 
         void bind(final Event e, final OnEventClick cb) {

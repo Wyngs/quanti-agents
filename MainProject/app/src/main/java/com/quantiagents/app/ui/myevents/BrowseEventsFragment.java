@@ -23,6 +23,7 @@ import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.Constants.constant;
+import com.quantiagents.app.ui.ViewEventDetailsFragment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -95,19 +96,17 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
 
 
     private void bind(@NonNull List<Event> events) {
-        // Stop any loading UI (e.g. SwipeRefreshLayout)
-        //if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
+        all.clear();
+        all.addAll(events);
+        applyFilterAndState();
 
-        // Update adapter contents
-        if (adapter != null) {
-            adapter.setData(events);
-            adapter.notifyDataSetChanged();
+        if (swipe != null) {
+            swipe.setRefreshing(false);
         }
-//
-//        // Toggle empty-state message if you have one
-//        if (emptyView != null) {
-//            emptyView.setVisibility(events.isEmpty() ? View.VISIBLE : View.GONE);
-//        }
+
+        if (progress != null) {
+            progress.setVisibility(View.GONE);
+        }
     }
 
     private void filter(String q) {
@@ -147,7 +146,12 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
     }
 
     private void openDetails(@NonNull Event event) {
-        Fragment details = SingleEventFragment.newInstance();
+        String eventId = event.getEventId();
+        if (eventId == null) {
+            return;
+        }
+
+        Fragment details = ViewEventDetailsFragment.newInstance(eventId);
         requireActivity().getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.content_container, details)

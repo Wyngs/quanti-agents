@@ -32,7 +32,11 @@ public class EventRepository {
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(eventId).get());
             if (snapshot.exists()) {
-                return snapshot.toObject(Event.class);
+                Event event = snapshot.toObject(Event.class);
+                if (event != null && (event.getEventId() == null || event.getEventId().trim().isEmpty())) {
+                    event.setEventId(snapshot.getId());
+                }
+                return event;
             } else {
                 Log.d("Firestore", "No event found for ID: " + eventId);
                 return null;
@@ -50,6 +54,9 @@ public class EventRepository {
             for (QueryDocumentSnapshot document : snapshot) {
                 Event event = document.toObject(Event.class);
                 if (event != null) {
+                    if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
+                        event.setEventId(document.getId());
+                    }
                     events.add(event);
                 }
             }
@@ -67,7 +74,12 @@ public class EventRepository {
                     List<Event> out = new ArrayList<>();
                     for (QueryDocumentSnapshot d : qs) {
                         Event e = d.toObject(Event.class);
-                        if (e != null) out.add(e);
+                        if (e != null) {
+                            if (e.getEventId() == null || e.getEventId().trim().isEmpty()) {
+                                e.setEventId(d.getId());
+                            }
+                            out.add(e);
+                        }
                     }
                     onSuccess.onSuccess(out);
                 })
