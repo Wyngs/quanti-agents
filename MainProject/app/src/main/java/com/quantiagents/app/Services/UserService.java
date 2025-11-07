@@ -1,447 +1,136 @@
 package com.quantiagents.app.Services;
 
 import android.content.Context;
-import android.util.Log;
-
-import androidx.annotation.Nullable;
-
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.UserRepository;
 import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.models.User;
-
+import com.quantiagents.app.Constants.constant;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.List;
 import java.util.regex.Pattern;
 
-/**
- * Keeps entrant profiles tied to a device id so I can skip usernames and still edit or delete safely.
- */
 public class UserService {
 
     private final UserRepository repository;
     private final DeviceIdManager deviceIdManager;
     private final Pattern emailPattern = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
+    private User currentUserCache;
 
     public UserService(Context context) {
-        // Instantiate repositories and dependencies internally
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
         this.repository = new UserRepository(fireBaseRepository);
         this.deviceIdManager = new DeviceIdManager(context);
     }
 
-    /**
-     * Synchronous helper for quick calls on background threads; still uses local cache.
-     */
-    public User getCurrentUser() {
-        // Find current user by device ID
+    public Task<QuerySnapshot> getAllUsers() {
+        return repository.getAllUsers();
+    }
+
+    public Task<User> getCurrentUser() {
+        if (currentUserCache != null) {
+            return com.google.android.gms.tasks.Tasks.forResult(currentUserCache);
+        }
         String deviceId = deviceIdManager.ensureDeviceId();
-        List<User> allUsers = repository.getAllUsers();
-        for (User user : allUsers) {
-            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                return user;
+        return repository.findUserByDeviceId(deviceId).onSuccessTask(querySnapshot -> {
+            if (!querySnapshot.isEmpty()) {
+                currentUserCache = querySnapshot.getDocuments().get(0).toObject(User.class);
+                return com.google.android.gms.tasks.Tasks.forResult(currentUserCache);
             }
-        }
-        return null;
+            return com.google.android.gms.tasks.Tasks.forResult(null);
+        });
     }
 
-    /**
-     * Forces a server read when I truly need the latest profile info (mainly for tests).
-     */
-    public User getCurrentUserFresh() {
-        String deviceId = deviceIdManager.ensureDeviceId();
-        List<User> allUsers = repository.getAllUsersFromServer();
-        for (User user : allUsers) {
-            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                return user;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Blocking create that I still lean on inside background work or tests.
-     *
-     * @return the created user snapshot (already contains the generated id)
-     */
-    public User createUser(String name, String email, String phone, String password) {
-        User user = buildUser(name, email, phone, password);
-        repository.saveUser(user,
-                aVoid -> Log.d("App", "User saved with ID: " + user.getUserId()),
-                e -> Log.e("App", "Failed to save", e));
-        return user;
-    }
-
-    /**
-     * Async create hook I call from the UI so Firestore work stays off the main thread.
-     */
-    public void createUser(String name,
-                           String email,
-                           String phone,
-                           String password,
-                           OnSuccessListener<User> onSuccess,
-                           OnFailureListener onFailure) {
-        User user = buildUser(name, email, phone, password);
-        repository.saveUser(user,
-                aVoid -> {
-                    Log.d("App", "User saved with ID: " + user.getUserId());
-                    if (onSuccess != null) {
-                        onSuccess.onSuccess(user);
-                    }
-                },
-                e -> {
-                    Log.e("App", "Failed to save", e);
-                    if (onFailure != null) {
-                        onFailure.onFailure(e);
-                    }
-                });
-    }
-
-    /**
-     * Simple blocking update for callers that are already off the main thread.
-     */
-    public User updateUser(String name, String email, String phone) {
-        User current = requireUser();
-        validateName(name);
-        validateEmail(email);
-        if (current != null) {
-            current.setName(name.trim());
-            current.setEmail(email.trim());
-            current.setPhone(phone == null ? "" : phone.trim());
-            repository.updateUser(current,
-                    aVoid -> Log.d("App", "Update user"),
-                    e -> Log.e("App", "Failed to update user", e));
-        }
-        return current;
-    }
-
-    /**
-     * Async update path used by edit profile so I can show success/failure to the user.
-     */
-    public void updateUser(String name,
-                           String email,
-                           String phone,
-                           OnSuccessListener<Void> onSuccess,
-                           OnFailureListener onFailure) {
-        validateName(name);
-        validateEmail(email);
-        getCurrentUser(
-                current -> {
-                    if (current == null) {
-                        if (onFailure != null) {
-                            onFailure.onFailure(new IllegalStateException("Profile missing"));
-                        }
-                        return;
-                    }
-                    current.setName(name.trim());
-                    current.setEmail(email.trim());
-                    current.setPhone(phone == null ? "" : phone.trim());
-                    repository.updateUser(current,
-                            aVoid -> {
-                                Log.d("App", "Update user");
-                                if (onSuccess != null) {
-                                    onSuccess.onSuccess(aVoid);
-                                }
-                            },
-                            e -> {
-                                Log.e("App", "Failed to update user", e);
-                                if (onFailure != null) {
-                                    onFailure.onFailure(e);
-                                }
-                            });
-                },
-                e -> {
-                    Log.e("App", "Failed to load user", e);
-                    if (onFailure != null) {
-                        onFailure.onFailure(e);
-                    }
-                }
-        );
-    }
-
-    /**
-     * Lightweight credential check; used mostly by tests or synchronous flows.
-     */
-    public boolean authenticate(String email, String password) {
-        // Find user by email
-        List<User> allUsers = repository.getAllUsers();
-        for (User user : allUsers) {
-            if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
-                String hash = hashPassword(password);
-                return hash.equals(user.getPasswordHash());
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Async credential check so LoginActivity can respond without blocking.
-     */
-    public void authenticate(String email, String password, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
-        repository.getAllUsers(
-                users -> {
-                    for (User user : users) {
-                        if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
-                            String hash = hashPassword(password);
-                            boolean success = hash.equals(user.getPasswordHash());
-                            onSuccess.onSuccess(success);
-                            return;
-                        }
-                    }
-                    onSuccess.onSuccess(false);
-                },
-                onFailure
-        );
-    }
-
-    /**
-     * Synchronous device-id matcher, mainly used before the async login wire-up.
-     */
-    public boolean authenticateDevice(String deviceId) {
-        List<User> allUsers = repository.getAllUsers();
-        for (User user : allUsers) {
-            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Async device auth that SplashActivity can await before routing.
-     */
-    public void authenticateDevice(String deviceId, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
-        repository.getAllUsers(
-                users -> {
-                    for (User user : users) {
-                        if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                            onSuccess.onSuccess(true);
-                            return;
-                        }
-                    }
-                    onSuccess.onSuccess(false);
-                },
-                onFailure
-        );
-    }
-
-    /**
-     * Async getter that backs basically every UI screen needing the active profile.
-     */
-    public void getCurrentUser(OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
-        String deviceId = deviceIdManager.ensureDeviceId();
-        repository.getAllUsers(
-                users -> {
-                    for (User user : users) {
-                        if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                            onSuccess.onSuccess(user);
-                            return;
-                        }
-                    }
-                    onSuccess.onSuccess(null);
-                },
-                onFailure
-        );
-    }
-
-    /**
-     * Ensures the stored profile mirrors whatever device id we have right now.
-     */
-    public void attachDeviceToCurrentUser() {
-        attachDeviceToCurrentUser(null);
-    }
-
-    /**
-     * Same as {@link #attachDeviceToCurrentUser()} but lets callers pass a cached user to avoid re-fetches.
-     */
-    public void attachDeviceToCurrentUser(@Nullable User cachedUser) {
-        User current = cachedUser != null ? cachedUser : getCurrentUser();
-        if (current == null) {
+    public void saveUser(User user, com.google.android.gms.tasks.OnSuccessListener<String> onSuccess, com.google.android.gms.tasks.OnFailureListener onFailure) {
+        validateName(user.getName());
+        validateEmail(user.getEmail());
+        if (user.getPasswordHash() == null || user.getPasswordHash().isEmpty()) {
+            onFailure.onFailure(new IllegalArgumentException("Password hash missing"));
             return;
         }
+        repository.saveUser(user, onSuccess, onFailure);
+    }
+
+    public Task<Void> updateUser(User user) {
+        validateName(user.getName());
+        validateEmail(user.getEmail());
+        if (currentUserCache != null && currentUserCache.getUserId().equals(user.getUserId())) {
+            currentUserCache = user;
+        }
+        return repository.updateUser(user);
+    }
+
+    public Task<Boolean> authenticate(String email, String password) {
+        return repository.findUserByEmail(email).onSuccessTask(querySnapshot -> {
+            if (querySnapshot.isEmpty()) {
+                return com.google.android.gms.tasks.Tasks.forResult(false);
+            }
+            User user = querySnapshot.getDocuments().get(0).toObject(User.class);
+            if (user == null) {
+                return com.google.android.gms.tasks.Tasks.forResult(false);
+            }
+            String hash = hashPassword(password);
+            boolean success = hash.equals(user.getPasswordHash());
+            if (success) {
+                currentUserCache = user;
+                attachDeviceToCurrentUser(user);
+            }
+            return com.google.android.gms.tasks.Tasks.forResult(success);
+        });
+    }
+
+    public Task<Boolean> authenticateDevice(String deviceId) {
+        return repository.findUserByDeviceId(deviceId).onSuccessTask(querySnapshot -> {
+            if (!querySnapshot.isEmpty()) {
+                currentUserCache = querySnapshot.getDocuments().get(0).toObject(User.class);
+                return com.google.android.gms.tasks.Tasks.forResult(true);
+            }
+            return com.google.android.gms.tasks.Tasks.forResult(false);
+        });
+    }
+
+    private void attachDeviceToCurrentUser(User user) {
         String deviceId = deviceIdManager.ensureDeviceId();
-        if (!deviceId.equals(current.getDeviceId())) {
-            current.setDeviceId(deviceId);
-            repository.updateUser(current,
-                    aVoid -> Log.d("App", "Update user"),
-                    e -> Log.e("App", "Failed to update user", e));
+        if (!deviceId.equals(user.getDeviceId())) {
+            user.setDeviceId(deviceId);
+            updateUser(user);
         }
     }
 
-    /**
-     * Blocking password update used outside the UI (e.g., tests, migrations).
-     */
-    public void updatePassword(String newPassword) {
-        validatePassword(newPassword);
-        User current = requireUser();
-        if (current != null) {
-            current.setPasswordHash(hashPassword(newPassword));
-            repository.updateUser(current,
-                    aVoid -> Log.d("App", "Update user"),
-                    e -> Log.e("App", "Failed to update user", e));
+    public void logout() {
+        currentUserCache = null;
+    }
+
+    public Task<Void> deleteUserProfile(String userId) {
+        if (currentUserCache != null && currentUserCache.getUserId().equals(userId)) {
+            currentUserCache = null;
         }
+        return repository.deleteUserById(userId);
     }
 
-    /**
-     * Async password update so EditProfileActivity can react via callbacks.
-     */
-    public void updatePassword(String newPassword,
-                               OnSuccessListener<Void> onSuccess,
-                               OnFailureListener onFailure) {
-        validatePassword(newPassword);
-        getCurrentUser(
-                current -> {
-                    if (current == null) {
-                        if (onFailure != null) {
-                            onFailure.onFailure(new IllegalStateException("Profile missing"));
-                        }
-                        return;
-                    }
-                    current.setPasswordHash(hashPassword(newPassword));
-                    repository.updateUser(current,
-                            aVoid -> {
-                                Log.d("App", "Update user");
-                                if (onSuccess != null) {
-                                    onSuccess.onSuccess(aVoid);
-                                }
-                            },
-                            e -> {
-                                Log.e("App", "Failed to update user", e);
-                                if (onFailure != null) {
-                                    onFailure.onFailure(e);
-                                }
-                            });
-                },
-                e -> {
-                    Log.e("App", "Failed to load user", e);
-                    if (onFailure != null) {
-                        onFailure.onFailure(e);
-                    }
-                }
-        );
-    }
-
-    /**
-     * Fire-and-forget toggle for callers that don't care about result handling.
-     */
-    public void updateNotificationPreference(boolean enabled) {
-        updateNotificationPreference(enabled, null, null);
-    }
-
-    /**
-     * Full toggle variant so I can disable the UI switch until Firestore confirms.
-     */
-    public void updateNotificationPreference(boolean enabled,
-                                             @Nullable OnSuccessListener<Void> onSuccess,
-                                             @Nullable OnFailureListener onFailure) {
-        getCurrentUser(
-                current -> {
-                    if (current == null) {
-                        Log.w("App", "Profile missing while toggling notifications");
-                        if (onFailure != null) {
-                            onFailure.onFailure(new IllegalStateException("Profile missing"));
-                        }
-                        return;
-                    }
-                    current.setNotificationsOn(enabled);
-                    repository.updateUser(current,
-                            aVoid -> {
-                                Log.d("App", "Update user");
-                                if (onSuccess != null) {
-                                    onSuccess.onSuccess(aVoid);
-                                }
-                            },
-                            e -> {
-                                Log.e("App", "Failed to update user", e);
-                                if (onFailure != null) {
-                                    onFailure.onFailure(e);
-                                }
-                            });
-                },
-                e -> {
-                    Log.e("App", "Failed to load user", e);
-                    if (onFailure != null) {
-                        onFailure.onFailure(e);
-                    }
-                }
-        );
-    }
-
-    /**
-     * Background cleanup used when I just need the profile gone without UI callbacks.
-     */
-    public void deleteUserProfile() {
-        getCurrentUser(
-                current -> {
-                    if (current == null
-                            || current.getUserId() == null
-                            || current.getUserId().trim().isEmpty()) {
-                        return;
-                    }
-                    repository.deleteUserById(
-                            current.getUserId(),
-                            aVoid -> Log.d("App", "Deleted user"),
-                            e -> Log.e("App", "Failed to delete user", e));
-                },
-                e -> Log.e("App", "Failed to load user", e)
-        );
-    }
-
-    /**
-     * Delete helper that surfaces callbacks so I can route success to the UI stack.
-     */
-    public void deleteUserProfile(OnSuccessListener<Void> onSuccess,
-                                  OnFailureListener onFailure) {
-        getCurrentUser(
-                current -> {
-                    if (current == null
-                            || current.getUserId() == null
-                            || current.getUserId().trim().isEmpty()) {
-                        if (onFailure != null) {
-                            onFailure.onFailure(new IllegalStateException("Profile missing"));
-                        }
-                        return;
-                    }
-                    repository.deleteUserById(
-                            current.getUserId(),
-                            aVoid -> {
-                                Log.d("App", "Deleted user");
-                                deviceIdManager.reset();
-                                if (onSuccess != null) {
-                                    onSuccess.onSuccess(aVoid);
-                                }
-                            },
-                            e -> {
-                                Log.e("App", "Failed to delete user", e);
-                                if (onFailure != null) {
-                                    onFailure.onFailure(e);
-                                }
-                            });
-                },
-                e -> {
-                    Log.e("App", "Failed to load user", e);
-                    if (onFailure != null) {
-                        onFailure.onFailure(e);
-                    }
-                }
-        );
-    }
-
-    public User getUserById(String userId) {
-        return repository.getUserById(userId);
-    }
-
-    private User requireUser() {
-        User current = getCurrentUser();
-        if (current == null) {
-            throw new IllegalStateException("Profile missing");
+    public void createNewUser(String name, String email, String phone, String password, com.google.android.gms.tasks.OnSuccessListener<String> onSuccess, com.google.android.gms.tasks.OnFailureListener onFailure) {
+        try {
+            validateName(name);
+            validateEmail(email);
+            validatePassword(password);
+        } catch (IllegalArgumentException e) {
+            onFailure.onFailure(e);
+            return;
         }
-        return current;
+
+        String trimmedPhone = phone == null ? "" : phone.trim();
+        String deviceId = deviceIdManager.ensureDeviceId();
+        String passwordHash = hashPassword(password);
+
+        User user = new User("", deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
+        user.setRole(constant.UserRole.ENTRANT);
+
+        repository.saveUser(user, onSuccess, onFailure);
     }
+
 
     private void validateName(String name) {
         if (name == null || name.trim().isEmpty()) {
@@ -464,17 +153,7 @@ public class UserService {
         }
     }
 
-    private User buildUser(String name, String email, String phone, String password) {
-        validateName(name);
-        validateEmail(email);
-        validatePassword(password);
-        String trimmedPhone = phone == null ? "" : phone.trim();
-        String deviceId = deviceIdManager.ensureDeviceId();
-        String passwordHash = hashPassword(password);
-        return new User("", deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
-    }
-
-    private String hashPassword(String password) {
+    public String hashPassword(String password) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(password.trim().getBytes(StandardCharsets.UTF_8));
