@@ -2,6 +2,9 @@ package com.quantiagents.app.models;
 
 import java.util.Date;
 
+/**
+ * Representation of a geolocation, with getters and setters for each variable
+ */
 public class GeoLocation {
     private double latitude;
     private double longitude;

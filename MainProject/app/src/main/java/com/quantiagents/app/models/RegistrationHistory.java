@@ -4,6 +4,9 @@ import com.quantiagents.app.Constants.constant;
 
 import java.util.Date;
 
+/**
+ * Representation of an event's registration history, with getters and setters for each variable
+ */
 public class RegistrationHistory {
 
     private String eventId;

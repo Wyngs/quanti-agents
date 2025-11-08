@@ -3,6 +3,9 @@ import com.quantiagents.app.Constants.constant;
 import java.io.Serializable;
 import java.util.Date;
 
+/**
+ * Representation of a user, with getters and setters for each variable
+ */
 public class User implements Serializable {
 
     private String userId;

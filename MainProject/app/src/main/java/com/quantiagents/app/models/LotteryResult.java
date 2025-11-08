@@ -3,6 +3,9 @@ package com.quantiagents.app.models;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Representation of a lottery result, with getters and setters for each variable
+ */
 public class LotteryResult {
     private String eventId;
     private List<String> entrantIds;
