@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * Manages functions for locating and saving geolocations
+ * @see GeoLocation
  */
 public class GeoLocationRepository {
 
@@ -37,6 +38,7 @@ public class GeoLocationRepository {
      * Event id to locate
      * @return
      * Returns geolocation if exists, null otherwise
+     * @see GeoLocation
      */
     public GeoLocation getGeoLocationByUserIdAndEventId(String userId, String eventId) {
         try {
@@ -59,6 +61,7 @@ public class GeoLocationRepository {
      * Returns all geolocations
      * @return
      * Returns a list of geolocations
+     * @see GeoLocation
      */
     public List<GeoLocation> getAllGeoLocations() {
         try {
@@ -83,6 +86,7 @@ public class GeoLocationRepository {
      * Event id to locate
      * @return
      * Returns a list of geolocations
+     * @see GeoLocation
      */
     public List<GeoLocation> getGeoLocationsByEventId(String eventId) {
         try {
@@ -107,6 +111,7 @@ public class GeoLocationRepository {
      * User id to locate
      * @return
      * Returns a list of geolocations
+     * @see GeoLocation
      */
     public List<GeoLocation> getGeoLocationsByUserId(String userId) {
         try {
@@ -133,6 +138,7 @@ public class GeoLocationRepository {
      * User id to locate
      * @return
      * Returns a list of geolocations
+     * @see GeoLocation
      */
     public List<GeoLocation> getGeoLocationsByEventIdAndUserId(String eventId, String userId) {
         try {
@@ -160,6 +166,7 @@ public class GeoLocationRepository {
      * Calls a function on success
      * @param onFailure
      * Calls a function on failure
+     * @see GeoLocation
      */
     public void saveGeoLocation(GeoLocation geoLocation, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         if (geoLocation == null) {
@@ -185,6 +192,7 @@ public class GeoLocationRepository {
      * Calls a function on success
      * @param onFailure
      * Calls a function on failure
+     * @see GeoLocation
      */
     public void updateGeoLocation(@NonNull GeoLocation geoLocation,
                                  @NonNull OnSuccessListener<Void> onSuccess,

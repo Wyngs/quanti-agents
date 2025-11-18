@@ -18,6 +18,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Manages locating and saving of registration histories
+ * @see RegistrationHistory
+ */
 public class RegistrationHistoryRepository {
 
     private final CollectionReference context;
@@ -26,6 +30,16 @@ public class RegistrationHistoryRepository {
         this.context = fireBaseRepository.getRegistrationHistoryCollectionRef();
     }
 
+    /**
+     * Returns the registration history via an event id and a user id
+     * @param eventId
+     * Event id to locate
+     * @param userId
+     * User id to locate
+     * @return
+     * Returns a registration history
+     * @see RegistrationHistory
+     */
     public RegistrationHistory getRegistrationHistoryByEventIdAndUserId(String eventId, String userId) {
         try {
             String docId = eventId + "_" + userId;
@@ -42,6 +56,12 @@ public class RegistrationHistoryRepository {
         }
     }
 
+    /**
+     * Returns a list of all registration histories
+     * @return
+     * Returns a list of registration histories
+     * @see RegistrationHistory
+     */
     public List<RegistrationHistory> getAllRegistrationHistories() {
         try {
             QuerySnapshot snapshot = Tasks.await(context.get());
@@ -59,6 +79,14 @@ public class RegistrationHistoryRepository {
         }
     }
 
+    /**
+     * Returns a list of registration histories via an event id
+     * @param eventId
+     * Event id to search for
+     * @return
+     * Returns a list of registration histories
+     * @see RegistrationHistory
+     */
     public List<RegistrationHistory> getRegistrationHistoriesByEventId(String eventId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId).get());
@@ -76,6 +104,14 @@ public class RegistrationHistoryRepository {
         }
     }
 
+    /**
+     * Returns a list of registration histories via a user id
+     * @param userId
+     * User id to search for
+     * @return
+     * Returns a list of registration histories
+     * @see RegistrationHistory
+     */
     public List<RegistrationHistory> getRegistrationHistoriesByUserId(String userId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("userId", userId).get());
@@ -93,6 +129,16 @@ public class RegistrationHistoryRepository {
         }
     }
 
+    /**
+     * Saves a registration history to the firebase
+     * @param history
+     * Registration history to save
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see RegistrationHistory
+     */
     public void saveRegistrationHistory(RegistrationHistory history, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (history == null) {
             onFailure.onFailure(new IllegalArgumentException("Registration history cannot be null"));
@@ -106,6 +152,16 @@ public class RegistrationHistoryRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Updates a registration history in the firebase
+     * @param history
+     * Registration history to update
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see RegistrationHistory
+     */
     public void updateRegistrationHistory(@NonNull RegistrationHistory history,
                                          @NonNull OnSuccessListener<Void> onSuccess,
                                          @NonNull OnFailureListener onFailure) {
@@ -123,6 +179,17 @@ public class RegistrationHistoryRepository {
                 });
     }
 
+    /**
+     * Deletes a registration history by an event id and a user id from the firebase
+     * @param eventId
+     * Event id to search for
+     * @param userId
+     * User id to search for
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void deleteRegistrationHistoryByEventIdAndUserId(String eventId, String userId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         String docId = eventId + "_" + userId;
         context.document(docId)
@@ -131,6 +198,15 @@ public class RegistrationHistoryRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Deletes a registration history by an event id and a user id from the firebase
+     * @param eventId
+     * Event id to search for
+     * @param userId
+     * User id to search for
+     * @return
+     * Returns a boolean for success
+     */
     public boolean deleteRegistrationHistoryByEventIdAndUserId(String eventId, String userId) {
         try {
             String docId = eventId + "_" + userId;

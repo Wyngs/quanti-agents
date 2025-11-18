@@ -4,6 +4,10 @@ import java.io.Serializable;
 
 /**
  * Representation of a user summary, with getters and setters for each variable
+ * <p>
+ * Contains:
+ * </p>
+ * String: user id, String: name, String: email
  */
 public class UserSummary implements Serializable {
 

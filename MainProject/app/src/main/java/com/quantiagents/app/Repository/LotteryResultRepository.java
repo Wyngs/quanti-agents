@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * Manages functions related to lottery result
+ * @see LotteryResult
  */
 public class LotteryResultRepository {
 
@@ -54,6 +55,7 @@ public class LotteryResultRepository {
      * Event id to locate
      * @return
      * Returns lottery result if exists, null otherwise
+     * @see LotteryResult
      */
     public LotteryResult getLotteryResultByTimestampAndEventId(Date timestamp, String eventId) {
         try {
@@ -77,6 +79,7 @@ public class LotteryResultRepository {
      * Event id to locate
      * @return
      * Returns list of lottery results
+     * @see LotteryResult
      */
     public List<LotteryResult> getLotteryResultsByEventId(String eventId) {
         try {
@@ -100,6 +103,7 @@ public class LotteryResultRepository {
      * Gets all Lottery Results
      * @return
      * Returns list of lottery results
+     * @see LotteryResult
      */
     public List<LotteryResult> getAllLotteryResults() {
         try {
@@ -126,6 +130,7 @@ public class LotteryResultRepository {
      * Calls function on success
      * @param onFailure
      * Calls function on failure
+     * @see LotteryResult
      */
     public void saveLotteryResult(LotteryResult result, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (result == null) {
@@ -154,6 +159,7 @@ public class LotteryResultRepository {
      * Calls function on success
      * @param onFailure
      * Calls function on failure
+     * @see LotteryResult
      */
     public void updateLotteryResult(@NonNull LotteryResult result,
                                    @NonNull OnSuccessListener<Void> onSuccess,

@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * Manages functions for locating and saving images
+ * @see Image
  */
 public class ImageRepository {
 
@@ -37,6 +38,7 @@ public class ImageRepository {
      * Image id to locate
      * @return
      * Returns Image if exists, null otherwise
+     * @see Image
      */
     public Image getImageById(String imageId) {
         try {
@@ -57,6 +59,7 @@ public class ImageRepository {
      * Gets a list of all images
      * @return
      * Returns list of images
+     * @see Image
      */
     public List<Image> getAllImages() {
         try {
@@ -83,6 +86,7 @@ public class ImageRepository {
      * Calls a function on success
      * @param onFailure
      * Calls a function on failure
+     * @see Image
      */
     public void saveImage(Image image, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         // If imageId is null or empty, let Firebase auto-generate an ID
@@ -139,6 +143,7 @@ public class ImageRepository {
      * Calls a function on success
      * @param onFailure
      * Calls a function on failure
+     * @see Image
      */
     public void updateImage(@NonNull Image image,
                            @NonNull OnSuccessListener<Void> onSuccess,
@@ -167,6 +172,7 @@ public class ImageRepository {
      * Calls a function on success
      * @param onFailure
      * Calls a function on failure
+     * @see Image
      */
     public void deleteImageById(String imageId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         context.document(imageId)
