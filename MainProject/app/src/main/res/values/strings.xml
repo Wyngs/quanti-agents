@@ -140,4 +140,9 @@
     <string name="event_closed">Closed</string>
     <string name="join_waitlist">Join waitlist</string>
     <string name="view_event">View</string>
+
+
+
+
+    <string name="manage_events_empty_default">No organized events yet.</string>
 </resources>

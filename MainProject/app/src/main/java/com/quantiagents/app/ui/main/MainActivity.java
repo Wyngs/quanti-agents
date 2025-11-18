@@ -21,10 +21,11 @@ import com.google.android.material.navigation.NavigationView;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.LoginService;
-import com.quantiagents.app.models.User;
 import com.quantiagents.app.Services.UserService;
-import com.quantiagents.app.ui.auth.LoginActivity;
+import com.quantiagents.app.models.User;
 import com.quantiagents.app.ui.CreateEventFragment;
+import com.quantiagents.app.ui.auth.LoginActivity;
+import com.quantiagents.app.ui.manageevents.ManageEventsFragment;
 import com.quantiagents.app.ui.myevents.BrowseEventsFragment;
 import com.quantiagents.app.ui.profile.ProfileFragment;
 import com.quantiagents.app.ui.profile.SettingsFragment;
@@ -113,6 +114,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_browse_events) {
             showFragment(BrowseEventsFragment.newInstance());
+            activeItemId = id;
+            navigationView.setCheckedItem(id);
+        } else if (id == R.id.navigation_manage_events) {
+            // Show the Manage Events screen from the nav drawer
+            showFragment(ManageEventsFragment.newInstance());
             activeItemId = id;
             navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_logout) {
