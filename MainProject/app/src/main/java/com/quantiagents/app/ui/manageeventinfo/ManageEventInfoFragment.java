@@ -136,6 +136,10 @@ public class ManageEventInfoFragment extends Fragment {
         Button btnRedraw = view.findViewById(R.id.btnRedrawCanceled);
         btnRedraw.setOnClickListener(v -> onClickRedraw(lottoSvc, eventId));
 
+        // Back button
+        Button btnBack = view.findViewById(R.id.btnBackToManageEvents);
+        btnBack.setOnClickListener(v -> requireActivity().finish());
+
         // Tabs + pager
         ViewPager2 pager = view.findViewById(R.id.pager);
         ManageEventInfoPagerAdapter adapter = new ManageEventInfoPagerAdapter(this, eventId);
