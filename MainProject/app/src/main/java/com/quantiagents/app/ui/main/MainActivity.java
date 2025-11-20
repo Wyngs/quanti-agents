@@ -2,6 +2,7 @@ package com.quantiagents.app.ui.main;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
@@ -19,11 +20,14 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.navigation.NavigationView;
 import com.quantiagents.app.App;
+import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.LoginService;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.User;
 import com.quantiagents.app.ui.CreateEventFragment;
+import com.quantiagents.app.ui.admin.AdminBrowseEventsFragment;
+import com.quantiagents.app.ui.admin.AdminBrowseProfilesFragment;
 import com.quantiagents.app.ui.auth.LoginActivity;
 import com.quantiagents.app.ui.manageevents.ManageEventsFragment;
 import com.quantiagents.app.ui.myevents.BrowseEventsFragment;
@@ -72,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     }
 
                     bindHeader(user);
+                    setupAdminMenu(user);
 
                     if (savedInstanceState == null) {
                         navigationView.setCheckedItem(activeItemId);
@@ -94,7 +99,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         closeButton.setOnClickListener(v -> drawerLayout.closeDrawers());
         // Keep header state in sync with the active profile.
         nameView.setText(user.getName());
-        roleView.setText(R.string.nav_role_entrant);
+
+        if (user.getRole() == constant.UserRole.ADMIN) {
+            roleView.setText(R.string.nav_role_admin);
+        } else {
+            roleView.setText(R.string.nav_role_entrant);
+        }
+    }
+
+    private void setupAdminMenu(@NonNull User user) {
+        Menu menu = navigationView.getMenu();
+        if (user.getRole() == constant.UserRole.ADMIN) {
+            menu.setGroupVisible(R.id.admin_group, true);
+        } else {
+            menu.setGroupVisible(R.id.admin_group, false);
+        }
     }
 
     @Override
@@ -114,6 +133,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_browse_events) {
             showFragment(BrowseEventsFragment.newInstance());
+            activeItemId = id;
+            navigationView.setCheckedItem(id);
+        } else if (id == R.id.navigation_admin_events) {
+            showFragment(AdminBrowseEventsFragment.newInstance());
+            activeItemId = id;
+            navigationView.setCheckedItem(id);
+        } else if (id == R.id.navigation_admin_profiles) {
+            showFragment(AdminBrowseProfilesFragment.newInstance());
             activeItemId = id;
             navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_manage_events) {

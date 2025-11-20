@@ -26,6 +26,18 @@
         <item
             android:id="@+id/navigation_settings"
             android:title="@string/nav_item_settings" />
+
+    </group>
+
+    <group android:id="@+id/admin_group" android:checkableBehavior="single">
+        <item
+            android:id="@+id/navigation_admin_events"
+            android:icon="@android:drawable/ic_menu_manage"
+            android:title="Manage Events" />
+        <item
+            android:id="@+id/navigation_admin_profiles"
+            android:icon="@drawable/ic_menu_people"
+            android:title="Manage Profiles" />
     </group>
 
     <item

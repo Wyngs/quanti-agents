@@ -130,13 +130,13 @@ public class EventRepository {
             addTask.addOnSuccessListener(documentReference -> {
                 // Extract the auto-generated document ID
                 String docId = documentReference.getId();
-                
+
                 // Use the Firestore document ID as the eventId
                 String generatedId = docId;
-                
+
                 // Update the event object with the generated ID
                 event.setEventId(generatedId);
-                
+
                 // Update the document with the generated eventId field
                 context.document(docId).update("eventId", generatedId)
                         .addOnSuccessListener(aVoid -> {
@@ -180,8 +180,8 @@ public class EventRepository {
      * @see Event
      */
     public void updateEvent(@NonNull Event event,
-                           @NonNull OnSuccessListener<Void> onSuccess,
-                           @NonNull OnFailureListener onFailure) {
+                            @NonNull OnSuccessListener<Void> onSuccess,
+                            @NonNull OnFailureListener onFailure) {
         context.document(event.getEventId())
                 .set(event, SetOptions.merge()) // merge only changed fields
                 .addOnSuccessListener(aVoid -> {
