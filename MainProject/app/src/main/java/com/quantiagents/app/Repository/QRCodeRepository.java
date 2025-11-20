@@ -114,40 +114,28 @@ public class QRCodeRepository {
      * @see QRCode
      */
     public void saveQRCode(QRCode qrCode, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        // If id is 0 or negative, let Firebase auto-generate an ID
+        // If id is 0 or negative, generate one and use it as the Document ID
         if (qrCode.getId() <= 0) {
-            // Use .add() to create a new document with auto-generated ID
-            Task<DocumentReference> addTask = context.add(qrCode);
-            addTask.addOnSuccessListener(documentReference -> {
-                // Extract the auto-generated document ID
-                String docId = documentReference.getId();
+            // Generate a random ID locally from a new document reference
+            String autoDocId = context.document().getId();
+            // Hash it to an int to match the model's ID type
+            int generatedId = autoDocId.hashCode() & Integer.MAX_VALUE;
+            if (generatedId == 0) {
+                generatedId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
+                if (generatedId == 0) generatedId = 1;
+            }
 
-                // Generate a unique int ID from the Firestore document ID
-                // Use hash code and ensure it's positive
-                int generatedId = docId.hashCode();
-                if (generatedId < 0) {
-                    generatedId = Math.abs(generatedId);
-                }
-                // If somehow still 0, use a timestamp-based fallback
-                if (generatedId == 0) {
-                    generatedId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
-                }
+            qrCode.setId(generatedId);
 
-                // Update the QRCode object with the generated ID
-                qrCode.setId(generatedId);
-
-                // Update the document with the generated id field
-                context.document(docId).update("id", generatedId)
-                        .addOnSuccessListener(aVoid -> {
-                            Log.d("Firestore", "QR code created with auto-generated " + " (docId: " + docId + ")");
-                            onSuccess.onSuccess(aVoid);
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.e("Firestore", "Error updating QR code with generated ID", e);
-                            // Still call success since document was created, just the ID update failed
-                            onSuccess.onSuccess(null);
-                        });
-            }).addOnFailureListener(onFailure);
+            // Save with the generated INT as the document key so getById(int) works
+            int finalGeneratedId = generatedId;
+            context.document(String.valueOf(generatedId))
+                    .set(qrCode)
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d("Firestore", "QR code saved with ID: " + finalGeneratedId);
+                        onSuccess.onSuccess(aVoid);
+                    })
+                    .addOnFailureListener(onFailure);
         } else {
             // Check if QR code with this ID already exists
             DocumentReference docRef = context.document(String.valueOf(qrCode.getId()));
