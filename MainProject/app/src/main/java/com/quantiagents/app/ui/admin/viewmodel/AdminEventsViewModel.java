@@ -90,20 +90,18 @@ public class AdminEventsViewModel extends AndroidViewModel {
     }
 
     public void deleteProfile(UserSummary profile) {
-        new Thread(() -> {
-            try {
-                boolean success = adminService.removeProfile(profile.getUserId(), true, "Admin deletion");
+        adminService.removeProfile(profile.getUserId(), true, "Admin deletion",
+                success -> {
 
-                if (success) {
                     toastMessage.postValue("Profile deleted");
+
                     loadProfiles();
-                } else {
-                    toastMessage.postValue("Error: Failed to delete profile. Check logs.");
+                },
+                failure -> {
+
+                    Log.e("AdminVM", "Error deleting profile", failure);
+                    toastMessage.postValue("Error: " + failure.getMessage());
                 }
-            } catch (Exception e) {
-                Log.e("AdminVM", "Error deleting profile", e);
-                toastMessage.postValue("Error: " + e.getMessage());
-            }
-        }).start();
+        );
     }
 }

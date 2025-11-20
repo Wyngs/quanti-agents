@@ -63,7 +63,8 @@ public class AdminFlowInstrumentedTest {
         //us 03.02.01 b–c: delete a profile; if it is our local user, local profile is cleared
         User local = locator.userService().getCurrentUser();
         assertNotNull(local);
-        assertTrue(admin.removeProfile(local.getUserId(), true, "t"));
+
+        assertTrue(removeProfileSync(admin, local.getUserId(), true, "t"));
 
         // Fix: Wait for async deletion to propagate
         boolean removed = waitForProfileRemoval(locator.userService());
@@ -93,9 +94,14 @@ public class AdminFlowInstrumentedTest {
         AdminService adminService = locator.adminService();
         List<UserSummary> profiles = adminService.listAllProfiles();
         for (UserSummary us : profiles) {
-            adminService.removeProfile(us.getUserId(), true, null);
+            removeProfileSync(adminService, us.getUserId(), true, null);
         }
-        locator.userService().deleteUserProfile();
+
+        // Safely attempt to delete local profile if it exists
+        try {
+            locator.userService().deleteUserProfile();
+        } catch (Exception ignored) {}
+
         //clear admin logs hard (no public clear api)
         context.getSharedPreferences("admin_log_store", Context.MODE_PRIVATE)
                 .edit().putString("logs_json","[]").apply();
@@ -138,6 +144,36 @@ public class AdminFlowInstrumentedTest {
 
         // Add a second profile for testing (simulating another user)
         profilesRepository.saveOrReplace(new UserSummary("u2", "Another User", "another@example.com"));
+    }
+
+    // Helper functions
+
+    /**
+     * Wraps the async removeProfile call in a synchronous helper for testing.
+     */
+    private boolean removeProfileSync(AdminService admin, String userId, boolean confirmed, String note) {
+        CountDownLatch latch = new CountDownLatch(1);
+        final boolean[] result = {false};
+
+        admin.removeProfile(userId, confirmed, note,
+                success -> {
+                    result[0] = true;
+                    latch.countDown();
+                },
+                failure -> {
+                    result[0] = false;
+                    latch.countDown();
+                }
+        );
+
+        try {
+            // Waits for up to 5 seconds for the database to respond
+            latch.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return result[0];
     }
 
     // Helper method to save event synchronously

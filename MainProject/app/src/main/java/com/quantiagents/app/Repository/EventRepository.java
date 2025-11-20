@@ -123,38 +123,44 @@ public class EventRepository {
      * @see Event
      */
     public void saveEvent(Event event, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
-
-        //if eventId is null or empty, let Firebase auto-generate an ID
+        // If eventId is null or empty, let Firebase auto-generate an ID
         if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
+            // Use .add() to create a new document with auto-generated ID
+            Task<DocumentReference> addTask = context.add(event);
+            addTask.addOnSuccessListener(documentReference -> {
+                // Extract the auto-generated document ID
+                String docId = documentReference.getId();
 
-            // Create a new document reference *first*
-            DocumentReference newEventRef = context.document();
+                // Use the Firestore document ID as the eventId
+                String generatedId = docId;
 
+                // Update the event object with the generated ID
+                event.setEventId(generatedId);
 
-            String generatedId = newEventRef.getId();
-
-
-            event.setEventId(generatedId);
-
-
-            newEventRef.set(event)
-                    .addOnSuccessListener(aVoid -> {
-                        Log.d("Firestore", "Event created with auto-generated ID: " + generatedId);
-                        onSuccess.onSuccess(generatedId);
-                    })
-                    .addOnFailureListener(onFailure);
+                // Update the document with the generated eventId field
+                context.document(docId).update("eventId", generatedId)
+                        .addOnSuccessListener(aVoid -> {
+                            Log.d("Firestore", "Event created with auto-generated ID: " + generatedId + " (docId: " + docId + ")");
+                            onSuccess.onSuccess(generatedId);
+                        })
+                        .addOnFailureListener(e -> {
+                            Log.e("Firestore", "Error updating event with generated ID", e);
+                            // Still call success since document was created, just the ID update failed
+                            onSuccess.onSuccess(generatedId);
+                        });
+            }).addOnFailureListener(onFailure);
         } else {
-
+            // Check if event with this ID already exists
             String eventId = event.getEventId();
             DocumentReference docRef = context.document(event.getEventId());
             docRef.get().addOnSuccessListener(documentSnapshot -> {
                 if (documentSnapshot.exists()) {
-                    //document exists, update it
+                    // Document exists, update it
                     docRef.set(event, SetOptions.merge())
                             .addOnSuccessListener(aVoid -> onSuccess.onSuccess(eventId))
                             .addOnFailureListener(onFailure);
                 } else {
-                    //document doesn't exist, create it
+                    // Document doesn't exist, create it
                     docRef.set(event)
                             .addOnSuccessListener(aVoid -> onSuccess.onSuccess(eventId))
                             .addOnFailureListener(onFailure);
@@ -162,8 +168,6 @@ public class EventRepository {
             }).addOnFailureListener(onFailure);
         }
     }
-
-
 
     /**
      * Updates event in the firebase
@@ -175,10 +179,9 @@ public class EventRepository {
      * Calls a function on failure
      * @see Event
      */
-
     public void updateEvent(@NonNull Event event,
-                           @NonNull OnSuccessListener<Void> onSuccess,
-                           @NonNull OnFailureListener onFailure) {
+                            @NonNull OnSuccessListener<Void> onSuccess,
+                            @NonNull OnFailureListener onFailure) {
         context.document(event.getEventId())
                 .set(event, SetOptions.merge()) // merge only changed fields
                 .addOnSuccessListener(aVoid -> {

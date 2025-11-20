@@ -17,6 +17,9 @@ import com.quantiagents.app.models.UserSummary;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import androidx.annotation.NonNull;
 
 public class AdminService {
 
@@ -83,30 +86,53 @@ public class AdminService {
         return summaries;
     }
 
-    //us 03.02.01b+c: select a profile and confirm deletion; also clears local profile if it matches
-    public boolean removeProfile(String userId, boolean confirmed, @Nullable String note) {
+
+    //us 03.02.01b+c: select a profile and confirm deletion
+    public void removeProfile(String userId, boolean confirmed, @Nullable String note,
+                              OnSuccessListener<Void> onSuccess,
+                              OnFailureListener onFailure) {
         if (!confirmed) {
             throw new IllegalArgumentException("confirmation required");
         }
 
-        // Delete from the real repository
-        boolean removed = userRepository.deleteUserById(userId);
 
-        //if the locally stored profile matches, clear it too
-        User local = userService.getCurrentUser();
-        if (local != null && userId != null && userId.equals(local.getUserId())) {
-            userService.deleteUserProfile();
-        }
-        if (removed) {
-            logRepository.append(new AdminActionLog(
-                    AdminActionLog.KIND_PROFILE,
-                    userId,
-                    System.currentTimeMillis(),
-                    deviceIdManager.ensureDeviceId(),
-                    note
-            ));
-        }
-        return removed;
+        userRepository.deleteUserById(userId, aVoid -> {
+
+            new Thread(() -> {
+                try {
+
+                    User local = userService.getCurrentUser();
+
+                    if (local != null && userId != null && userId.equals(local.getUserId())) {
+                        userService.deleteUserProfile();
+                    }
+
+                    logRepository.append(new AdminActionLog(
+                            AdminActionLog.KIND_PROFILE,
+                            userId,
+                            System.currentTimeMillis(),
+                            deviceIdManager.ensureDeviceId(),
+                            note
+                    ));
+
+
+                    if (onSuccess != null) {
+                        onSuccess.onSuccess(null);
+                    }
+                } catch (Exception e) {
+
+                    if (onFailure != null) {
+                        onFailure.onFailure(e);
+                    }
+                }
+            }).start();
+
+        }, e -> {
+
+            if (onFailure != null) {
+                onFailure.onFailure(e);
+            }
+        });
     }
 
     //us 03.03.01a: list all uploaded images

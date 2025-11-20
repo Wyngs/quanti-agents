@@ -106,21 +106,6 @@ public class UserRepository {
                 });
     }
 
-    public boolean deleteUserById(String userId) {
-        if (userId == null || userId.trim().isEmpty()) {
-            Log.e("Firestore", "Cannot delete user: userId is null or empty");
-            return false;
-        }
-        try {
-            Tasks.await(context.document(userId).delete());
-            Log.d("Firestore", "User deleted: " + userId);
-            return true;
-        } catch (ExecutionException | InterruptedException e) {
-            Log.e("Firestore", "Error deleting user", e);
-            return false;
-        }
-    }
-
     /**
      * Deletes the given user document outright.
      */
