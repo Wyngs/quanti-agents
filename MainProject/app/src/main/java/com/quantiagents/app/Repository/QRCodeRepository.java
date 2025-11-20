@@ -20,6 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Manages locating and saving of QR codes
+ * @see QRCode
+ */
 public class QRCodeRepository {
 
     private final CollectionReference context;
@@ -28,6 +32,14 @@ public class QRCodeRepository {
         this.context = fireBaseRepository.getQrCodeCollectionRef();
     }
 
+    /**
+     * Locates a qr code by it's id
+     * @param qrCodeId
+     * Qr code to locate
+     * @return
+     * Returns qr code
+     * @see QRCode
+     */
     public QRCode getQRCodeById(int qrCodeId) {
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(String.valueOf(qrCodeId)).get());
@@ -43,6 +55,12 @@ public class QRCodeRepository {
         }
     }
 
+    /**
+     * Returns a list of all qr codes
+     * @return
+     * Returns list of qr codes
+     * @see QRCode
+     */
     public List<QRCode> getAllQRCodes() {
         try {
             QuerySnapshot snapshot = Tasks.await(context.get());
@@ -60,6 +78,14 @@ public class QRCodeRepository {
         }
     }
 
+    /**
+     * Returns a list of all qr codes with an event id
+     * @param eventId
+     * Event id to search for
+     * @return
+     * Returns list of qr code
+     * @see QRCode
+     */
     public List<QRCode> getQRCodesByEventId(String eventId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId).get());
@@ -77,6 +103,16 @@ public class QRCodeRepository {
         }
     }
 
+    /**
+     * Saves a qr code to the firebase
+     * @param qrCode
+     * Qr code to be saved
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see QRCode
+     */
     public void saveQRCode(QRCode qrCode, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         // If id is 0 or negative, let Firebase auto-generate an ID
         if (qrCode.getId() <= 0) {
@@ -131,6 +167,16 @@ public class QRCodeRepository {
         }
     }
 
+    /**
+     * Updates a qr code in the firebase
+     * @param qrCode
+     * Qr code to be updated
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see QRCode
+     */
     public void updateQRCode(@NonNull QRCode qrCode,
                              @NonNull OnSuccessListener<Void> onSuccess,
                              @NonNull OnFailureListener onFailure) {
@@ -146,6 +192,16 @@ public class QRCodeRepository {
                 });
     }
 
+    /**
+     * Deletes a qr code via it's id from the firebase
+     * @param qrCodeId
+     * Qr code id to delete
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see QRCode
+     */
     public void deleteQRCodeById(int qrCodeId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         context.document(String.valueOf(qrCodeId))
                 .delete()
@@ -153,6 +209,12 @@ public class QRCodeRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Deletes a qr code via it's id from the firebase
+     * @param qrCodeId
+     * Qr code id to delete
+     * @see QRCode
+     */
     public boolean deleteQRCodeById(int qrCodeId) {
         try {
             Tasks.await(context.document(String.valueOf(qrCodeId)).delete());

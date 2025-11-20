@@ -12,6 +12,10 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class manages the listing and saving of user profiles
+ * @see UserSummary
+ */
 public class ProfilesRepository {
 
     private static final String PREF_NAME = "admin_profiles_store";
@@ -23,6 +27,12 @@ public class ProfilesRepository {
         this.preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
+    /**
+     * Creates and returns a list of all user profiles
+     * @return
+     * Returns list of user summaries
+     * @see UserSummary
+     */
     public synchronized List<UserSummary> listProfiles() {
         String raw = preferences.getString(KEY_PROFILES, "[]");
         List<UserSummary> out = new ArrayList<>();
@@ -42,6 +52,14 @@ public class ProfilesRepository {
         return out;
     }
 
+    /**
+     * Save or replaces a given user summary
+     * @param summary
+     * User summary to save or replace
+     * @return
+     * Returns a boolean for success
+     * @see UserSummary
+     */
     public synchronized boolean saveOrReplace(UserSummary summary) {
         try {
             JSONArray arr = new JSONArray(preferences.getString(KEY_PROFILES, "[]"));
@@ -66,6 +84,13 @@ public class ProfilesRepository {
         }
     }
 
+    /**
+     * Deletes a profile via their user id
+     * @param userId
+     * User id to delete
+     * @return
+     * Returns a boolean for success
+     */
     public synchronized boolean deleteProfile(String userId) {
         try {
             JSONArray arr = new JSONArray(preferences.getString(KEY_PROFILES, "[]"));
@@ -88,6 +113,16 @@ public class ProfilesRepository {
         }
     }
 
+    /**
+     * Converts a user summary to a json format
+     * @param s
+     * User summary to convert
+     * @return
+     * Returns JSON of user summary
+     * @throws JSONException
+     * Error to be throw if failure in conversion
+     * @see UserSummary
+     */
     private JSONObject toJson(UserSummary s) throws JSONException {
         JSONObject o = new JSONObject();
         o.put("userId", s.getUserId());

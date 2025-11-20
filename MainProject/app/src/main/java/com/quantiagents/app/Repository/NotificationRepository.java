@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * Manages locating and saving of notifications
+ * @see Notification
  */
 public class NotificationRepository {
 
@@ -37,6 +38,7 @@ public class NotificationRepository {
      * Notification id to locate
      * @return
      * Returns notification
+     * @see Notification
      */
     public Notification getNotificationById(int notificationId) {
         try {
@@ -57,6 +59,7 @@ public class NotificationRepository {
      * Gets a list of all notifications
      * @return
      * Returns a list of notifications
+     * @see Notification
      */
     public List<Notification> getAllNotifications() {
         try {
@@ -83,6 +86,7 @@ public class NotificationRepository {
      * Calls a function on success
      * @param onFailure
      * Calls a function on failure
+     * @see Notification
      */
     public void saveNotification(Notification notification, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         // If notificationId is 0 or negative, let Firebase auto-generate an ID
@@ -146,6 +150,7 @@ public class NotificationRepository {
      * Calls a function on success
      * @param onFailure
      * Calls a function on failure
+     * @see Notification
      */
     public void updateNotification(@NonNull Notification notification,
                                    @NonNull OnSuccessListener<Void> onSuccess,
@@ -226,6 +231,7 @@ public class NotificationRepository {
      * Recipient id to locate
      * @return
      * Returns list of notifications
+     * @see Notification
      */
     public List<Notification> getUnreadNotificationsByRecipientId(int recipientId) {
         try {
