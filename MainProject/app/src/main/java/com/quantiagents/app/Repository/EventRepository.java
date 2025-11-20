@@ -162,8 +162,8 @@ public class EventRepository {
             }).addOnFailureListener(onFailure);
         }
     }
-<<<<<<< HEAD
-=======
+
+
 
     /**
      * Updates event in the firebase
@@ -175,7 +175,7 @@ public class EventRepository {
      * Calls a function on failure
      * @see Event
      */
->>>>>>> 64eb91ae6be76ab0be0cf20563395b74bc6542d5
+
     public void updateEvent(@NonNull Event event,
                            @NonNull OnSuccessListener<Void> onSuccess,
                            @NonNull OnFailureListener onFailure) {
