@@ -145,8 +145,24 @@ public class UserFlowInstrumentedTest {
             fail("updatePassword failed: " + passError.get().getMessage());
         }
         loginService.logout();
+
+        // Poll until new password works to ensure Firestore collection query has caught up
+        boolean propagated = false;
+        for (int i = 0; i < 20; i++) {
+            if (loginService.login("kim.updated@example.com", "newPass77")) {
+                propagated = true;
+                loginService.logout();
+                break;
+            }
+            SystemClock.sleep(200);
+        }
+        assertTrue("Updates did not propagate", propagated);
+
+        // Now assert old password fails
         assertFalse(loginService.login("kim.updated@example.com", "kimPass1"));
+        // And confirm new password works again
         assertTrue(loginService.login("kim.updated@example.com", "newPass77"));
+
         User refreshed = waitForCurrentUser(userService);
         assertEquals("Kim Updated", refreshed.getName());
         assertEquals("kim.updated@example.com", refreshed.getEmail());

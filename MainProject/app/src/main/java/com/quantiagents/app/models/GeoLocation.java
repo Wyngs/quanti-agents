@@ -4,6 +4,10 @@ import java.util.Date;
 
 /**
  * Representation of a geolocation, with getters and setters for each variable
+ * <p>
+ * Contains:
+ * </p>
+ * double: latitude, double: longitude, Date: timestamp, String: user id, String: event id
  */
 public class GeoLocation {
     private double latitude;

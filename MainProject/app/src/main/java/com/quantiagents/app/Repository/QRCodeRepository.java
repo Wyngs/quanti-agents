@@ -20,6 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Manages locating and saving of QR codes
+ * @see QRCode
+ */
 public class QRCodeRepository {
 
     private final CollectionReference context;
@@ -28,6 +32,14 @@ public class QRCodeRepository {
         this.context = fireBaseRepository.getQrCodeCollectionRef();
     }
 
+    /**
+     * Locates a qr code by it's id
+     * @param qrCodeId
+     * Qr code to locate
+     * @return
+     * Returns qr code
+     * @see QRCode
+     */
     public QRCode getQRCodeById(int qrCodeId) {
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(String.valueOf(qrCodeId)).get());
@@ -43,6 +55,12 @@ public class QRCodeRepository {
         }
     }
 
+    /**
+     * Returns a list of all qr codes
+     * @return
+     * Returns list of qr codes
+     * @see QRCode
+     */
     public List<QRCode> getAllQRCodes() {
         try {
             QuerySnapshot snapshot = Tasks.await(context.get());
@@ -60,6 +78,14 @@ public class QRCodeRepository {
         }
     }
 
+    /**
+     * Returns a list of all qr codes with an event id
+     * @param eventId
+     * Event id to search for
+     * @return
+     * Returns list of qr code
+     * @see QRCode
+     */
     public List<QRCode> getQRCodesByEventId(String eventId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("eventId", eventId).get());
@@ -77,41 +103,39 @@ public class QRCodeRepository {
         }
     }
 
+    /**
+     * Saves a qr code to the firebase
+     * @param qrCode
+     * Qr code to be saved
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see QRCode
+     */
     public void saveQRCode(QRCode qrCode, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        // If id is 0 or negative, let Firebase auto-generate an ID
+        // If id is 0 or negative, generate one and use it as the Document ID
         if (qrCode.getId() <= 0) {
-            // Use .add() to create a new document with auto-generated ID
-            Task<DocumentReference> addTask = context.add(qrCode);
-            addTask.addOnSuccessListener(documentReference -> {
-                // Extract the auto-generated document ID
-                String docId = documentReference.getId();
+            // Generate a random ID locally from a new document reference
+            String autoDocId = context.document().getId();
+            // Hash it to an int to match the model's ID type
+            int generatedId = autoDocId.hashCode() & Integer.MAX_VALUE;
+            if (generatedId == 0) {
+                generatedId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
+                if (generatedId == 0) generatedId = 1;
+            }
 
-                // Generate a unique int ID from the Firestore document ID
-                // Use hash code and ensure it's positive
-                int generatedId = docId.hashCode();
-                if (generatedId < 0) {
-                    generatedId = Math.abs(generatedId);
-                }
-                // If somehow still 0, use a timestamp-based fallback
-                if (generatedId == 0) {
-                    generatedId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
-                }
+            qrCode.setId(generatedId);
 
-                // Update the QRCode object with the generated ID
-                qrCode.setId(generatedId);
-
-                // Update the document with the generated id field
-                context.document(docId).update("id", generatedId)
-                        .addOnSuccessListener(aVoid -> {
-                            Log.d("Firestore", "QR code created with auto-generated " + " (docId: " + docId + ")");
-                            onSuccess.onSuccess(aVoid);
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.e("Firestore", "Error updating QR code with generated ID", e);
-                            // Still call success since document was created, just the ID update failed
-                            onSuccess.onSuccess(null);
-                        });
-            }).addOnFailureListener(onFailure);
+            // Save with the generated INT as the document key so getById(int) works
+            int finalGeneratedId = generatedId;
+            context.document(String.valueOf(generatedId))
+                    .set(qrCode)
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d("Firestore", "QR code saved with ID: " + finalGeneratedId);
+                        onSuccess.onSuccess(aVoid);
+                    })
+                    .addOnFailureListener(onFailure);
         } else {
             // Check if QR code with this ID already exists
             DocumentReference docRef = context.document(String.valueOf(qrCode.getId()));
@@ -131,6 +155,16 @@ public class QRCodeRepository {
         }
     }
 
+    /**
+     * Updates a qr code in the firebase
+     * @param qrCode
+     * Qr code to be updated
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see QRCode
+     */
     public void updateQRCode(@NonNull QRCode qrCode,
                              @NonNull OnSuccessListener<Void> onSuccess,
                              @NonNull OnFailureListener onFailure) {
@@ -146,6 +180,16 @@ public class QRCodeRepository {
                 });
     }
 
+    /**
+     * Deletes a qr code via it's id from the firebase
+     * @param qrCodeId
+     * Qr code id to delete
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see QRCode
+     */
     public void deleteQRCodeById(int qrCodeId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         context.document(String.valueOf(qrCodeId))
                 .delete()
@@ -153,6 +197,12 @@ public class QRCodeRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Deletes a qr code via it's id from the firebase
+     * @param qrCodeId
+     * Qr code id to delete
+     * @see QRCode
+     */
     public boolean deleteQRCodeById(int qrCodeId) {
         try {
             Tasks.await(context.document(String.valueOf(qrCodeId)).delete());

@@ -5,6 +5,11 @@ import java.util.Date;
 
 /**
  * Representation of a user, with getters and setters for each variable
+ * <p>
+ * Contains:
+ * </p>
+ * String: user id, String: device id, String: name, String: email, String: phone, String: password hash, boolean: notifications on, Date: creation, (UserRole): role, RegistrationHistory: history
+ * @see RegistrationHistory
  */
 public class User implements Serializable {
 

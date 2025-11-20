@@ -108,14 +108,16 @@ public class LoginService {
     }
 
     /**
-     * Returns the cached user if we already logged in, falling back to a synchronous lookup.
+     * Returns the cached user if we already logged in.
+     * <p>
+     * Note: Removed fallback to userService.getCurrentUser(). This ensures that
+     * logging out (clearing 'current') results in no active session, even if
+     * a profile remains on disk. SplashActivity handles restoring the session
+     * on app launch.
      */
     @Nullable
     public User getActiveUser() {
-        if (current != null) {
-            return current;
-        }
-        return userService.getCurrentUser();
+        return current;
     }
 
     /**

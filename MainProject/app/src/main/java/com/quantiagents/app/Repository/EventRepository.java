@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * Manages saving and locating events
+ * @see Event
  */
 public class EventRepository {
 
@@ -37,6 +38,7 @@ public class EventRepository {
      * Id to locate
      * @return
      * Returns located event if it exists, otherwise null
+     * @see Event
      */
     public Event getEventById(String eventId) {
         try {
@@ -61,6 +63,7 @@ public class EventRepository {
      * Gets all events
      * @return
      * Returns a list of events
+     * @see Event
      */
     public List<Event> getAllEvents() {
         try {
@@ -82,6 +85,14 @@ public class EventRepository {
         }
     }
 
+    /**
+     * Gets a list of all events
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see Event
+     */
     public void getAllEvents(OnSuccessListener<List<Event>> onSuccess,
                              OnFailureListener onFailure) {
         context.get()
@@ -101,7 +112,16 @@ public class EventRepository {
                 .addOnFailureListener(onFailure);
     }
 
-
+    /**
+     * Saves event to the firebase
+     * @param event
+     * Event to save
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see Event
+     */
     public void saveEvent(Event event, OnSuccessListener<String> onSuccess, OnFailureListener onFailure) {
         // If eventId is null or empty, let Firebase auto-generate an ID
         if (event.getEventId() == null || event.getEventId().trim().isEmpty()) {
@@ -157,6 +177,7 @@ public class EventRepository {
      * Calls a function on success
      * @param onFailure
      * Calls a function on failure
+     * @see Event
      */
     public void updateEvent(@NonNull Event event,
                            @NonNull OnSuccessListener<Void> onSuccess,

@@ -24,14 +24,30 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="12dp"
-                android:gravity="end">
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
+                <!-- Back to Manage Events -->
+                <Button
+                    android:id="@+id/btnBackToManageEvents"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="Back" />
+
+                <!-- Spacer so the redraw button sticks to the right -->
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <!-- Existing Redraw button -->
                 <Button
                     android:id="@+id/btnRedrawCanceled"
                     android:layout_width="wrap_content"
                     android:layout_height="48dp"
                     android:text="Redraw Canceled" />
             </LinearLayout>
+
 
             <!-- Edit Details card -->
             <com.google.android.material.card.MaterialCardView

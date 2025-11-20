@@ -14,6 +14,7 @@ import java.util.List;
 
 /**
  * Manages functions related to admin logs
+ * @see AdminActionLog
  */
 public class AdminLogRepository {
 
@@ -30,6 +31,7 @@ public class AdminLogRepository {
      * Adds log to admin log
      * @param log
      * AdminActionLog to add
+     * @see AdminActionLog
      */
     public synchronized void append(AdminActionLog log) {
         try {
@@ -45,6 +47,7 @@ public class AdminLogRepository {
      * Gets list of all logs in admin log
      * @return
      * Returns list of AdminActionLogs
+     * @see AdminActionLog
      */
     public synchronized List<AdminActionLog> listAll() {
         String raw = preferences.getString(KEY_LOGS, "[]");
@@ -75,6 +78,7 @@ public class AdminLogRepository {
      * Returns a JSONObject
      * @throws JSONException
      * If JSON conversion fails
+     * @see AdminActionLog
      */
     private JSONObject toJson(AdminActionLog log) throws JSONException {
         JSONObject o = new JSONObject();
