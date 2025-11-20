@@ -8,6 +8,9 @@ import com.quantiagents.app.models.User;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Manages all functions that use info from the firebase database
+ */
 public class FireBaseRepository {
     private final FirebaseFirestore db;
     private final CollectionReference UserCollectionRef;

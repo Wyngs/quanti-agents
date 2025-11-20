@@ -23,12 +23,17 @@ import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.LoginService;
-import com.quantiagents.app.models.User;
 import com.quantiagents.app.Services.UserService;
-import com.quantiagents.app.ui.auth.LoginActivity;
+import com.quantiagents.app.models.User;
 import com.quantiagents.app.ui.CreateEventFragment;
+<<<<<<< HEAD
 import com.quantiagents.app.ui.admin.AdminBrowseEventsFragment;
 import com.quantiagents.app.ui.admin.AdminBrowseProfilesFragment;
+=======
+import com.quantiagents.app.ui.auth.LoginActivity;
+import com.quantiagents.app.ui.manageevents.ManageEventsFragment;
+import com.quantiagents.app.ui.myevents.BrowseEventsFragment;
+>>>>>>> 64eb91ae6be76ab0be0cf20563395b74bc6542d5
 import com.quantiagents.app.ui.profile.ProfileFragment;
 import com.quantiagents.app.ui.profile.SettingsFragment;
 
@@ -132,6 +137,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_admin_profiles) {
             showFragment(AdminBrowseProfilesFragment.newInstance());
+            activeItemId = id;
+            navigationView.setCheckedItem(id);
+        } else if (id == R.id.navigation_manage_events) {
+            // Show the Manage Events screen from the nav drawer
+            showFragment(ManageEventsFragment.newInstance());
             activeItemId = id;
             navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_logout) {

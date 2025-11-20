@@ -3,6 +3,13 @@ package com.quantiagents.app.models;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Representation of a lottery result, with getters and setters for each variable
+ * <p>
+ * Contains:
+ * </p>
+ * String: event id, List(String): entrant ids, Date: timestamp
+ */
 public class LotteryResult {
     private String eventId;
     private List<String> entrantIds;

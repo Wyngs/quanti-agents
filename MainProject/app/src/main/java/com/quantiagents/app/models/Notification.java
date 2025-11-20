@@ -4,6 +4,13 @@ import com.quantiagents.app.Constants.constant;
 
 import java.util.Date;
 
+/**
+ * Representation of a notification, with getters and setters for each variable
+ * <p>
+ * Contains:
+ * </p>
+ * int: notification id, (NotificationType): type, int: recipient id, int: sender id, int: affiliated event id, Date: timestamp, boolean: has read
+ */
 public class Notification {
     private int notificationId;
     private constant.NotificationType type;

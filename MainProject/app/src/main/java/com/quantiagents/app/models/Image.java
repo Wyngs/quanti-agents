@@ -2,6 +2,13 @@ package com.quantiagents.app.models;
 
 import java.io.Serializable;
 
+/**
+ * Representation of an image, with getters and setters for each variable
+ * <p>
+ * Contains:
+ * </p>
+ * String: image id, String: event id, String: url, String: uploaded by
+ */
 public class Image implements Serializable {
 
     private String imageId;

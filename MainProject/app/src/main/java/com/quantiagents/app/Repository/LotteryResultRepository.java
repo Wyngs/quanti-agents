@@ -21,6 +21,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Manages functions related to lottery result
+ * @see LotteryResult
+ */
 public class LotteryResultRepository {
 
     private final CollectionReference context;
@@ -43,6 +47,16 @@ public class LotteryResultRepository {
         return timestampStr + "_" + eventId;
     }
 
+    /**
+     * Locates lottery result by timestamp and event id
+     * @param timestamp
+     * Timestamp to locate
+     * @param eventId
+     * Event id to locate
+     * @return
+     * Returns lottery result if exists, null otherwise
+     * @see LotteryResult
+     */
     public LotteryResult getLotteryResultByTimestampAndEventId(Date timestamp, String eventId) {
         try {
             String docId = createDocumentId(timestamp, eventId);
@@ -59,6 +73,14 @@ public class LotteryResultRepository {
         }
     }
 
+    /**
+     * Locates list of lottery results from event id
+     * @param eventId
+     * Event id to locate
+     * @return
+     * Returns list of lottery results
+     * @see LotteryResult
+     */
     public List<LotteryResult> getLotteryResultsByEventId(String eventId) {
         try {
             // Query by eventId field since document ID contains timestamp
@@ -77,6 +99,12 @@ public class LotteryResultRepository {
         }
     }
 
+    /**
+     * Gets all Lottery Results
+     * @return
+     * Returns list of lottery results
+     * @see LotteryResult
+     */
     public List<LotteryResult> getAllLotteryResults() {
         try {
             QuerySnapshot snapshot = Tasks.await(context.get());
@@ -94,6 +122,16 @@ public class LotteryResultRepository {
         }
     }
 
+    /**
+     * Saves a result to the firebase
+     * @param result
+     * Lottery Result to save
+     * @param onSuccess
+     * Calls function on success
+     * @param onFailure
+     * Calls function on failure
+     * @see LotteryResult
+     */
     public void saveLotteryResult(LotteryResult result, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (result == null) {
             onFailure.onFailure(new IllegalArgumentException("Lottery result cannot be null"));
@@ -113,6 +151,16 @@ public class LotteryResultRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Updates a result in the firebase
+     * @param result
+     * Lottery Result to update
+     * @param onSuccess
+     * Calls function on success
+     * @param onFailure
+     * Calls function on failure
+     * @see LotteryResult
+     */
     public void updateLotteryResult(@NonNull LotteryResult result,
                                    @NonNull OnSuccessListener<Void> onSuccess,
                                    @NonNull OnFailureListener onFailure) {
@@ -134,6 +182,17 @@ public class LotteryResultRepository {
                 });
     }
 
+    /**
+     * Deletes a result via timestamp and event id to the firebase
+     * @param timestamp
+     * Timestamp to locate
+     * @param eventId
+     * Event id to locate
+     * @param onSuccess
+     * Calls function on success
+     * @param onFailure
+     * Calls function on failure
+     */
     public void deleteLotteryResultByTimestampAndEventId(Date timestamp, String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         String docId = createDocumentId(timestamp, eventId);
         context.document(docId)
@@ -142,6 +201,15 @@ public class LotteryResultRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Deletes a result via timestamp and event id to the firebase
+     * @param timestamp
+     * Timestamp to locate
+     * @param eventId
+     * Event id to locate
+     * @return
+     * Returns boolean if success
+     */
     public boolean deleteLotteryResultByTimestampAndEventId(Date timestamp, String eventId) {
         try {
             String docId = createDocumentId(timestamp, eventId);

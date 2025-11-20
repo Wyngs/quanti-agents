@@ -6,6 +6,13 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Representation of an event, with getters and setters for each variable
+ * <p>
+ * Contains:
+ * </p>
+ * String: event id, String: title, String: poster image id, String: description, Date: event start date, Date: event end date, Date: registration start date, Date: registration end date, String location, Double: cost, (EventStatus): status, String: organizer id, double: waiting list limit, double: event capacity, boolean: is geolocation on, List(String): waiting list, List(String): selected list, List(String): confirmed list, List(String): cancelled list, boolean: first lottery done
+ */
 public class Event implements Serializable {
 
     private String eventId;

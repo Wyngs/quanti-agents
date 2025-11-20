@@ -18,8 +18,13 @@ import com.quantiagents.app.models.Notification;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Manages locating and saving of notifications
+ * @see Notification
+ */
 public class NotificationRepository {
 
     private final CollectionReference context;
@@ -28,6 +33,14 @@ public class NotificationRepository {
         this.context = fireBaseRepository.getNotificationCollectionRef();
     }
 
+    /**
+     * Find notification by id
+     * @param notificationId
+     * Notification id to locate
+     * @return
+     * Returns notification
+     * @see Notification
+     */
     public Notification getNotificationById(int notificationId) {
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(String.valueOf(notificationId)).get());
@@ -43,6 +56,12 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Gets a list of all notifications
+     * @return
+     * Returns a list of notifications
+     * @see Notification
+     */
     public List<Notification> getAllNotifications() {
         try {
             QuerySnapshot snapshot = Tasks.await(context.get());
@@ -60,41 +79,39 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Saves a notification to the firebase
+     * @param notification
+     * Notification to save
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see Notification
+     */
     public void saveNotification(Notification notification, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        // If notificationId is 0 or negative, let Firebase auto-generate an ID
+        // If notificationId is 0 or negative, generate one and use it as the Document ID
         if (notification.getNotificationId() <= 0) {
-            // Use .add() to create a new document with auto-generated ID
-            Task<DocumentReference> addTask = context.add(notification);
-            addTask.addOnSuccessListener(documentReference -> {
-                // Extract the auto-generated document ID
-                String docId = documentReference.getId();
-                
-                // Generate a unique int ID from the Firestore document ID
-                // Use hash code and ensure it's positive
-                int generatedId = docId.hashCode();
-                if (generatedId < 0) {
-                    generatedId = Math.abs(generatedId);
-                }
-                // If somehow still 0, use a timestamp-based fallback
-                if (generatedId == 0) {
-                    generatedId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
-                }
-                
-                // Update the notification object with the generated ID
-                notification.setNotificationId(generatedId);
-                
-                // Update the document with the generated notificationId field
-                context.document(docId).update("notificationId", generatedId)
-                        .addOnSuccessListener(aVoid -> {
-                            Log.d("Firestore", "Notification created with auto-generated ID " + " (docId: " + docId + ")");
-                            onSuccess.onSuccess(aVoid);
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.e("Firestore", "Error updating notification with generated ID", e);
-                            // Still call success since document was created, just the ID update failed
-                            onSuccess.onSuccess(null);
-                        });
-            }).addOnFailureListener(onFailure);
+            // Generate a random ID locally from a new document reference
+            String autoDocId = context.document().getId();
+            // Hash it to an int to match the model's ID type
+            int generatedId = autoDocId.hashCode() & Integer.MAX_VALUE;
+            if (generatedId == 0) {
+                generatedId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
+                if (generatedId == 0) generatedId = 1; // Ensure positive and non-zero
+            }
+
+            notification.setNotificationId(generatedId);
+
+            // Save with the generated INT as the document key so getById(int) works
+            int finalGeneratedId = generatedId;
+            context.document(String.valueOf(generatedId))
+                    .set(notification)
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d("Firestore", "Notification created with ID: " + finalGeneratedId);
+                        onSuccess.onSuccess(aVoid);
+                    })
+                    .addOnFailureListener(onFailure);
         } else {
             // Check if notification with this ID already exists
             DocumentReference docRef = context.document(String.valueOf(notification.getNotificationId()));
@@ -114,6 +131,16 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Updates a notification in the firebase
+     * @param notification
+     * Notification to update
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     * @see Notification
+     */
     public void updateNotification(@NonNull Notification notification,
                                    @NonNull OnSuccessListener<Void> onSuccess,
                                    @NonNull OnFailureListener onFailure) {
@@ -129,6 +156,15 @@ public class NotificationRepository {
                 });
     }
 
+    /**
+     * Deletes a notification from the firebase
+     * @param notificationId
+     * Notification id to delete
+     * @param onSuccess
+     * Calls a function on success
+     * @param onFailure
+     * Calls a function on failure
+     */
     public void deleteNotificationById(int notificationId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         context.document(String.valueOf(notificationId))
                 .delete()
@@ -136,6 +172,13 @@ public class NotificationRepository {
                 .addOnFailureListener(onFailure);
     }
 
+    /**
+     * Deletes a notification via it's id from the firebase
+     * @param notificationId
+     * Notification id to delete
+     * @return
+     * Returns boolean if success
+     */
     public boolean deleteNotificationById(int notificationId) {
         try {
             Tasks.await(context.document(String.valueOf(notificationId)).delete());
@@ -147,6 +190,13 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Gets a list of notifications from recipient id
+     * @param recipientId
+     * Recipient id to locate
+     * @return
+     * Returns list of notifications
+     */
     public List<Notification> getNotificationsByRecipientId(int recipientId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("recipientId", recipientId).get());
@@ -164,6 +214,14 @@ public class NotificationRepository {
         }
     }
 
+    /**
+     * Gets list of unread notifications from recipient id
+     * @param recipientId
+     * Recipient id to locate
+     * @return
+     * Returns list of notifications
+     * @see Notification
+     */
     public List<Notification> getUnreadNotificationsByRecipientId(int recipientId) {
         try {
             QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("recipientId", recipientId)
