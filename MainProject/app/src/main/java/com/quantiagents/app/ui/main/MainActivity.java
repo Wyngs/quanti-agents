@@ -26,6 +26,7 @@ import com.quantiagents.app.Services.LoginService;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.User;
 import com.quantiagents.app.ui.CreateEventFragment;
+import com.quantiagents.app.ui.admin.AdminBrowseImagesFragment;
 import com.quantiagents.app.ui.admin.AdminBrowseEventsFragment;
 import com.quantiagents.app.ui.admin.AdminBrowseProfilesFragment;
 import com.quantiagents.app.ui.auth.LoginActivity;
@@ -137,6 +138,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_admin_events) {
             showFragment(AdminBrowseEventsFragment.newInstance());
+            activeItemId = id;
+            navigationView.setCheckedItem(id);
+        } else if (id == R.id.navigation_admin_images) {
+            showFragment(AdminBrowseImagesFragment.newInstance());
             activeItemId = id;
             navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_admin_profiles) {

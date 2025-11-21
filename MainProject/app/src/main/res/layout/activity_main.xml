@@ -9,27 +9,36 @@
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/top_app_bar"
+        <!-- Changed here - Wrapped MaterialToolbar in AppBarLayout so the layout knows its height -->
+        <com.google.android.material.appbar.AppBarLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/colorSurface"
-            android:elevation="0dp"
-            android:theme="@style/ThemeOverlay.Material3.Light"
-            android:title="@string/app_name"
-            android:titleTextColor="@color/colorPrimary"
-            app:navigationIcon="@drawable/ic_menu"
-            app:titleCentered="false" />
+            android:background="@android:color/transparent"
+            app:elevation="0dp">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/top_app_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/colorSurface"
+                android:elevation="0dp"
+                android:theme="@style/ThemeOverlay.Material3.Light"
+                android:title="@string/app_name"
+                android:titleTextColor="@color/colorPrimary"
+                app:navigationIcon="@drawable/ic_menu"
+                app:titleCentered="false" />
+
+        </com.google.android.material.appbar.AppBarLayout>
 
         <FrameLayout
             android:id="@+id/content_container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_margin="24dp"
-            android:layout_marginTop="96dp"
             android:background="@drawable/bg_app_surface"
-            android:padding="16dp" />
+            android:padding="16dp"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        <!-- Changed here-  Removed hardcoded marginTop="96dp" and added layout_behavior -->
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
