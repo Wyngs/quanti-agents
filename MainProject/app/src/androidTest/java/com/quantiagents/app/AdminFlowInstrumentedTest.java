@@ -14,14 +14,12 @@ import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.Services.AdminService;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.ImageService;
+import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.Services.UserService;
-import com.quantiagents.app.Repository.ProfilesRepository;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.User;
-import com.quantiagents.app.models.UserSummary;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,6 +28,8 @@ import java.util.List;
 import java.util.UUID; // added
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(AndroidJUnit4.class)
 public class AdminFlowInstrumentedTest {
@@ -47,7 +47,6 @@ public class AdminFlowInstrumentedTest {
 
     @Before
     public void setUp() {
-        //always start from a clean slate
         context = ApplicationProvider.getApplicationContext();
         locator = new ServiceLocator(context);
 
@@ -77,8 +76,36 @@ public class AdminFlowInstrumentedTest {
     }
 
     @Test
-    public void adminStories0301to0303Work() {
+    public void adminDeleteFlows() throws InterruptedException {
         AdminService admin = locator.adminService();
+        EventService eventService = locator.eventService();
+        ImageService imageService = locator.imageService();
+        UserService userService = locator.userService();
+
+        // 1. Seed Data
+        String evtId = "evt_admin_test";
+        String imgId = "img_admin_test";
+        String userId = "user_admin_test";
+
+        CountDownLatch seedLatch = new CountDownLatch(3);
+
+        // Save Event
+        Event evt = new Event();
+        evt.setEventId(evtId);
+        evt.setTitle("Admin Test Event");
+        eventService.saveEvent(evt, s -> seedLatch.countDown(), e -> seedLatch.countDown());
+
+        // Save Image
+        Image img = new Image(imgId, evtId, "http://dummy");
+        imageService.saveImage(img, s -> seedLatch.countDown(), e -> seedLatch.countDown());
+
+        // Save User
+        userService.createUser("Admin Target", "target@test.com", null, "password",
+                u -> {
+                    u.setUserId(userId); // Ensure ID matches if generated differs
+                    seedLatch.countDown();
+                },
+                e -> seedLatch.countDown());
 
         /*
         //us 03.01.01 b–c: delete an event and cascade its images
@@ -88,17 +115,26 @@ public class AdminFlowInstrumentedTest {
         assertEquals(1, events.size());                   //evt2 remains
         assertEquals(1, admin.listAllImages().size());    //img1 removed, img2 remains
 
-        //us 03.02.01 b–c: delete a profile; if it is our local user, local profile is cleared
-        User local = locator.userService().getCurrentUser();
-        assertNotNull(local);
+        // 2. Test Remove Event
+        CountDownLatch eventLatch = new CountDownLatch(1);
+        AtomicBoolean eventDeleted = new AtomicBoolean(false);
 
-        assertTrue(removeProfileSync(admin, local.getUserId(), true, "t"));
+        admin.removeEvent(evtId, true, "test delete",
+                aVoid -> {
+                    eventDeleted.set(true);
+                    eventLatch.countDown();
+                },
+                e -> eventLatch.countDown());
 
-        // Fix: Wait for async deletion to propagate
-        boolean removed = waitForProfileRemoval(locator.userService());
-        assertTrue("Local user profile should be removed", removed);
+        assertTrue(eventLatch.await(5, TimeUnit.SECONDS));
+        assertTrue("Event should be deleted", eventDeleted.get());
+        assertNull("Event should not exist in service", eventService.getEventById(evtId));
 
-        assertEquals(1, admin.listAllProfiles().size());  //u2 remains
+        // 3. Test Remove Profile
+        // We need to find the user first to get the exact ID if it was auto-generated,
+        // but for this test we assume we passed or captured the ID.
+        CountDownLatch userLatch = new CountDownLatch(1);
+        AtomicBoolean userDeleted = new AtomicBoolean(false);
 
         //us 03.03.01 b–c: delete the remaining image
         // UPDATED: Uses helper method now because removeImage is now asynchronous
@@ -225,19 +261,17 @@ public class AdminFlowInstrumentedTest {
         return false;
     }
 
-    // Helper functions
+        assertTrue(userLatch.await(5, TimeUnit.SECONDS));
+        assertTrue("User should be deleted", userDeleted.get());
 
-    /**
-     * Wraps the async removeProfile call in a synchronous helper for testing.
-     */
-    private boolean removeProfileSync(AdminService admin, String userId, boolean confirmed, String note) {
-        CountDownLatch latch = new CountDownLatch(1);
-        final boolean[] result = {false};
+        // 4. Test Remove Image
+        CountDownLatch imgLatch = new CountDownLatch(1);
+        AtomicBoolean imgDeleted = new AtomicBoolean(false);
 
-        admin.removeProfile(userId, confirmed, note,
-                success -> {
-                    result[0] = true;
-                    latch.countDown();
+        admin.removeImage(imgId, true, "test delete img",
+                aVoid -> {
+                    imgDeleted.set(true);
+                    imgLatch.countDown();
                 },
                 failure -> {
                     result[0] = false;

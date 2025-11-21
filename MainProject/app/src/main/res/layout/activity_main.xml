@@ -9,24 +9,74 @@
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-        <!-- Changed here - Wrapped MaterialToolbar in AppBarLayout so the layout knows its height -->
+
         <com.google.android.material.appbar.AppBarLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
-            app:elevation="0dp">
+            android:background="@android:color/white"
+            app:elevation="1dp">
 
-            <com.google.android.material.appbar.MaterialToolbar
+            <androidx.appcompat.widget.Toolbar
                 android:id="@+id/top_app_bar"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@color/colorSurface"
-                android:elevation="0dp"
-                android:theme="@style/ThemeOverlay.Material3.Light"
-                android:title="@string/app_name"
-                android:titleTextColor="@color/colorPrimary"
-                app:navigationIcon="@drawable/ic_menu"
-                app:titleCentered="false" />
+                android:layout_height="?attr/actionBarSize"
+                android:background="@android:color/white"
+                app:contentInsetStart="0dp"
+                app:contentInsetStartWithNavigation="0dp">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingHorizontal="16dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toStartOf="@+id/toolbar_menu_button"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent">
+
+                        <ImageView
+                            android:id="@+id/toolbar_logo"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:contentDescription="@string/app_name"
+                            android:src="@drawable/ic_logo_ticket"
+                            app:tint="@color/colorPrimary" />
+
+                        <TextView
+                            android:id="@+id/toolbar_title"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:text="Lottery App"
+                            android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+                            android:textColor="@color/colorPrimary"
+                            android:textStyle="bold"
+                            android:ellipsize="end"
+                            android:maxLines="1" />
+
+                    </LinearLayout>
+
+                    <ImageButton
+                        android:id="@+id/toolbar_menu_button"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/nav_open"
+                        android:src="@drawable/ic_menu"
+                        android:scaleType="centerInside"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:tint="@color/colorBlack" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+            </androidx.appcompat.widget.Toolbar>
 
         </com.google.android.material.appbar.AppBarLayout>
 
@@ -34,23 +84,21 @@
             android:id="@+id/content_container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_margin="24dp"
-            android:background="@drawable/bg_app_surface"
-            android:padding="16dp"
+            android:layout_margin="16dp"
             app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-        <!-- Changed here-  Removed hardcoded marginTop="96dp" and added layout_behavior -->
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
+    <!-- Navigation Drawer on the Right (End) -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navigation_view"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:fitsSystemWindows="true"
+        android:layout_gravity="end"
         android:background="@android:color/white"
-        app:itemBackground="@drawable/bg_nav_item"
+        android:fitsSystemWindows="true"
         app:headerLayout="@layout/nav_header_main"
+        app:itemBackground="@drawable/bg_nav_item"
         app:itemIconTint="@color/nav_item_selector"
         app:itemTextColor="@color/colorOnSurface"
         app:menu="@menu/menu_main_nav" />

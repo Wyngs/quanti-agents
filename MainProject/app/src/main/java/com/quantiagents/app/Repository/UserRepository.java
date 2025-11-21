@@ -39,6 +39,12 @@ public class UserRepository {
      * Fetches a user document by id. Used sparingly since most flows key off device id.
      */
     public User getUserById(String userId) {
+        // CRITICAL FIX: Check for invalid ID before calling Firestore to prevent IllegalArgumentException crash
+        if (userId == null || userId.trim().isEmpty()) {
+            Log.w("Firestore", "getUserById called with null or empty ID");
+            return null;
+        }
+
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(userId).get());
             if (snapshot.exists()) {
@@ -47,8 +53,14 @@ public class UserRepository {
                 Log.d("Firestore", "No user found for ID: " + userId);
                 return null;
             }
+        } catch (IllegalArgumentException e) {
+            Log.e("Firestore", "Invalid argument for user ID: " + userId, e);
+            return null;
         } catch (ExecutionException | InterruptedException e) {
             Log.e("Firestore", "Error getting user", e);
+            return null;
+        } catch (Exception e) {
+            Log.e("Firestore", "Unexpected error getting user", e);
             return null;
         }
     }

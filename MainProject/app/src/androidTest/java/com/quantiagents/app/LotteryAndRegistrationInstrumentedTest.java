@@ -90,8 +90,6 @@ public class LotteryAndRegistrationInstrumentedTest {
 
     /**
      * Tests that the lottery service correctly picks a subset of entrants.
-     * Note: The LotteryResultService logic in the codebase currently filters for
-     * CONFIRMED users to run the lottery on.
      */
     @Test
     public void runLotterySelectsEntrants() {
@@ -100,12 +98,11 @@ public class LotteryAndRegistrationInstrumentedTest {
         event.setTitle("Lottery Event");
         String eventId = saveEventSync(event);
 
-        // 2. Create multiple confirmed registrations
-        // Using 'CONFIRMED' because LotteryResultService.java implementation specifically
-        // looks for: if (registration.getEventRegistrationStatus() == constant.EventRegistrationStatus.CONFIRMED)
-        createRegistration(eventId, "user_1", constant.EventRegistrationStatus.CONFIRMED);
-        createRegistration(eventId, "user_2", constant.EventRegistrationStatus.CONFIRMED);
-        createRegistration(eventId, "user_3", constant.EventRegistrationStatus.CONFIRMED);
+        // 2. Create multiple waiting registrations
+        // Updated: Must be WAITLIST for the lottery logic to pick them up.
+        createRegistration(eventId, "user_1", constant.EventRegistrationStatus.WAITLIST);
+        createRegistration(eventId, "user_2", constant.EventRegistrationStatus.WAITLIST);
+        createRegistration(eventId, "user_3", constant.EventRegistrationStatus.WAITLIST);
 
         // 3. Run lottery to pick 2 winners
         CountDownLatch latch = new CountDownLatch(1);
