@@ -143,7 +143,4 @@
 
 
     <string name="manage_events_empty_default">No organized events yet.</string>
-
-    <string name="admin_image_id_fmt">ID: %1$s</string>
-    <string name="nav_item_admin_images">Manage images</string>
 </resources>
