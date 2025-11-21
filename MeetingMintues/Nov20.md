@@ -1,27 +1,3 @@
-November 20 meeting notes
-
-TA notes:
-
-Correct numbers in UMLS
-Asked if javadocs were present.
-
-For bug testing, event creator is able to join own event. 
-Event creator shouldnt be able to join own event, HAVE TO CORRECT
-
-Client will tell some stuff, have to infer using judgement
-
-Registration history had the waitlist entires, not the waiting list. HAVE TO CORRCET
-Have to add user id to the waiting list
-
-
-Need to have UMS and views up to actually show functionality, backend is not sufficient
-
-Clarified that geolocation was for part 4
-
-
-DRAWING LOTTERY IS ESSENTIZL
-And lots of dfucntionality dpepedns on that
-
 # CMPUT 301 – Team Meeting Notes  
 **Date:** November 20th, 2025  
 **Location:** ETLC E1-003  
