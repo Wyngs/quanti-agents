@@ -1,102 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:card_view="http://schemas.android.com/apk/res-auto"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="8dp"
-    android:layout_marginBottom="8dp"
-    card_view:cardUseCompatPadding="true"
-    card_view:cardCornerRadius="12dp"
-    card_view:cardElevation="4dp">
+    android:layout_marginVertical="8dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeColor="#E0E0E0"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="20dp">
 
-        <!-- Poster placeholder -->
-        <View
-            android:id="@+id/single_poster"
-            android:layout_width="match_parent"
-            android:layout_height="160dp"
-            android:background="#EEEEEE"
-            android:visibility="gone" />
-
-        <!-- Title + status -->
+        <!-- Header: Title and Status -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="4dp"
-            android:gravity="center_vertical">
+            android:gravity="start|center_vertical"
+            android:layout_marginBottom="12dp">
 
             <TextView
                 android:id="@+id/single_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Event title"
+                android:layout_marginEnd="8dp"
+                android:text="Event Title"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
                 android:textStyle="bold"
-                android:textSize="16sp"
-                android:maxLines="1"
+                android:textColor="@color/colorOnSurface"
+                android:maxLines="2"
                 android:ellipsize="end"/>
 
             <TextView
                 android:id="@+id/single_status_chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Waiting"
-                android:paddingLeft="8dp"
-                android:paddingRight="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:background="@android:color/darker_gray"
-                android:textColor="@android:color/white"
-                android:textSize="12sp"/>
-        </LinearLayout>
-
-        <!-- Date ranges -->
-        <TextView
-            android:id="@+id/single_date_range"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Event: 2025-01-01 to 2025-01-02"
-            android:textSize="13sp"
-            android:layout_marginTop="6dp"/>
-
-        <TextView
-            android:id="@+id/single_reg_window"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Registration: 2024-12-01 to 2024-12-31"
-            android:textSize="13sp"
-            android:layout_marginTop="2dp"/>
-
-        <!-- Price + Capacity -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="4dp">
-
-            <TextView
-                android:id="@+id/single_price"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="$0"
-                android:textSize="13sp"/>
-
-            <TextView
-                android:id="@+id/single_capacity"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Capacity: 0"
-                android:gravity="end"
-                android:textSize="13sp"/>
+                android:text="Status"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#212121"
+                android:background="@drawable/bg_status_pill"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"/>
         </LinearLayout>
 
         <!-- Description -->
@@ -104,43 +55,153 @@
             android:id="@+id/single_description"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="No description."
-            android:layout_marginTop="6dp"
-            android:textSize="13sp"/>
+            android:text="Event description..."
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+            android:textColor="#757575"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:layout_marginBottom="20dp"/>
 
-        <!-- Actions -->
+        <!-- Details Grid -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="20dp">
+
+            <!-- Row 1: Date & Reg Status -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:baselineAligned="false"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/single_text_date"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="2025-01-01"
+                    android:drawablePadding="8dp"
+                    android:textSize="14sp"
+                    android:gravity="center_vertical"
+                    app:drawableStartCompat="@drawable/ic_calendar_today"
+                    app:drawableTint="#424242"
+                    android:textColor="#424242"/>
+
+                <TextView
+                    android:id="@+id/single_text_reg_status"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Reg Closed"
+                    android:drawablePadding="8dp"
+                    android:textSize="14sp"
+                    android:gravity="center_vertical"
+                    app:drawableStartCompat="@drawable/ic_schedule"
+                    app:drawableTint="#424242"
+                    android:textColor="#424242"/>
+            </LinearLayout>
+
+            <!-- Row 2: Price & Capacity -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:baselineAligned="false"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/single_text_price"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="$0.00"
+                    android:drawablePadding="8dp"
+                    android:textSize="14sp"
+                    android:gravity="center_vertical"
+                    app:drawableStartCompat="@drawable/ic_attach_money"
+                    app:drawableTint="#424242"
+                    android:textColor="#424242"/>
+
+                <TextView
+                    android:id="@+id/single_text_capacity"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="0/0 capacity"
+                    android:drawablePadding="8dp"
+                    android:textSize="14sp"
+                    android:gravity="center_vertical"
+                    app:drawableStartCompat="@drawable/ic_group"
+                    app:drawableTint="#424242"
+                    android:textColor="#424242"/>
+            </LinearLayout>
+
+            <!-- Row 3: Organizer -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/single_text_organizer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Organized by ..."
+                    android:drawablePadding="8dp"
+                    android:textSize="14sp"
+                    android:gravity="center_vertical"
+                    app:drawableStartCompat="@drawable/ic_place"
+                    app:drawableTint="#424242"
+                    android:textColor="#424242"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Action Buttons -->
         <LinearLayout
             android:id="@+id/single_actions_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="end"
-            android:layout_marginTop="10dp">
+            android:orientation="vertical">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/single_action_neutral"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Details"
-                android:visibility="gone"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/single_action_secondary"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Secondary"
-                android:layout_marginEnd="8dp"
-                android:visibility="gone"/>
-
+            <!-- Primary Action (Join/Leave/Accept/Cancel) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/single_action_primary"
-                style="@style/Widget.MaterialComponents.Button"
-                android:layout_width="wrap_content"
+                style="@style/Widget.QuantiAgents.Button"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Primary"
-                android:visibility="gone"/>
+                android:text="Action"
+                android:visibility="gone"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"/>
+
+            <!-- Secondary Action (Decline) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/single_action_secondary"
+                style="@style/Widget.QuantiAgents.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Secondary"
+                android:layout_marginTop="8dp"
+                android:visibility="gone"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"/>
+
+            <!-- View Event Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/single_action_view"
+                style="@style/Widget.QuantiAgents.Button.Tonal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="View Event"
+                android:layout_marginTop="8dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                app:backgroundTint="#212121"
+                android:textColor="#FFFFFF"/>
+
         </LinearLayout>
 
         <ProgressBar
@@ -148,8 +209,8 @@
             style="?android:attr/progressBarStyleSmall"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginTop="8dp"
+            android:layout_gravity="center"
             android:visibility="gone"/>
+
     </LinearLayout>
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>

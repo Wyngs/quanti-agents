@@ -6,66 +6,35 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.DiffUtil;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
-import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
-import com.quantiagents.app.Services.EventService;
-import com.quantiagents.app.Services.RegistrationHistoryService;
-import com.quantiagents.app.Services.UserService;
-import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.RegistrationHistory;
-import com.quantiagents.app.models.User;
+import com.quantiagents.app.ui.ViewEventDetailsFragment;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import androidx.fragment.app.FragmentTransaction;
+public class MyEventFragment extends Fragment implements MyEventsAdapter.OnEventActionListener {
 
-/**
- * MyEventFragment
- *
- * Shows four buckets for the user's registrations. No swipe refresh.
- * Data reloads whenever the selected tab changes. Also loads on first render.
- */
-public class MyEventFragment extends Fragment {
-
-    // UI
+    private MyEventsViewModel viewModel;
+    // Updated to match the XML component
     private MaterialButtonToggleGroup tabs;
-    private MaterialButton tabWaiting;
-    private MaterialButton tabSelected;
-    private MaterialButton tabConfirmed;
-    private MaterialButton tabPast;
     private RecyclerView recycler;
     private ProgressBar progress;
     private TextView empty;
+    private MyEventsAdapter adapter;
 
-    // Services
-    private UserService userService;
-    private RegistrationHistoryService regService;
-    private EventService eventService;
-
-    // Buckets
-    private final List<Item> waitingItems = new ArrayList<>();
-    private final List<Item> selectedItems = new ArrayList<>();
-    private final List<Item> confirmedItems = new ArrayList<>();
-    private final List<Item> pastItems = new ArrayList<>();
-
-    // Adapter
-    private HostAdapter adapter;
-
-    // Tracks which tab is currently selected
     private enum Tab { WAITING, SELECTED, CONFIRMED, PAST }
     private Tab currentTab = Tab.WAITING;
 
@@ -75,40 +44,27 @@ public class MyEventFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(
-            @NonNull LayoutInflater inflater,
-            @Nullable ViewGroup container,
-            @Nullable Bundle savedInstanceState
-    ) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_my_events, container, false);
     }
 
     @Override
-    public void onViewCreated(
-            @NonNull View view,
-            @Nullable Bundle savedInstanceState
-    ) {
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        App app = (App) requireActivity().getApplication();
-        userService = app.locator().userService();
-        regService = app.locator().registrationHistoryService();
-        eventService = app.locator().eventService();
+        viewModel = new ViewModelProvider(this).get(MyEventsViewModel.class);
 
         bindViews(view);
         setupRecycler();
         setupTabs();
+        observeViewModel();
 
-        // First load
-        reloadDataForCurrentTab(true);
+        viewModel.loadData();
     }
 
     private void bindViews(@NonNull View root) {
+        // Binds to the MaterialButtonToggleGroup in XML
         tabs = root.findViewById(R.id.my_events_tabs);
-        tabWaiting = root.findViewById(R.id.tab_waiting);
-        tabSelected = root.findViewById(R.id.tab_selected);
-        tabConfirmed = root.findViewById(R.id.tab_confirmed);
-        tabPast = root.findViewById(R.id.tab_past);
         recycler = root.findViewById(R.id.my_events_recycler);
         progress = root.findViewById(R.id.my_events_progress);
         empty = root.findViewById(R.id.my_events_empty);
@@ -116,222 +72,187 @@ public class MyEventFragment extends Fragment {
 
     private void setupRecycler() {
         recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
-        adapter = new HostAdapter(getChildFragmentManager());
+        adapter = new MyEventsAdapter(this);
         recycler.setAdapter(adapter);
     }
 
     private void setupTabs() {
+        // Listener for ToggleGroup changes
         tabs.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) return;
-
-            if (checkedId == R.id.tab_waiting) currentTab = Tab.WAITING;
-            else if (checkedId == R.id.tab_selected) currentTab = Tab.SELECTED;
-            else if (checkedId == R.id.tab_confirmed) currentTab = Tab.CONFIRMED;
-            else if (checkedId == R.id.tab_past) currentTab = Tab.PAST;
-
-            // Each tab switch triggers a fresh load from services
-            reloadDataForCurrentTab(false);
+            if (isChecked) {
+                if (checkedId == R.id.tab_waiting) {
+                    updateCurrentTab(0);
+                } else if (checkedId == R.id.tab_selected) {
+                    updateCurrentTab(1);
+                } else if (checkedId == R.id.tab_confirmed) {
+                    updateCurrentTab(2);
+                } else if (checkedId == R.id.tab_past) {
+                    updateCurrentTab(3);
+                }
+                updateUiFromViewModel();
+            }
         });
 
-        // default selection
-        tabWaiting.setChecked(true);
-        currentTab = Tab.WAITING;
+        // Ensure initial state matches the checked button in XML
+        int checkedId = tabs.getCheckedButtonId();
+        if (checkedId == R.id.tab_waiting) updateCurrentTab(0);
+        else if (checkedId == R.id.tab_selected) updateCurrentTab(1);
+        else if (checkedId == R.id.tab_confirmed) updateCurrentTab(2);
+        else if (checkedId == R.id.tab_past) updateCurrentTab(3);
+        else {
+            // Fallback if nothing checked
+            tabs.check(R.id.tab_waiting);
+        }
     }
 
-    /**
-     * Reloads all buckets from services then swaps the list for the active tab.
-     * @param showSpinner true to show the full screen spinner during first load
-     */
-    private void reloadDataForCurrentTab(boolean showSpinner) {
-        if (showSpinner) {
-            progress.setVisibility(View.VISIBLE);
-            recycler.setVisibility(View.GONE);
-            empty.setVisibility(View.GONE);
+    private void updateCurrentTab(int index) {
+        switch (index) {
+            case 0: currentTab = Tab.WAITING; break;
+            case 1: currentTab = Tab.SELECTED; break;
+            case 2: currentTab = Tab.CONFIRMED; break;
+            case 3: currentTab = Tab.PAST; break;
+            default: currentTab = Tab.WAITING; break;
+        }
+    }
+
+    private void observeViewModel() {
+        viewModel.getIsLoading().observe(getViewLifecycleOwner(), loading -> {
+            progress.setVisibility(loading ? View.VISIBLE : View.GONE);
+            if (loading && adapter.getItemCount() == 0) {
+                empty.setVisibility(View.GONE);
+                recycler.setVisibility(View.GONE);
+            }
+        });
+
+        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null) {
+                Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+                if (adapter.getItemCount() == 0) {
+                    empty.setText(msg);
+                    empty.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
+        // Update dynamic counts on the buttons
+        viewModel.getWaitingList().observe(getViewLifecycleOwner(), list -> {
+            updateTabTitle(0, "Waiting", list != null ? list.size() : 0);
+            if (currentTab == Tab.WAITING) updateUiList(list);
+        });
+
+        viewModel.getSelectedList().observe(getViewLifecycleOwner(), list -> {
+            updateTabTitle(1, "Selected", list != null ? list.size() : 0);
+            if (currentTab == Tab.SELECTED) updateUiList(list);
+        });
+
+        viewModel.getConfirmedList().observe(getViewLifecycleOwner(), list -> {
+            updateTabTitle(2, "Confirm", list != null ? list.size() : 0);
+            if (currentTab == Tab.CONFIRMED) updateUiList(list);
+        });
+
+        viewModel.getPastList().observe(getViewLifecycleOwner(), list -> {
+            updateTabTitle(3, "Past", list != null ? list.size() : 0);
+            if (currentTab == Tab.PAST) updateUiList(list);
+        });
+    }
+
+    private void updateTabTitle(int index, String baseTitle, int count) {
+        int viewId = -1;
+        switch(index) {
+            case 0: viewId = R.id.tab_waiting; break;
+            case 1: viewId = R.id.tab_selected; break;
+            case 2: viewId = R.id.tab_confirmed; break;
+            case 3: viewId = R.id.tab_past; break;
         }
 
-        userService.getCurrentUser(
-                (User user) -> {
-                    if (user == null) {
-                        requireActivity().runOnUiThread(() -> {
-                            progress.setVisibility(View.GONE);
-                            adapter.submitList(new ArrayList<>());
-                            recycler.setVisibility(View.GONE);
-                            empty.setText("No user found. Please log in again.");
-                            empty.setVisibility(View.VISIBLE);
-                        });
-                        return;
-                    }
-
-                    // ---------- Do everything synchronously (no background thread) ----------
-                    List<RegistrationHistory> regs =
-                            regService.getRegistrationHistoriesByUserId(user.getUserId());
-
-                    Map<String, Event> cache = new HashMap<>();
-                    List<Item> waiting = new ArrayList<>();
-                    List<Item> selected = new ArrayList<>();
-                    List<Item> confirmed = new ArrayList<>();
-                    List<Item> past = new ArrayList<>();
-
-                    for (RegistrationHistory rh : regs) {
-                        if (rh == null || rh.getEventId() == null) continue;
-
-                        Event ev = cache.get(rh.getEventId());
-                        if (ev == null) {
-                            ev = eventService.getEventById(rh.getEventId());
-                            if (ev != null) cache.put(ev.getEventId(), ev);
-                        }
-                        if (ev == null) continue;
-
-                        Item item = new Item(rh, ev);
-                        constant.EventRegistrationStatus s = rh.getEventRegistrationStatus();
-                        if (s == constant.EventRegistrationStatus.WAITLIST) waiting.add(item);
-                        else if (s == constant.EventRegistrationStatus.SELECTED) selected.add(item);
-                        else if (s == constant.EventRegistrationStatus.CONFIRMED) confirmed.add(item);
-                        else if (s == constant.EventRegistrationStatus.CANCELLED) past.add(item);
-
-                        if (ev.getStatus() == constant.EventStatus.CLOSED) {
-                            // ensure it appears in Past as well (even if already added)
-                            past.add(item);
-                        }
-                    }
-
-                    requireActivity().runOnUiThread(() -> {
-                        // Replace buckets
-                        waitingItems.clear(); waitingItems.addAll(waiting);
-                        selectedItems.clear(); selectedItems.addAll(selected);
-                        confirmedItems.clear(); confirmedItems.addAll(confirmed);
-                        pastItems.clear(); pastItems.addAll(past);
-
-                        // Update tab texts with counts
-                        tabWaiting.setText(getString(R.string.tab_waiting_fmt, waitingItems.size()));
-                        tabSelected.setText(getString(R.string.tab_selected_fmt, selectedItems.size()));
-                        tabConfirmed.setText(getString(R.string.tab_confirmed_fmt, confirmedItems.size()));
-                        tabPast.setText(getString(R.string.tab_past_fmt, pastItems.size()));
-
-                        // Show the active tab's list
-                        if (currentTab == Tab.WAITING) swapList(waitingItems);
-                        else if (currentTab == Tab.SELECTED) swapList(selectedItems);
-                        else if (currentTab == Tab.CONFIRMED) swapList(confirmedItems);
-                        else swapList(pastItems);
-
-                        progress.setVisibility(View.GONE);
-                    });
-                },
-                e -> {
-                    requireActivity().runOnUiThread(() -> {
-                        progress.setVisibility(View.GONE);
-                        adapter.submitList(new ArrayList<>());
-                        recycler.setVisibility(View.GONE);
-                        empty.setText("Failed to load user.");
-                        empty.setVisibility(View.VISIBLE);
-                    });
+        if (viewId != -1 && tabs != null) {
+            View view = tabs.findViewById(viewId);
+            if (view instanceof MaterialButton) {
+                MaterialButton btn = (MaterialButton) view;
+                if (count > 0) {
+                    btn.setText(baseTitle + " (" + count + ")");
+                } else {
+                    btn.setText(baseTitle);
                 }
+            }
+        }
+    }
+
+    private void updateUiFromViewModel() {
+        switch (currentTab) {
+            case WAITING:
+                updateUiList(viewModel.getWaitingList().getValue());
+                break;
+            case SELECTED:
+                updateUiList(viewModel.getSelectedList().getValue());
+                break;
+            case CONFIRMED:
+                updateUiList(viewModel.getConfirmedList().getValue());
+                break;
+            case PAST:
+                updateUiList(viewModel.getPastList().getValue());
+                break;
+        }
+    }
+
+    private void updateUiList(List<MyEventsAdapter.MyEventItem> list) {
+        if (list == null) list = new ArrayList<>();
+        adapter.setItems(list);
+
+        if (list.isEmpty()) {
+            recycler.setVisibility(View.GONE);
+            empty.setText(R.string.my_events_empty_generic);
+            empty.setVisibility(View.VISIBLE);
+        } else {
+            recycler.setVisibility(View.VISIBLE);
+            empty.setVisibility(View.GONE);
+        }
+    }
+
+    public void refreshData() {
+        if (viewModel != null) {
+            viewModel.loadData();
+        }
+    }
+
+    @Override
+    public void onViewEvent(String eventId) {
+        try {
+            Fragment details = ViewEventDetailsFragment.newInstance(eventId);
+            requireActivity().getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.content_container, details)
+                    .addToBackStack(null)
+                    .commit();
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Unable to open event details", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onLeaveWaitlist(String eventId) {
+        viewModel.leaveWaitlist(eventId, () ->
+                Toast.makeText(getContext(), "Left waitlist", Toast.LENGTH_SHORT).show()
         );
     }
 
-
-    private void swapList(List<Item> next) {
-        adapter.submitList(next);
-        boolean isEmpty = next == null || next.isEmpty();
-        recycler.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
-        empty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
-        if (isEmpty) empty.setText(R.string.my_events_empty_generic);
+    @Override
+    public void onAccept(RegistrationHistory history) {
+        viewModel.updateStatus(history, constant.EventRegistrationStatus.CONFIRMED, () ->
+                Toast.makeText(getContext(), "Accepted!", Toast.LENGTH_SHORT).show()
+        );
     }
 
-    /** Tuple of registration and event. */
-    private static class Item {
-        final RegistrationHistory reg;
-        final Event event;
-        Item(RegistrationHistory reg, Event event) { this.reg = reg; this.event = event; }
-        String key() { return event.getEventId() + "_" + reg.getUserId(); }
+    @Override
+    public void onDecline(RegistrationHistory history) {
+        viewModel.updateStatus(history, constant.EventRegistrationStatus.CANCELLED, () ->
+                Toast.makeText(getContext(), "Declined/Cancelled", Toast.LENGTH_SHORT).show()
+        );
     }
 
-    /** Hosts SingleEventFragment inside each row. */
-    private static class HostAdapter extends RecyclerView.Adapter<HostVH> {
-        private final androidx.fragment.app.FragmentManager fm;
-        private final List<Item> items = new ArrayList<>();
-
-        HostAdapter(androidx.fragment.app.FragmentManager fm) {
-            this.fm = fm;
-            setHasStableIds(true);
-        }
-
-        @Override public long getItemId(int position) { return items.get(position).key().hashCode(); }
-
-        void submitList(List<Item> next) {
-            List<Item> old = new ArrayList<>(items);
-            items.clear();
-            if (next != null) items.addAll(next);
-
-            DiffUtil.calculateDiff(new DiffUtil.Callback() {
-                @Override public int getOldListSize() { return old.size(); }
-                @Override public int getNewListSize() { return items.size(); }
-                @Override public boolean areItemsTheSame(int o, int n) {
-                    return old.get(o).key().equals(items.get(n).key());
-                }
-                @Override public boolean areContentsTheSame(int o, int n) {
-                    return old.get(o).key().equals(items.get(n).key());
-                }
-            }).dispatchUpdatesTo(this);
-        }
-
-        @NonNull
-        @Override
-        public HostVH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View root = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_my_event_fragment_host, parent, false);
-            return new HostVH(root);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull HostVH holder, int position) {
-            Item item = items.get(position);
-            String tag = "single_event_" + item.key();
-
-            // If a fragment with this tag already exists, don't recreate it
-            Fragment existing = fm.findFragmentByTag(tag);
-            if (existing != null) return;
-
-            Bundle args = new Bundle();
-            args.putString("eventId", item.event.getEventId());
-            args.putString("registrationStatus", item.reg.getEventRegistrationStatus().name());
-
-            Fragment child = com.quantiagents.app.ui.myevents.SingleEventFragment.newInstance();
-            child.setArguments(args);
-
-            // CRITICAL: wait until the row's container is attached
-            View container = holder.containerView();
-            container.post(() -> {
-                // double-check the view is still attached
-                if (!container.isAttachedToWindow()) return;
-
-                FragmentTransaction tx = fm.beginTransaction()
-                        .replace(holder.containerId(), child, tag)
-                        .setReorderingAllowed(true);
-
-                tx.commitNowAllowingStateLoss();
-            });
-        }
-
-        @Override public int getItemCount() { return items.size(); }
-    }
-
-    private static class HostVH extends RecyclerView.ViewHolder {
-        private final View container;
-        HostVH(@NonNull View itemView) {
-            super(itemView);
-            container = itemView.findViewById(R.id.single_event_host);
-            // ensure a unique id per holder
-            container.setId(View.generateViewId());
-        }
-        int containerId() { return container.getId(); }
-        View containerView() { return container; }
-    }
-
-
-
-    private void runUi(@NonNull Runnable r) {
-        if (!isAdded()) return;
-        requireActivity().runOnUiThread(r);
+    @Override
+    public void onResume() {
+        super.onResume();
+        viewModel.loadData();
     }
 }

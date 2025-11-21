@@ -12,11 +12,11 @@ import com.quantiagents.app.App;
 import com.quantiagents.app.Services.AdminService;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
+import com.quantiagents.app.models.User;
 import com.quantiagents.app.models.UserSummary;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class AdminEventsViewModel extends AndroidViewModel {
 
@@ -56,34 +56,29 @@ public class AdminEventsViewModel extends AndroidViewModel {
 
     //EVENTS
     public void loadEvents() {
-        new Thread(() -> {
-            try {
-                List<Event> eventList = adminService.listAllEvents();
-                masterEventList = new ArrayList<>(eventList);
-                events.postValue(eventList);
-            } catch (Exception e) {
-                Log.e("AdminVM", "Error loading events", e);
-                toastMessage.postValue("Error loading events: " + e.getMessage());
-            }
-        }).start();
+        adminService.getAllEvents(
+                eventList -> {
+                    masterEventList = new ArrayList<>(eventList);
+                    events.postValue(eventList);
+                },
+                e -> {
+                    Log.e("AdminVM", "Error loading events", e);
+                    toastMessage.postValue("Error loading events: " + e.getMessage());
+                }
+        );
     }
 
     public void deleteEvent(Event event) {
-        new Thread(() -> {
-            try {
-                boolean success = adminService.removeEvent(event.getEventId(), true, "Admin deletion");
-
-                if (success) {
+        adminService.removeEvent(event.getEventId(), true, "Admin deletion",
+                aVoid -> {
                     toastMessage.postValue("Event deleted");
                     loadEvents();
-                } else {
-                    toastMessage.postValue("Error: Failed to delete event. Check logs.");
+                },
+                e -> {
+                    Log.e("AdminVM", "Error deleting event", e);
+                    toastMessage.postValue("Error: " + e.getMessage());
                 }
-            } catch (Exception e) {
-                Log.e("AdminVM", "Error deleting event", e);
-                toastMessage.postValue("Error: " + e.getMessage());
-            }
-        }).start();
+        );
     }
 
     public void searchEvents(String query) {
@@ -92,37 +87,43 @@ public class AdminEventsViewModel extends AndroidViewModel {
             return;
         }
         String q = query.toLowerCase();
-        List<Event> filtered = masterEventList.stream()
-                .filter(e -> (e.getTitle() != null && e.getTitle().toLowerCase().contains(q)) ||
-                        (e.getEventId() != null && e.getEventId().toLowerCase().contains(q)))
-                .collect(Collectors.toList());
+        List<Event> filtered = new ArrayList<>();
+        for (Event e : masterEventList) {
+            if ((e.getTitle() != null && e.getTitle().toLowerCase().contains(q)) ||
+                    (e.getEventId() != null && e.getEventId().toLowerCase().contains(q))) {
+                filtered.add(e);
+            }
+        }
         events.setValue(filtered);
     }
 
     //PROFILES
     public void loadProfiles() {
-        new Thread(() -> {
-            try {
-                List<UserSummary> profileList = adminService.listAllProfiles();
-                masterProfileList = new ArrayList<>(profileList);
-                profiles.postValue(profileList);
-            } catch (Exception e) {
-                Log.e("AdminVM", "Error loading profiles", e);
-                toastMessage.postValue("Error loading profiles: " + e.getMessage());
-            }
-        }).start();
+        adminService.listAllProfiles(
+                users -> {
+                    List<UserSummary> summaries = new ArrayList<>();
+                    if (users != null) {
+                        for (User u : users) {
+                            summaries.add(new UserSummary(u.getUserId(), u.getName(), u.getEmail()));
+                        }
+                    }
+                    masterProfileList = new ArrayList<>(summaries);
+                    profiles.postValue(summaries);
+                },
+                e -> {
+                    Log.e("AdminVM", "Error loading profiles", e);
+                    toastMessage.postValue("Error loading profiles: " + e.getMessage());
+                }
+        );
     }
 
     public void deleteProfile(UserSummary profile) {
         adminService.removeProfile(profile.getUserId(), true, "Admin deletion",
                 success -> {
-
                     toastMessage.postValue("Profile deleted");
-
                     loadProfiles();
                 },
                 failure -> {
-
                     Log.e("AdminVM", "Error deleting profile", failure);
                     toastMessage.postValue("Error: " + failure.getMessage());
                 }
@@ -135,10 +136,13 @@ public class AdminEventsViewModel extends AndroidViewModel {
             return;
         }
         String q = query.toLowerCase();
-        List<UserSummary> filtered = masterProfileList.stream()
-                .filter(u -> (u.getName() != null && u.getName().toLowerCase().contains(q)) ||
-                        (u.getEmail() != null && u.getEmail().toLowerCase().contains(q)))
-                .collect(Collectors.toList());
+        List<UserSummary> filtered = new ArrayList<>();
+        for (UserSummary u : masterProfileList) {
+            if ((u.getName() != null && u.getName().toLowerCase().contains(q)) ||
+                    (u.getEmail() != null && u.getEmail().toLowerCase().contains(q))) {
+                filtered.add(u);
+            }
+        }
         profiles.setValue(filtered);
     }
 
@@ -168,15 +172,19 @@ public class AdminEventsViewModel extends AndroidViewModel {
                 }
         );
     }
+
     public void searchImages(String query) {
         if (query == null || query.trim().isEmpty()) {
             images.setValue(new ArrayList<>(masterImageList));
             return;
         }
         String q = query.toLowerCase();
-        List<Image> filtered = masterImageList.stream()
-                .filter(i -> (i.getImageId() != null && i.getImageId().toLowerCase().contains(q)))
-                .collect(Collectors.toList());
+        List<Image> filtered = new ArrayList<>();
+        for (Image i : masterImageList) {
+            if (i.getImageId() != null && i.getImageId().toLowerCase().contains(q)) {
+                filtered.add(i);
+            }
+        }
         images.setValue(filtered);
     }
 }

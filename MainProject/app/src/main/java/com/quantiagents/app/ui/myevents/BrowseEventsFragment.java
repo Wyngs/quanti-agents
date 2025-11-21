@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,23 +19,32 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.quantiagents.app.App;
+import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.RegistrationHistoryService;
+import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
-import com.quantiagents.app.Constants.constant;
-import com.quantiagents.app.ui.ViewEventDetailsFragment;
+import com.quantiagents.app.models.RegistrationHistory;
+import com.quantiagents.app.models.User;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-/**
- * Browse all events (not user-scoped). Uses SingleEventFragment to view details.
- */
 public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapter.OnEventClick {
+
+    public static BrowseEventsFragment newInstance() {
+        return new BrowseEventsFragment();
+    }
 
     private EventService eventService;
     private RegistrationHistoryService regService;
+    private UserService userService;
+    // Executor to run blocking service calls off the main thread
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     private SwipeRefreshLayout swipe;
     private ProgressBar progress;
@@ -42,12 +52,8 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
     private TextView empty;
     private EditText search;
 
-    private final List<Event> all = new ArrayList<>();
-    private final BrowseEventsAdapter adapter = new BrowseEventsAdapter(new ArrayList<>(), this);
-
-    public static BrowseEventsFragment newInstance() {
-        return new BrowseEventsFragment();
-    }
+    private final List<Event> allEvents = new ArrayList<>();
+    private BrowseEventsAdapter adapter;
 
     @Nullable
     @Override
@@ -58,8 +64,10 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
     @Override
     public void onViewCreated(@NonNull View v, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(v, savedInstanceState);
-        eventService = ((App) requireActivity().getApplication()).locator().eventService();
-        regService = ((App) requireActivity().getApplication()).locator().registrationHistoryService();
+        App app = (App) requireActivity().getApplication();
+        eventService = app.locator().eventService();
+        regService = app.locator().registrationHistoryService();
+        userService = app.locator().userService();
 
         swipe = v.findViewById(R.id.swipe);
         progress = v.findViewById(R.id.progress);
@@ -67,109 +75,146 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         empty = v.findViewById(R.id.text_empty);
         search = v.findViewById(R.id.input_search);
 
+        adapter = new BrowseEventsAdapter(new ArrayList<>(), this);
         list.setLayoutManager(new LinearLayoutManager(requireContext()));
         list.setAdapter(adapter);
 
-        swipe.setOnRefreshListener(this::load);
+        swipe.setOnRefreshListener(this::loadEvents);
+
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) { filter(s.toString()); }
             @Override public void afterTextChanged(Editable s) {}
         });
 
-        load();
+        loadEvents();
     }
 
-    private void load() {
-        // show loading UI if you have one
-        eventService.getAllEvents(
-                events -> {
-                    // bind to adapter on the main thread (already is)
-                    bind(events);
-                },
-                e -> {
-                    // show error + empty state
-                    bind(new ArrayList<>());
-                }
-        );
+    private void loadEvents() {
+        progress.setVisibility(View.VISIBLE);
+        // Run synchronous getAllEvents on background thread
+        executor.execute(() -> {
+            List<Event> fetched = eventService.getAllEvents();
+            if (isAdded()) {
+                requireActivity().runOnUiThread(() -> {
+                    progress.setVisibility(View.GONE);
+                    swipe.setRefreshing(false);
+                    allEvents.clear();
+                    if (fetched != null) allEvents.addAll(fetched);
+                    filter(search.getText().toString());
+                });
+            }
+        });
     }
 
-
-    private void bind(@NonNull List<Event> events) {
-        all.clear();
-        all.addAll(events);
-        applyFilterAndState();
-
-        if (swipe != null) {
-            swipe.setRefreshing(false);
-        }
-
-        if (progress != null) {
-            progress.setVisibility(View.GONE);
-        }
-    }
-
-    private void filter(String q) {
-        applyFilterAndState(q == null ? "" : q.trim().toLowerCase());
-    }
-
-    private void applyFilterAndState() {
-        applyFilterAndState(search.getText() == null ? "" : search.getText().toString().trim().toLowerCase());
-    }
-
-    private void applyFilterAndState(String q) {
+    private void filter(String query) {
         List<Event> filtered = new ArrayList<>();
-        for (Event e : all) {
-            if (e == null) continue;
-            String title = safe(e.getTitle());
+        String q = query == null ? "" : query.trim().toLowerCase();
+
+        for (Event e : allEvents) {
+            // Only show events that match the search
+            String title = e.getTitle() == null ? "" : e.getTitle();
             if (q.isEmpty() || title.toLowerCase().contains(q)) {
                 filtered.add(e);
             }
         }
+
         adapter.replace(filtered);
         empty.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
-    private static String safe(String s) { return s == null ? "" : s; }
-
-    // Adapter callbacks
-
     @Override
     public void onJoinWaitlist(@NonNull Event event) {
-        // Delegate to SingleEventFragment so the behavior matches "Selected/Waiting" flows
-        openDetails(event);
+        progress.setVisibility(View.VISIBLE);
+
+        // Use callback structure compatible with your existing UserService
+        userService.getCurrentUser(
+                user -> {
+                    if (user == null) {
+                        progress.setVisibility(View.GONE);
+                        Toast.makeText(getContext(), "Please log in", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    String userId = user.getUserId();
+                    String eventId = event.getEventId();
+
+                    // Check existing registration on background thread
+                    executor.execute(() -> {
+                        RegistrationHistory existing = regService.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
+
+                        if (existing != null) {
+                            if (isAdded()) {
+                                requireActivity().runOnUiThread(() -> {
+                                    progress.setVisibility(View.GONE);
+                                    Toast.makeText(getContext(), "Already registered!", Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                            return;
+                        }
+
+                        // Create new registration
+                        RegistrationHistory newReg = new RegistrationHistory(
+                                eventId,
+                                userId,
+                                constant.EventRegistrationStatus.WAITLIST,
+                                new Date()
+                        );
+
+                        // Save using service callback
+                        regService.saveRegistrationHistory(newReg,
+                                aVoid -> {
+                                    if (isAdded()) {
+                                        requireActivity().runOnUiThread(() -> {
+                                            progress.setVisibility(View.GONE);
+                                            Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
+                                        });
+                                    }
+                                },
+                                e -> {
+                                    if (isAdded()) {
+                                        requireActivity().runOnUiThread(() -> {
+                                            progress.setVisibility(View.GONE);
+                                            Toast.makeText(getContext(), "Failed to join", Toast.LENGTH_SHORT).show();
+                                        });
+                                    }
+                                });
+                    });
+                },
+                e -> {
+                    progress.setVisibility(View.GONE);
+                    Toast.makeText(getContext(), "Failed to load user profile", Toast.LENGTH_SHORT).show();
+                }
+        );
     }
 
     @Override
     public void onViewEvent(@NonNull Event event) {
-        openDetails(event);
-    }
-
-    private void openDetails(@NonNull Event event) {
-        String eventId = event.getEventId();
-        if (eventId == null) {
-            return;
-        }
-
-        Fragment details = ViewEventDetailsFragment.newInstance(eventId);
-        requireActivity().getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.content_container, details)
-                .addToBackStack(null)
-                .commit();
-    }
-
-    /**
-     * Utility for consumers if your model exposes a status enum.
-     */
-    public static boolean isOpen(@Nullable Event e) {
-        if (e == null) return false;
-        // If your Event exposes an enum: e.getStatus() == constant.EventStatus.OPEN
+        // Reuse the existing ViewEventDetailsFragment for viewing details
         try {
-            Object status = Event.class.getMethod("getStatus").invoke(e);
-            return status == constant.EventStatus.OPEN;
-        } catch (Exception ignore) {
-            return false;
+            // We use reflection or direct class reference if available in your scope.
+            // Based on your initial files, ViewEventDetailsFragment exists in com.quantiagents.app.ui
+            Class<?> clazz = Class.forName("com.quantiagents.app.ui.ViewEventDetailsFragment");
+            java.lang.reflect.Method method = clazz.getMethod("newInstance", String.class);
+            Fragment detailsFragment = (Fragment) method.invoke(null, event.getEventId());
+
+            requireActivity().getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.content_container, detailsFragment)
+                    .addToBackStack(null)
+                    .commit();
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "View Details: " + event.getTitle(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    public static boolean isOpen(Event e) {
+        return e != null && e.getStatus() == constant.EventStatus.OPEN;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        executor.shutdown();
     }
 }
