@@ -38,6 +38,11 @@
             android:id="@+id/navigation_admin_profiles"
             android:icon="@drawable/ic_menu_people"
             android:title="Manage Profiles" />
+
+        <item
+            android:id="@+id/navigation_admin_images"
+            android:icon="@android:drawable/ic_menu_gallery"
+            android:title="@string/nav_item_admin_images" />
     </group>
 
     <item

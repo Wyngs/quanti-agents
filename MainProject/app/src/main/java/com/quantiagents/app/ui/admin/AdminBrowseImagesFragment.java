@@ -4,12 +4,10 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -18,19 +16,18 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.quantiagents.app.R;
 import com.quantiagents.app.ui.admin.viewmodel.AdminEventsViewModel;
 
-public class AdminBrowseProfilesFragment extends Fragment {
-
+public class AdminBrowseImagesFragment extends Fragment {
     private AdminEventsViewModel viewModel;
     private RecyclerView recyclerView;
-    private AdminProfileAdapter adapter;
+    private AdminImageAdapter adapter;
 
-    public static AdminBrowseProfilesFragment newInstance() {
-        return new AdminBrowseProfilesFragment();
+    public static AdminBrowseImagesFragment newInstance() {
+        return new AdminBrowseImagesFragment();
     }
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        //reusing the generic admin browse layout
         return inflater.inflate(R.layout.fragment_admin_browse, container, false);
     }
 
@@ -38,43 +35,27 @@ public class AdminBrowseProfilesFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        TextView titleView = view.findViewById(R.id.text_admin_title);
-        titleView.setText("Manage Profiles");
-
-        SearchView searchView = view.findViewById(R.id.admin_search_view);
-
         viewModel = new ViewModelProvider(this).get(AdminEventsViewModel.class);
 
         recyclerView = view.findViewById(R.id.admin_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        adapter = new AdminProfileAdapter(profile -> {
-            viewModel.deleteProfile(profile);
+        adapter = new AdminImageAdapter(image -> {
+
+            viewModel.deleteImage(image);
         });
         recyclerView.setAdapter(adapter);
 
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                viewModel.searchProfiles(query);
-                return true;
-            }
-
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                viewModel.searchProfiles(newText);
-                return true;
-            }
+        viewModel.getImages().observe(getViewLifecycleOwner(), images -> {
+            adapter.submitList(images);
         });
 
-        viewModel.getProfiles().observe(getViewLifecycleOwner(), profiles -> {
-            adapter.submitList(profiles);
-        });
-
+        //observe toast messages for errors/success
         viewModel.getToastMessage().observe(getViewLifecycleOwner(), message -> {
             Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
         });
 
-        viewModel.loadProfiles();
+        //trigger the load
+        viewModel.loadImages();
     }
 }

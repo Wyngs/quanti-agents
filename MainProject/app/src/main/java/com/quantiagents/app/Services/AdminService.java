@@ -137,24 +137,32 @@ public class AdminService {
 
     //us 03.03.01a: list all uploaded images
     public List<Image> listAllImages() {
-        return imageService.getAllImages();
+        List<Image> images = imageService.getAllImages();
+        return images != null ? images : new ArrayList<>();
     }
 
     //us 03.03.01b+c: select an image and confirm deletion
-    public boolean removeImage(String imageId, boolean confirmed, @Nullable String note) {
-        if (!confirmed) {
-            throw new IllegalArgumentException("confirmation required");
-        }
-        boolean removed = imageService.deleteImage(imageId);
-        if (removed) {
-            logRepository.append(new AdminActionLog(
-                    AdminActionLog.KIND_IMAGE,
-                    imageId,
-                    System.currentTimeMillis(),
-                    deviceIdManager.ensureDeviceId(),
-                    note
-            ));
-        }
-        return removed;
+    // Update: Now uses callbacks to be async-safe
+    public void removeImage(String imageId, boolean confirmed, @Nullable String note,
+                            OnSuccessListener<Void> onSuccess,
+                            OnFailureListener onFailure) {
+        if (!confirmed) throw new IllegalArgumentException("confirmation required");
+
+        imageService.deleteImage(imageId, aVoid -> {
+            new Thread(() -> {
+                try {
+                    logRepository.append(new AdminActionLog(
+                            AdminActionLog.KIND_IMAGE,
+                            imageId,
+                            System.currentTimeMillis(),
+                            deviceIdManager.ensureDeviceId(),
+                            note
+                    ));
+                    if (onSuccess != null) onSuccess.onSuccess(null);
+                } catch (Exception e) {
+                    if (onFailure != null) onFailure.onFailure(e);
+                }
+            }).start();
+        }, onFailure);
     }
 }
