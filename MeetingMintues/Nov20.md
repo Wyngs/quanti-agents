@@ -43,7 +43,7 @@ All team members were present:
 ---
 
 ## 5. Next Meeting  
-**Date:** Monday, November 24th, 2025 - 5pm 
+**Date:** Monday, November 24th, 2025 - 5pm  
 **Agenda:** Continue work on part 4 and improve UML 
 
 ---
