@@ -170,6 +170,18 @@ public class MyEventsViewModel extends AndroidViewModel {
                     if (user == null) return;
                     regService.deleteRegistrationHistory(eventId, user.getUserId(),
                             aVoid -> {
+                                // BUG FIX: Sync Event waiting list remove if possible
+                                executor.execute(() -> {
+                                    try {
+                                        Event evt = eventService.getEventById(eventId);
+                                        if (evt != null && evt.getWaitingList() != null) {
+                                            if (evt.getWaitingList().remove(user.getUserId())) {
+                                                eventService.updateEvent(evt, v -> {}, e -> {});
+                                            }
+                                        }
+                                    } catch (Exception ignored) {}
+                                });
+
                                 loadData();
                                 if (onSuccess != null) onSuccess.run();
                             },

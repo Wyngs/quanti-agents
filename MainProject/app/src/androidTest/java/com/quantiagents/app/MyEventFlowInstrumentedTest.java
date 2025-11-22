@@ -37,16 +37,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * UI Integration Test for MyEventFragment.
- * <p>
- * This test walks through the four tabs (Waiting, Selected, Confirmed, Past)
- * verifying that the UI correctly filters and displays registrations based on their status.
- * It mocks the underlying services to provide immediate, deterministic data.
- * <p>
- * <b>Note:</b> Uses manual instrumentation (ActivityScenario + View traversal) instead of Espresso
- * to avoid InputManager compatibility issues on newer Android APIs (31+) with older test dependencies.
- */
 @RunWith(AndroidJUnit4.class)
 public class MyEventFlowInstrumentedTest {
 
@@ -60,38 +50,29 @@ public class MyEventFlowInstrumentedTest {
         Context context = ApplicationProvider.getApplicationContext();
         app = (App) context;
 
-        // 1. Create Mocks
         mockUserService = new MockUserService(context);
         mockEventService = new MockEventService(context);
         mockRegService = new MockRegistrationHistoryService(context);
 
-        // 2. Prepare Service Locator with Mocks
         ServiceLocator testLocator = new ServiceLocator(context);
         testLocator.replaceUserService(mockUserService);
         testLocator.replaceEventService(mockEventService);
         testLocator.replaceRegistrationHistoryService(mockRegService);
 
-        // 3. Inject into App
         app.setTestLocator(testLocator);
 
-        // 4. Seed Data
         seedTestData();
     }
 
     @After
     public void tearDown() {
-        app.setTestLocator(null); // Reset to real services
+        app.setTestLocator(null);
     }
 
-    /**
-     * Seeds the mock services with 4 events and 4 registrations, one for each status type.
-     */
     private void seedTestData() {
-        // User
         User user = new User("test_user", "device_123", "Test Entrant", "test@example.com", "555-5555", "hash");
         mockUserService.setActiveUser(user);
 
-        // Create 4 Events
         createEventAndReg("evt_wait", "Waiting Event", constant.EventRegistrationStatus.WAITLIST, user.getUserId());
         createEventAndReg("evt_sel", "Selected Event", constant.EventRegistrationStatus.SELECTED, user.getUserId());
         createEventAndReg("evt_conf", "Confirmed Event", constant.EventRegistrationStatus.CONFIRMED, user.getUserId());
@@ -99,7 +80,6 @@ public class MyEventFlowInstrumentedTest {
     }
 
     private void createEventAndReg(String id, String title, constant.EventRegistrationStatus status, String userId) {
-        // Event
         Event e = new Event();
         e.setEventId(id);
         e.setTitle(title);
@@ -110,71 +90,47 @@ public class MyEventFlowInstrumentedTest {
         e.setStatus(constant.EventStatus.OPEN);
         mockEventService.addEvent(e);
 
-        // Registration
         RegistrationHistory reg = new RegistrationHistory(id, userId, status, new Date());
         mockRegService.addHistory(reg);
     }
 
     @Test
     public void testTabNavigationAndContentDisplay() {
-        // Launch MainActivity. The mocked UserService will ensure we bypass login and land in the app.
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
 
-            // Manually swap the displayed fragment to MyEventFragment for testing
             scenario.onActivity(activity -> {
                 activity.getSupportFragmentManager().beginTransaction()
                         .replace(R.id.content_container, MyEventFragment.newInstance())
                         .commitNow();
             });
 
-            // ----------------------------------------------------------------
-            // 1. Verify 'Waiting' Tab (Default)
-            // ----------------------------------------------------------------
-            // Expectation: "Waiting Event" is visible
             waitForTextInRecycler(scenario, R.id.my_events_recycler, "Waiting Event", 3000);
             waitForTextInRecycler(scenario, R.id.my_events_recycler, "Leave Waiting List", 1000);
 
-            // ----------------------------------------------------------------
-            // 2. Verify 'Selected' Tab
-            // ----------------------------------------------------------------
-            // Click tab manually on UI thread
             scenario.onActivity(activity -> {
                 activity.findViewById(R.id.tab_selected).performClick();
             });
 
-            // Wait and verify "Selected Event" and "Accept" button
             waitForTextInRecycler(scenario, R.id.my_events_recycler, "Selected Event", 3000);
             waitForTextInRecycler(scenario, R.id.my_events_recycler, "Accept", 1000);
 
-            // Verify Waiting event is NO LONGER visible in this list
             verifyTextNotInRecycler(scenario, R.id.my_events_recycler, "Waiting Event");
 
-            // ----------------------------------------------------------------
-            // 3. Verify 'Confirmed' Tab
-            // ----------------------------------------------------------------
             scenario.onActivity(activity -> {
                 activity.findViewById(R.id.tab_confirmed).performClick();
             });
 
             waitForTextInRecycler(scenario, R.id.my_events_recycler, "Confirmed Event", 3000);
-            waitForTextInRecycler(scenario, R.id.my_events_recycler, "Confirmed", 1000); // Status chip text
+            waitForTextInRecycler(scenario, R.id.my_events_recycler, "Confirmed", 1000);
 
-            // ----------------------------------------------------------------
-            // 4. Verify 'Past' (Cancelled) Tab
-            // ----------------------------------------------------------------
             scenario.onActivity(activity -> {
                 activity.findViewById(R.id.tab_past).performClick();
             });
 
             waitForTextInRecycler(scenario, R.id.my_events_recycler, "Past Event", 3000);
 
-            // ----------------------------------------------------------------
-            // 5. Verify Empty State Logic
-            // ----------------------------------------------------------------
-            // Clear data
             mockRegService.clear();
 
-            // Trigger a reload by refreshing the fragment manually
             scenario.onActivity(activity -> {
                 MyEventFragment fragment = (MyEventFragment) activity.getSupportFragmentManager()
                         .findFragmentById(R.id.content_container);
@@ -184,11 +140,9 @@ public class MyEventFlowInstrumentedTest {
             });
 
             waitForViewVisibility(scenario, R.id.my_events_empty, View.VISIBLE, 3000);
-            waitForTextInView(scenario, R.id.my_events_empty, "Nothing here yet", 1000); // Check R.string.my_events_empty_generic value
+            waitForTextInView(scenario, R.id.my_events_empty, "Nothing here yet", 1000);
         }
     }
-
-    // --- Helper Methods for Manual Instrumentation ---
 
     private void waitForTextInRecycler(ActivityScenario<MainActivity> scenario, int recyclerId, String text, long timeout) {
         long start = System.currentTimeMillis();
@@ -268,10 +222,6 @@ public class MyEventFlowInstrumentedTest {
         return false;
     }
 
-    // ============================================================================================
-    // MOCK SERVICES
-    // ============================================================================================
-
     static class MockUserService extends UserService {
         private User activeUser;
 
@@ -287,7 +237,6 @@ public class MyEventFlowInstrumentedTest {
 
         @Override
         public User getUserById(String userId) {
-            // For organizer name lookup
             return new User(userId, "dev", "Organizer Name", "email", "phone", "hash");
         }
     }

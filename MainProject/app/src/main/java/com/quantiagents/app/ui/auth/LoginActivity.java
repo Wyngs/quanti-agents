@@ -9,6 +9,7 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
@@ -19,7 +20,8 @@ import com.quantiagents.app.models.User;
 import com.quantiagents.app.ui.main.MainActivity;
 
 /**
- * Handles email/password login plus the fallback reset path when the profile is corrupted.
+ * Handles email/password login.
+ * Dynamically adjusts the secondary action button ("Reset" vs "Create") based on whether a local profile exists.
  */
 public class LoginActivity extends AppCompatActivity {
 
@@ -29,11 +31,9 @@ public class LoginActivity extends AppCompatActivity {
     private TextInputLayout passwordLayout;
     private TextInputEditText emailField;
     private TextInputEditText passwordField;
+    private MaterialButton switchUserButton;
 
     @Override
-    /**
-     * Loads the saved profile (if any) then wires up login/reset actions.
-     */
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
@@ -42,50 +42,46 @@ public class LoginActivity extends AppCompatActivity {
         loginService = app.locator().loginService();
         bindViews();
 
+        // Default state: Button is set to "Create profile" via XML.
+        // Default listener: Navigate to SignUp.
+        switchUserButton.setOnClickListener(v -> navigateToSignUp());
+
+        findViewById(R.id.button_continue).setOnClickListener(v -> handleLogin());
+
+        TextView forgotView = findViewById(R.id.text_forgot_password);
+        forgotView.setOnClickListener(v ->
+                Toast.makeText(this, R.string.message_password_hint, Toast.LENGTH_SHORT).show());
+
+        // Check for local user to determine if we need to switch to "Reset Profile"
         userService.getCurrentUser(
                 user -> {
-                    if (user == null) {
-                        Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
-                        startActivity(new Intent(this, SignUpActivity.class));
-                        finish();
-                        return;
+                    if (user != null) {
+                        // Case 1: Local profile exists. Switch text and listener to Reset mode.
+                        preloadInputs(user);
+                        switchUserButton.setText(R.string.login_reset_action);
+                        switchUserButton.setOnClickListener(v -> resetProfile());
                     }
-                    preloadInputs(user);
-                    findViewById(R.id.button_continue).setOnClickListener(v -> handleLogin());
-                    findViewById(R.id.button_switch_user).setOnClickListener(v -> resetProfile());
-                    TextView forgotView = findViewById(R.id.text_forgot_password);
-                    forgotView.setOnClickListener(v ->
-                            Toast.makeText(this, R.string.message_password_hint, Toast.LENGTH_SHORT).show());
+                    // Case 2: User is null. Keep default XML text ("Create profile") and listener.
                 },
                 e -> {
-                    Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
-                    startActivity(new Intent(this, SignUpActivity.class));
-                    finish();
+                    // Error case: Keep default "Create profile" state to allow escape.
                 }
         );
     }
 
-    /**
-     * Centralizes all findViewById calls for readability.
-     */
     private void bindViews() {
         emailLayout = findViewById(R.id.login_username_layout);
         passwordLayout = findViewById(R.id.login_password_layout);
         emailField = findViewById(R.id.input_username);
         passwordField = findViewById(R.id.input_password);
+        switchUserButton = findViewById(R.id.button_switch_user);
     }
 
-    /**
-     * Prefills email and clears password so the user can just enter the secret again.
-     */
     private void preloadInputs(User user) {
         emailField.setText(user.getEmail());
         passwordField.setText("");
     }
 
-    /**
-     * Validates inputs, calls the async login, and surfaces errors inline.
-     */
     private void handleLogin() {
         emailLayout.setError(null);
         passwordLayout.setError(null);
@@ -101,6 +97,11 @@ public class LoginActivity extends AppCompatActivity {
                 password,
                 success -> {
                     if (success) {
+                        // Mark session as active
+                        getSharedPreferences("quanti_agents_prefs", MODE_PRIVATE)
+                                .edit()
+                                .putBoolean("user_session_active", true)
+                                .apply();
                         openHome();
                     } else {
                         passwordLayout.setError(getString(R.string.error_login_invalid));
@@ -111,34 +112,34 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     /**
-     * Nukes the current profile (device id + Firestore doc) and sends the user to sign-up.
+     * Destructive action: Clears local profile and data, then goes to Sign Up.
      */
     private void resetProfile() {
         loginService.logout();
+
+        getSharedPreferences("quanti_agents_prefs", MODE_PRIVATE)
+                .edit()
+                .putBoolean("user_session_active", false)
+                .apply();
+
         userService.deleteUserProfile(
-                aVoid -> {
-                    Intent intent = new Intent(this, SignUpActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
-                            | Intent.FLAG_ACTIVITY_NEW_TASK
-                            | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
-                    finish();
-                },
-                e -> {
-                    Toast.makeText(this, R.string.error_profile_missing, Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(this, SignUpActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
-                            | Intent.FLAG_ACTIVITY_NEW_TASK
-                            | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
-                    finish();
-                }
+                aVoid -> navigateToSignUp(),
+                e -> navigateToSignUp() // Even if delete fails, let user escape
         );
     }
 
     /**
-     * Starts MainActivity with the usual task-clearing flags.
+     * Simple navigation action: Goes to Sign Up without deleting anything (since nothing exists).
      */
+    private void navigateToSignUp() {
+        Intent intent = new Intent(this, SignUpActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
     private void openHome() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -148,9 +149,6 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
-    /**
-     * Utility to fetch trimmed text without sprinkling null guards everywhere.
-     */
     private String safeText(TextInputEditText field) {
         return field.getText() == null ? "" : field.getText().toString().trim();
     }

@@ -24,14 +24,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Date;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * Covers Registration History logic and Lottery Execution.
- */
 @RunWith(AndroidJUnit4.class)
 public class LotteryAndRegistrationInstrumentedTest {
 
@@ -49,9 +45,6 @@ public class LotteryAndRegistrationInstrumentedTest {
         eventService = locator.eventService();
     }
 
-    /**
-     * Verifies a user can be added to the waitlist and retrieved.
-     */
     @Test
     public void joinWaitlistAndRetrieve() {
         String eventId = "evt_test_reg";
@@ -68,9 +61,6 @@ public class LotteryAndRegistrationInstrumentedTest {
         assertEquals(constant.EventRegistrationStatus.WAITLIST, fetched.getEventRegistrationStatus());
     }
 
-    /**
-     * Verifies status updates.
-     */
     @Test
     public void updateRegistrationStatus() {
         String eventId = "evt_status_update";
@@ -88,23 +78,16 @@ public class LotteryAndRegistrationInstrumentedTest {
         assertEquals(constant.EventRegistrationStatus.SELECTED, updated.getEventRegistrationStatus());
     }
 
-    /**
-     * Tests that the lottery service correctly picks a subset of entrants.
-     */
     @Test
     public void runLotterySelectsEntrants() {
-        // 1. Create a real event so validation passes
         Event event = new Event();
         event.setTitle("Lottery Event");
         String eventId = saveEventSync(event);
 
-        // 2. Create multiple waiting registrations
-        // Updated: Must be WAITLIST for the lottery logic to pick them up.
         createRegistration(eventId, "user_1", constant.EventRegistrationStatus.WAITLIST);
         createRegistration(eventId, "user_2", constant.EventRegistrationStatus.WAITLIST);
         createRegistration(eventId, "user_3", constant.EventRegistrationStatus.WAITLIST);
 
-        // 3. Run lottery to pick 2 winners
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<LotteryResult> resultRef = new AtomicReference<>();
         AtomicReference<Exception> errorRef = new AtomicReference<>();
@@ -127,10 +110,8 @@ public class LotteryAndRegistrationInstrumentedTest {
         LotteryResult result = resultRef.get();
         assertNotNull("Lottery result should exist", result);
         assertEquals(2, result.getEntrantIds().size());
-        assertFalse(result.getEntrantIds().contains("user_4")); // Non-existent user
+        assertFalse(result.getEntrantIds().contains("user_4"));
     }
-
-    // Helpers
 
     private void saveRegistrationSync(RegistrationHistory h) {
         CountDownLatch latch = new CountDownLatch(1);

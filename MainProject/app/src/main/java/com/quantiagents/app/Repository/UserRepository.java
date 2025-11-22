@@ -66,6 +66,50 @@ public class UserRepository {
     }
 
     /**
+     * Synchronously fetches a user by their device ID.
+     * Efficiently queries Firestore instead of downloading the entire collection.
+     */
+    public User getUserByDeviceId(String deviceId) {
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("deviceId", deviceId).get());
+            if (!snapshot.isEmpty()) {
+                // Assuming one user per device ID, take the first match
+                return snapshot.getDocuments().get(0).toObject(User.class);
+            }
+            return null;
+        } catch (Exception e) {
+            Log.e("Firestore", "Error getting user by device ID", e);
+            return null;
+        }
+    }
+
+    /**
+     * Asynchronously fetches a user by their device ID.
+     */
+    public void getUserByDeviceId(String deviceId, OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            onSuccess.onSuccess(null);
+            return;
+        }
+        context.whereEqualTo("deviceId", deviceId).get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        User user = querySnapshot.getDocuments().get(0).toObject(User.class);
+                        onSuccess.onSuccess(user);
+                    } else {
+                        onSuccess.onSuccess(null);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("Firestore", "Error getting user by device ID", e);
+                    onFailure.onFailure(e);
+                });
+    }
+
+    /**
      * Upserts the user document, auto-generating an id if none was provided.
      */
     public void saveUser(User user, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {

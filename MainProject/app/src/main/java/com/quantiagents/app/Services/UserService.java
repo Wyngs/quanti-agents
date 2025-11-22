@@ -38,15 +38,9 @@ public class UserService {
      * Synchronous helper for quick calls on background threads; still uses local cache.
      */
     public User getCurrentUser() {
-        // Find current user by device ID
+        // Efficiently query by device ID instead of fetching all users
         String deviceId = deviceIdManager.ensureDeviceId();
-        List<User> allUsers = repository.getAllUsers();
-        for (User user : allUsers) {
-            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                return user;
-            }
-        }
-        return null;
+        return repository.getUserByDeviceId(deviceId);
     }
 
     /**
@@ -54,6 +48,7 @@ public class UserService {
      */
     public User getCurrentUserFresh() {
         String deviceId = deviceIdManager.ensureDeviceId();
+        // Note: Still using getAllUsersFromServer for test consistency, but ideally could be optimized similarly
         List<User> allUsers = repository.getAllUsersFromServer();
         for (User user : allUsers) {
             if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
@@ -202,50 +197,27 @@ public class UserService {
      * Synchronous device-id matcher, mainly used before the async login wire-up.
      */
     public boolean authenticateDevice(String deviceId) {
-        List<User> allUsers = repository.getAllUsers();
-        for (User user : allUsers) {
-            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                return true;
-            }
-        }
-        return false;
+        User user = repository.getUserByDeviceId(deviceId);
+        return user != null;
     }
 
     /**
      * Async device auth that SplashActivity can await before routing.
      */
     public void authenticateDevice(String deviceId, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
-        repository.getAllUsers(
-                users -> {
-                    for (User user : users) {
-                        if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                            onSuccess.onSuccess(true);
-                            return;
-                        }
-                    }
-                    onSuccess.onSuccess(false);
-                },
+        repository.getUserByDeviceId(deviceId,
+                user -> onSuccess.onSuccess(user != null),
                 onFailure
         );
     }
 
     /**
      * Async getter that backs basically every UI screen needing the active profile.
+     * Updated to use efficient query instead of full scan.
      */
     public void getCurrentUser(OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
         String deviceId = deviceIdManager.ensureDeviceId();
-        repository.getAllUsers(
-                users -> {
-                    for (User user : users) {
-                        if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                            onSuccess.onSuccess(user);
-                            return;
-                        }
-                    }
-                    onSuccess.onSuccess(null);
-                },
-                onFailure
-        );
+        repository.getUserByDeviceId(deviceId, onSuccess, onFailure);
     }
 
     /**

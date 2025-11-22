@@ -3,6 +3,7 @@ package com.quantiagents.app.ui.myevents;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -137,6 +138,17 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                     }
 
                     String userId = user.getUserId();
+                    // Fix: Prevent organizer from joining their own event
+                    if (userId.equals(event.getOrganizerId())) {
+                        if (isAdded()) {
+                            requireActivity().runOnUiThread(() -> {
+                                progress.setVisibility(View.GONE);
+                                Toast.makeText(getContext(), "Organizers cannot join their own events.", Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                        return;
+                    }
+
                     String eventId = event.getEventId();
 
                     // Check existing registration on background thread
@@ -164,6 +176,13 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                         // Save using service callback
                         regService.saveRegistrationHistory(newReg,
                                 aVoid -> {
+                                    // Fix: Sync Event waiting list in Event object
+                                    if (event.getWaitingList() == null) event.setWaitingList(new ArrayList<>());
+                                    if (!event.getWaitingList().contains(userId)) {
+                                        event.getWaitingList().add(userId);
+                                        eventService.updateEvent(event, v -> {}, e -> Log.e("BrowseEvents", "Failed to sync waiting list", e));
+                                    }
+
                                     if (isAdded()) {
                                         requireActivity().runOnUiThread(() -> {
                                             progress.setVisibility(View.GONE);
