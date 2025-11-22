@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Quanti-agents: The Lottery App</string>
-    <string name="splash_title">Event lottery</string>
-    <string name="splash_subtitle">Tap in. Let the device do the login.</string>
+    <string name="splash_title">Welcome to</string>
+    <string name="splash_title2">EqualEntry!</string>
+    <string name="splash_subtitle">Tap to begin sign-in process.</string>
     <string name="sign_up_title">Set up your profile</string>
     <string name="sign_up_hint_name">Full name</string>
     <string name="sign_up_hint_email">Email</string>

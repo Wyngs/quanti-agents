@@ -17,12 +17,11 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:contentDescription="@string/app_name"
-            android:src="@drawable/ic_logo_ticket"
-            android:tint="@color/colorPrimary" />
+            android:src="@drawable/ic_logo_ticket" />
 
         <TextView
             android:id="@+id/text_header_title"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_weight="1"
