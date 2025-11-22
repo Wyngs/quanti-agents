@@ -117,6 +117,25 @@ public class LotteryResultService {
                     e -> Log.e("Lottery", "Failed to update user status", e));
         }
 
+        // BUG FIX: Sync Event lists (remove from waiting, add to selected)
+        List<String> evWaiting = event.getWaitingList();
+        if (evWaiting == null) evWaiting = new ArrayList<>();
+
+        List<String> evSelected = event.getSelectedList();
+        if (evSelected == null) evSelected = new ArrayList<>();
+
+        for (String winnerId : winnerIds) {
+            evWaiting.remove(winnerId);
+            if (!evSelected.contains(winnerId)) {
+                evSelected.add(winnerId);
+            }
+        }
+        event.setWaitingList(evWaiting);
+        event.setSelectedList(evSelected);
+        event.setFirstLotteryDone(true); // Mark as done
+
+        eventService.updateEvent(event, v -> {}, e -> Log.e("Lottery", "Failed to sync event lists", e));
+
         // 5. Save Result
         LotteryResult result = new LotteryResult(eventId, winnerIds);
         repository.saveLotteryResult(result,

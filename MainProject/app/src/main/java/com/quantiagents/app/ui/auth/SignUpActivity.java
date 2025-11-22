@@ -45,10 +45,22 @@ public class SignUpActivity extends AppCompatActivity {
         userService = app.locator().userService();
         loginService = app.locator().loginService();
         bindViews();
+
         createButton = findViewById(R.id.button_create_profile);
         MaterialButton cancelButton = findViewById(R.id.button_cancel_sign_up);
+        MaterialButton loginButton = findViewById(R.id.button_login_instead);
+
         createButton.setOnClickListener(v -> handleCreateProfile());
-        cancelButton.setOnClickListener(v -> finish());
+
+        // Both "Cancel" and "Log in instead" now route to the Login screen
+        // to prevent the app from closing if the user lands here from SplashActivity.
+        cancelButton.setOnClickListener(v -> navigateToLogin());
+        loginButton.setOnClickListener(v -> navigateToLogin());
+    }
+
+    private void navigateToLogin() {
+        startActivity(new Intent(this, LoginActivity.class));
+        finish();
     }
 
     /**

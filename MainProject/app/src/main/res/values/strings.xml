@@ -10,6 +10,7 @@
     <string name="sign_up_hint_password">Password</string>
     <string name="sign_up_action">Create profile</string>
     <string name="sign_up_cancel">Cancel</string>
+    <string name="sign_up_login_action">Already have an account? Log in</string>
     <string name="sign_up_body">I only need this once. The device keeps you signed in.</string>
     <string name="error_name_required">Name is required</string>
     <string name="error_email_required">Email is required</string>

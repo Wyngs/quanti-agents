@@ -1,6 +1,7 @@
 package com.quantiagents.app.ui.auth;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -11,7 +12,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.LoginService;
-import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.ui.main.MainActivity;
 
@@ -38,59 +38,41 @@ public class SplashActivity extends AppCompatActivity {
     private void routeToNextScreen() {
         App app = (App) getApplication();
         DeviceIdManager deviceIdManager = app.locator().deviceIdManager();
-        UserService userService = app.locator().userService();
         LoginService loginService = app.locator().loginService();
         String deviceId = deviceIdManager.ensureDeviceId();
+
+        // Check if the user explicitly logged out previously.
+        SharedPreferences prefs = getSharedPreferences("quanti_agents_prefs", MODE_PRIVATE);
+        boolean sessionActive = prefs.getBoolean("user_session_active", true);
+
+        if (!sessionActive) {
+            // User logged out. Go to Login (which handles Create vs Reset logic).
+            launchLogin();
+            finish();
+            return;
+        }
 
         loginService.loginWithDevice(
                 deviceId,
                 success -> {
                     if (success) {
                         launchHome();
-                        finish();
-                        return;
+                    } else {
+                        // Auto-login failed (no user or error) -> Login Screen
+                        launchLogin();
                     }
-                    userService.getCurrentUser(
-                            user -> {
-                                if (user == null) {
-                                    launchSignUp();
-                                } else {
-                                    launchLogin();
-                                }
-                                finish();
-                            },
-                            e -> {
-                                launchLogin();
-                                finish();
-                            }
-                    );
+                    finish();
                 },
-                e -> userService.getCurrentUser(
-                        user -> {
-                            if (user == null) {
-                                launchSignUp();
-                            } else {
-                                launchLogin();
-                            }
-                            finish();
-                        },
-                        ignored -> {
-                            launchLogin();
-                            finish();
-                        }
-                )
+                e -> {
+                    // Error -> Fallback to Login Screen
+                    launchLogin();
+                    finish();
+                }
         );
     }
 
     /**
-     * Sends the user to SignUpActivity without clearing task (splash already finishes).
-     */
-    private void launchSignUp() {
-        startActivity(new Intent(this, SignUpActivity.class));
-    }
-
-    /**
-     * Opens LoginActivity when we have a profile but still need credentials.
+     * Opens LoginActivity. This is the default entry point if auto-login fails.
      */
     private void launchLogin() {
         startActivity(new Intent(this, LoginActivity.class));

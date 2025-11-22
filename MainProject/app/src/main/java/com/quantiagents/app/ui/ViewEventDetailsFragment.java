@@ -3,6 +3,7 @@ package com.quantiagents.app.ui;
 import android.app.Dialog;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -427,6 +428,12 @@ public class ViewEventDetailsFragment extends Fragment {
             return;
         }
 
+        // Fix: Prevent organizer from joining their own event
+        if (currentUser.getUserId().equals(currentEvent.getOrganizerId())) {
+            Toast.makeText(getContext(), "Organizers cannot join their own events.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         int waitingCount = countWaiting(waitingEntries);
         double waitLimit = currentEvent.getWaitingListLimit();
         if (waitLimit > 0 && waitingCount >= waitLimit) {
@@ -445,6 +452,15 @@ public class ViewEventDetailsFragment extends Fragment {
 
         registrationHistoryService.saveRegistrationHistory(history,
                 aVoid -> {
+                    // Fix: Sync Event waiting list in Event object
+                    if (currentEvent.getWaitingList() == null) {
+                        currentEvent.setWaitingList(new ArrayList<>());
+                    }
+                    if (!currentEvent.getWaitingList().contains(currentUser.getUserId())) {
+                        currentEvent.getWaitingList().add(currentUser.getUserId());
+                        eventService.updateEvent(currentEvent, v -> {}, e -> Log.e("ViewEvent", "Failed to sync waiting list", e));
+                    }
+
                     if (!isAdded()) return;
                     handleGeoLocationJoin();
                     requireActivity().runOnUiThread(() -> {
@@ -481,6 +497,12 @@ public class ViewEventDetailsFragment extends Fragment {
         setActionEnabled(false);
         registrationHistoryService.deleteRegistrationHistory(currentEvent.getEventId(), currentUser.getUserId(),
                 aVoid -> {
+                    // Fix: Sync Event waiting list remove
+                    if (currentEvent.getWaitingList() != null && currentEvent.getWaitingList().contains(currentUser.getUserId())) {
+                        currentEvent.getWaitingList().remove(currentUser.getUserId());
+                        eventService.updateEvent(currentEvent, v -> {}, e -> Log.e("ViewEvent", "Failed to sync waiting list remove", e));
+                    }
+
                     if (!isAdded()) return;
                     if (currentEvent.isGeoLocationOn() && geoLocationService != null) {
                         geoLocationService.deleteGeoLocation(currentUser.getUserId(), currentEvent.getEventId(),

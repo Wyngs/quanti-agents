@@ -1,7 +1,6 @@
 package com.quantiagents.app;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -22,16 +21,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * Covers the lifecycle of an Event: Create, Read, Update, Delete.
- * Also tests validation logic and bulk retrieval.
- */
 @RunWith(AndroidJUnit4.class)
 public class EventFlowInstrumentedTest {
 
@@ -44,7 +38,6 @@ public class EventFlowInstrumentedTest {
         context = ApplicationProvider.getApplicationContext();
         locator = new ServiceLocator(context);
         eventService = locator.eventService();
-        // Clean up potentially messy state before starting
         wipeEvents();
     }
 
@@ -53,9 +46,6 @@ public class EventFlowInstrumentedTest {
         wipeEvents();
     }
 
-    /**
-     * Verifies that an event can be saved and retrieved by ID.
-     */
     @Test
     public void createAndRetrieveEvent() {
         Event newEvent = new Event();
@@ -74,9 +64,6 @@ public class EventFlowInstrumentedTest {
         assertEquals(100, fetched.getEventCapacity(), 0.0);
     }
 
-    /**
-     * Verifies that updateEvent successfully persists changes to the database.
-     */
     @Test
     public void updateEventDetails() {
         Event event = new Event();
@@ -103,9 +90,6 @@ public class EventFlowInstrumentedTest {
         assertEquals(constant.EventStatus.CLOSED, fetched.getStatus());
     }
 
-    /**
-     * Verifies that deleting an event removes it so it can no longer be retrieved.
-     */
     @Test
     public void deleteEventRemovesIt() {
         Event event = new Event();
@@ -122,9 +106,6 @@ public class EventFlowInstrumentedTest {
         assertNull("Event should be null after delete", eventService.getEventById(id));
     }
 
-    /**
-     * Verifies that saving an event without a title fails validation.
-     */
     @Test
     public void createEventRequiresTitle() {
         Event badEvent = new Event();
@@ -145,20 +126,14 @@ public class EventFlowInstrumentedTest {
         assertEquals(IllegalArgumentException.class, errorRef.get().getClass());
     }
 
-    /**
-     * Verifies that updating an event to have an empty title fails validation.
-     */
     @Test
     public void updateEventRequiresTitle() {
-        // 1. Create valid event
         Event event = new Event();
         event.setTitle("Valid Title");
         event = createEventSync(event);
 
-        // 2. Modify to invalid state
         event.setTitle("");
 
-        // 3. Attempt update
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<Exception> errorRef = new AtomicReference<>();
 
@@ -170,14 +145,10 @@ public class EventFlowInstrumentedTest {
                 });
         awaitLatch(latch);
 
-        // 4. Assert failure
         assertNotNull("Update should fail with empty title", errorRef.get());
         assertEquals(IllegalArgumentException.class, errorRef.get().getClass());
     }
 
-    /**
-     * Verifies that getAllEvents retrieves all saved events.
-     */
     @Test
     public void getAllEventsReturnsList() {
         Event e1 = new Event();
@@ -202,18 +173,12 @@ public class EventFlowInstrumentedTest {
         assertTrue("Should contain Event Two", found2);
     }
 
-    /**
-     * Verifies that fetching an event with a null or empty ID does not crash
-     * and returns null.
-     */
     @Test
     public void getEventHandlesInvalidIds() {
         assertNull(eventService.getEventById(null));
         assertNull(eventService.getEventById(""));
         assertNull(eventService.getEventById("   "));
     }
-
-    // --- Helpers ---
 
     private Event createEventSync(Event event) {
         CountDownLatch latch = new CountDownLatch(1);
