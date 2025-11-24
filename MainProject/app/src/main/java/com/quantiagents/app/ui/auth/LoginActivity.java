@@ -112,7 +112,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     /**
-     * Destructive action: Clears local profile and data, then goes to Sign Up.
+     * Destructive action: Clears local profile linkage/ID, then goes to Sign Up.
      */
     private void resetProfile() {
         loginService.logout();
@@ -122,10 +122,11 @@ public class LoginActivity extends AppCompatActivity {
                 .putBoolean("user_session_active", false)
                 .apply();
 
-        userService.deleteUserProfile(
-                aVoid -> navigateToSignUp(),
-                e -> navigateToSignUp() // Even if delete fails, let user escape
-        );
+        // Reset local device ID. Next time the app needs an ID, it generates a new one,
+        // effectively "orphaning" the previous connection on this phone without wiping the server data.
+        ((App) getApplication()).locator().deviceIdManager().reset();
+
+        navigateToSignUp();
     }
 
     /**
