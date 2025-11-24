@@ -35,6 +35,10 @@ public class LoginService {
 
     /**
      * Async login tied to the UI; lets me show loading states without blocking.
+     * <p>
+     * Fixed to capture the User object from authentication directly, avoiding
+     * issues where 'getCurrentUser' (by device ID) would return null if logging
+     * in on a new device.
      *
      * @param onSuccess emits true when we logged in, false when credentials were off
      */
@@ -43,17 +47,16 @@ public class LoginService {
                       OnSuccessListener<Boolean> onSuccess,
                       OnFailureListener onFailure) {
         userService.authenticate(email, password,
-                success -> {
-                    if (success) {
-                        userService.getCurrentUser(
-                                user -> {
-                                    current = user;
-                                    userService.attachDeviceToCurrentUser(user);
-                                    onSuccess.onSuccess(true);
-                                },
-                                onFailure
-                        );
+                user -> {
+                    if (user != null) {
+                        // Credentials match. Set the current session.
+                        current = user;
+                        // IMPORTANT: Link this device ID to the user profile immediately.
+                        // This ensures subsequent startup/splash checks pass.
+                        userService.attachDeviceToCurrentUser(user);
+                        onSuccess.onSuccess(true);
                     } else {
+                        // Invalid credentials
                         onSuccess.onSuccess(false);
                     }
                 },
@@ -109,11 +112,6 @@ public class LoginService {
 
     /**
      * Returns the cached user if we already logged in.
-     * <p>
-     * Note: Removed fallback to userService.getCurrentUser(). This ensures that
-     * logging out (clearing 'current') results in no active session, even if
-     * a profile remains on disk. SplashActivity handles restoring the session
-     * on app launch.
      */
     @Nullable
     public User getActiveUser() {

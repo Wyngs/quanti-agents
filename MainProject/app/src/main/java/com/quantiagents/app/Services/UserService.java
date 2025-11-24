@@ -174,20 +174,23 @@ public class UserService {
     }
 
     /**
-     * Async credential check so LoginActivity can respond without blocking.
+     * Async credential check. Returns the User object on success so the session can be initialized immediately.
+     * Returns null to onSuccess if credentials fail.
      */
-    public void authenticate(String email, String password, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
+    public void authenticate(String email, String password, OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
         repository.getAllUsers(
                 users -> {
                     for (User user : users) {
                         if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
                             String hash = hashPassword(password);
-                            boolean success = hash.equals(user.getPasswordHash());
-                            onSuccess.onSuccess(success);
-                            return;
+                            if (hash.equals(user.getPasswordHash())) {
+                                onSuccess.onSuccess(user);
+                                return;
+                            }
                         }
                     }
-                    onSuccess.onSuccess(false);
+                    // Not found or password incorrect
+                    onSuccess.onSuccess(null);
                 },
                 onFailure
         );
@@ -236,11 +239,12 @@ public class UserService {
             return;
         }
         String deviceId = deviceIdManager.ensureDeviceId();
+        // Update the user record if this is a new device for them
         if (!deviceId.equals(current.getDeviceId())) {
             current.setDeviceId(deviceId);
             repository.updateUser(current,
-                    aVoid -> Log.d("App", "Update user"),
-                    e -> Log.e("App", "Failed to update user", e));
+                    aVoid -> Log.d("App", "Device ID updated for user"),
+                    e -> Log.e("App", "Failed to update user device id", e));
         }
     }
 
