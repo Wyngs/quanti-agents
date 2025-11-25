@@ -27,12 +27,13 @@
     </style>
 
     <!-- Outlined TextInputLayout -->
-    <style name="Widget.QuantiAgents.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-        <item name="boxBackgroundMode">outline</item>
+    <style name="Widget.QuantiAgents.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.FilledBox">
+        <item name="boxBackgroundMode">filled</item>
         <item name="boxCornerRadiusTopStart">16dp</item>
         <item name="boxCornerRadiusTopEnd">16dp</item>
         <item name="boxCornerRadiusBottomStart">16dp</item>
         <item name="boxCornerRadiusBottomEnd">16dp</item>
+        <item name="boxBackgroundColor">@color/fieldLight</item>
         <item name="boxStrokeColor">@color/colorOnSurfaceVariant</item>
         <item name="hintTextColor">@color/colorOnSurfaceVariant</item>
     </style>

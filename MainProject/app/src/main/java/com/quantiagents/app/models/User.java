@@ -16,6 +16,7 @@ public class User implements Serializable {
     private String userId;
     private String deviceId;
     private String name;
+    private String username;
     private String email;
     private String phone;
     private String passwordHash;
@@ -23,17 +24,20 @@ public class User implements Serializable {
     private Date createdOn;
     private constant.UserRole role;
     private RegistrationHistory registrationHistory;
+    private Date lastViewedBrowse;
 
 
     public User(){
         this.userId = "";
         this.deviceId = "";
         this.name = "";
+        this.username = "";
         this.email = "";
         this.phone = "";
         this.passwordHash = "";
         this.notificationsOn = true;
         this.createdOn = new Date();
+        this.lastViewedBrowse = null;
     }
 
     public User(String userId){
@@ -41,16 +45,18 @@ public class User implements Serializable {
         this.userId = userId;
     }
 
-    public User(String userId, String deviceId, String name, String email, String phone, String passwordHash) {
+    public User(String userId, String deviceId, String name, String username, String email, String phone, String passwordHash) {
         // Capture the snapshot of my profile at creation.
         this.userId = userId;
         this.deviceId = deviceId;
         this.name = name;
+        this.username = username;
         this.email = email;
         this.phone = phone;
         this.passwordHash = passwordHash;
         this.notificationsOn = true;
         this.createdOn = new Date();
+        this.lastViewedBrowse = null;
     }
 
     public String getUserId() {
@@ -77,9 +83,11 @@ public class User implements Serializable {
         this.name = name;
     }
 
-    public String getEmail() {
-        return email;
-    }
+    public String getUsername() { return username; }
+
+    public void setUsername(String username) { this.username = username; }
+
+    public String getEmail() { return email; }
 
     public void setEmail(String email) {
         this.email = email;
@@ -132,5 +140,9 @@ public class User implements Serializable {
     public void setRole(constant.UserRole role) {
         this.role = role;
     }
+
+    public Date getLastViewedBrowse() { return this.lastViewedBrowse; }
+
+    public void setLastViewedBrowse(Date viewedBrowse) { this.lastViewedBrowse = viewedBrowse; }
 
 }

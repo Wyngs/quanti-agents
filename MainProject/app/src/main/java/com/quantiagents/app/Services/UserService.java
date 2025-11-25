@@ -63,8 +63,9 @@ public class UserService {
      *
      * @return the created user snapshot (already contains the generated id)
      */
-    public User createUser(String name, String email, String phone, String password) {
-        User user = buildUser(name, email, phone, password);
+    public User createUser(String name, String username, String email, String phone, String password) {
+        User user = buildUser(name, username, email, phone, password);
+
         repository.saveUser(user,
                 aVoid -> Log.d("App", "User saved with ID: " + user.getUserId()),
                 e -> Log.e("App", "Failed to save", e));
@@ -75,12 +76,13 @@ public class UserService {
      * Async create hook I call from the UI so Firestore work stays off the main thread.
      */
     public void createUser(String name,
+                           String username,
                            String email,
                            String phone,
                            String password,
                            OnSuccessListener<User> onSuccess,
                            OnFailureListener onFailure) {
-        User user = buildUser(name, email, phone, password);
+        User user = buildUser(name, username, email, phone, password);
         repository.saveUser(user,
                 aVoid -> {
                     Log.d("App", "User saved with ID: " + user.getUserId());
@@ -168,6 +170,9 @@ public class UserService {
             if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
                 String hash = hashPassword(password);
                 return hash.equals(user.getPasswordHash());
+            } else if (user != null && email.trim().equalsIgnoreCase(user.getUsername())) {
+                String hash = hashPassword(password);
+                return hash.equals(user.getPasswordHash());
             }
         }
         return false;
@@ -182,6 +187,12 @@ public class UserService {
                 users -> {
                     for (User user : users) {
                         if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
+                            String hash = hashPassword(password);
+                            if (hash.equals(user.getPasswordHash())) {
+                                onSuccess.onSuccess(user);
+                                return;
+                            }
+                        } else if (user != null && email.trim().equalsIgnoreCase(user.getUsername())) {
                             String hash = hashPassword(password);
                             if (hash.equals(user.getPasswordHash())) {
                                 onSuccess.onSuccess(user);
@@ -425,7 +436,20 @@ public class UserService {
         }
     }
 
-    private void validateEmail(String email) {
+    public void validateUsername(String username) {
+
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username missing");
+        }
+        if (username.trim().length() < 4) {
+            throw new IllegalArgumentException("Username too short");
+        }
+        if (username.trim().contains(" ")) {
+            throw new IllegalArgumentException("Username may not contain spaces");
+        }
+    }
+
+        private void validateEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email missing");
         }
@@ -440,14 +464,15 @@ public class UserService {
         }
     }
 
-    private User buildUser(String name, String email, String phone, String password) {
+    private User buildUser(String name, String username, String email, String phone, String password) {
         validateName(name);
+        validateUsername(username);
         validateEmail(email);
         validatePassword(password);
         String trimmedPhone = phone == null ? "" : phone.trim();
         String deviceId = deviceIdManager.ensureDeviceId();
         String passwordHash = hashPassword(password);
-        return new User("", deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
+        return new User("", deviceId, name.trim(), username.trim(), email.trim(), trimmedPhone, passwordHash);
     }
 
     private String hashPassword(String password) {

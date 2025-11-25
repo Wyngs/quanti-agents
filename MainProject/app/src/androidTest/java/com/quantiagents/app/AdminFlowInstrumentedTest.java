@@ -128,8 +128,8 @@ public class AdminFlowInstrumentedTest {
         saveImageSync(imageService, img2);
 
         // 3. creating Users
-        User user1 = new User(testUserId, "device1", "Test User 1", "test1@example.com", "123", "pass");
-        User user2 = new User(testUser2Id, "device2", "Test User 2", "test2@example.com", "456", "pass");
+        User user1 = new User(testUserId, "device1", "Test User 1", "TestUser1", "test1@example.com", "123", "pass");
+        User user2 = new User(testUser2Id, "device2", "Test User 2", "TestUser2", "test2@example.com", "456", "pass");
 
         saveUserSync(userRepository, user1);
         saveUserSync(userRepository, user2);
