@@ -30,9 +30,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * Covers secondary features: GeoLocation, Notifications, QR Codes, and Images.
- */
 @RunWith(AndroidJUnit4.class)
 public class AuxiliaryServicesInstrumentedTest {
 
@@ -44,21 +41,16 @@ public class AuxiliaryServicesInstrumentedTest {
         locator = new ServiceLocator(context);
     }
 
-    /**
-     * Validates GeoLocation storage and boundary checks.
-     */
     @Test
     public void geoLocationValidationAndStorage() {
         GeoLocationService service = locator.geoLocationService();
 
-        // Test valid storage
         GeoLocation valid = new GeoLocation(53.5461, -113.4938, "user_geo", "event_geo");
         saveGeoSync(service, valid);
         GeoLocation fetched = service.getGeoLocationByUserIdAndEventId("user_geo", "event_geo");
         assertNotNull(fetched);
         assertEquals(53.5461, fetched.getLatitude(), 0.001);
 
-        // Test invalid latitude
         GeoLocation invalidLat = new GeoLocation(91.0, 0.0, "user_bad", "event_bad");
         AtomicBoolean failed = new AtomicBoolean(false);
         CountDownLatch latch = new CountDownLatch(1);
@@ -70,42 +62,31 @@ public class AuxiliaryServicesInstrumentedTest {
         assertTrue("Should reject invalid latitude", failed.get());
     }
 
-    /**
-     * Validates Notification flow: Create, Read Unread, Mark as Read.
-     */
     @Test
     public void notificationLifecycle() {
         NotificationService service = locator.notificationService();
         int recipientId = 9999;
 
-        // Create
         Notification note = new Notification(0, constant.NotificationType.GOOD, recipientId, 1, 100);
         saveNotificationSync(service, note);
 
-        // Verify exists in unread
         List<Notification> unread = service.getUnreadNotificationsByRecipientId(recipientId);
         assertTrue("Should have unread notification", unread.size() > 0);
         int noteId = unread.get(0).getNotificationId();
 
-        // Mark as read
         markReadSync(service, noteId);
 
-        // Verify gone from unread (assuming logic filters correctly)
-        // Note: Depending on speed, we might need to re-fetch to check 'hasRead' status explicitly
         Notification updated = service.getNotificationById(noteId);
         assertTrue("Should be marked read", updated.isHasRead());
     }
 
-    /**
-     * Validates QR Code persistence.
-     */
     @Test
     public void qrCodePersistence() {
         QRCodeService service = locator.qrCodeService();
         String qrVal = "test_qr_code_content";
         String eventId = "event_qr_1";
 
-        QRCode code = new QRCode(0, qrVal, eventId); // ID 0 triggers auto-gen
+        QRCode code = new QRCode(0, qrVal, eventId);
         saveQRSync(service, code);
 
         List<QRCode> list = service.getQRCodesByEventId(eventId);
@@ -113,9 +94,6 @@ public class AuxiliaryServicesInstrumentedTest {
         assertEquals(qrVal, list.get(0).getQrCodeValue());
     }
 
-    /**
-     * Validates Image metadata storage.
-     */
     @Test
     public void imageMetadataStorage() {
         ImageService service = locator.imageService();
@@ -130,8 +108,6 @@ public class AuxiliaryServicesInstrumentedTest {
 
         assertNotNull(images);
     }
-
-    // Helpers
 
     private void saveGeoSync(GeoLocationService s, GeoLocation g) {
         CountDownLatch l = new CountDownLatch(1);

@@ -11,6 +11,7 @@
     <string name="sign_up_hint_password">Password</string>
     <string name="sign_up_action">Create profile</string>
     <string name="sign_up_cancel">Cancel</string>
+    <string name="sign_up_login_action">Already have an account? Log in</string>
     <string name="sign_up_body">I only need this once. The device keeps you signed in.</string>
     <string name="error_name_required">Name is required</string>
     <string name="error_email_required">Email is required</string>
@@ -62,6 +63,7 @@
     <string name="nav_close">Close drawer</string>
     <string name="nav_open">Open navigation</string>
     <string name="nav_role_entrant">Entrant</string>
+    <string name="nav_role_admin">Administrator</string>
     <string name="nav_placeholder_unavailable">Coming soon</string>
     <string name="create_event_title">Create New Event</string>
     <string name="create_event_subtitle">Set up a new lottery-based event</string>
@@ -127,17 +129,14 @@
     <string name="search_events_hint">Search events…</string>
     <string name="empty_browse_events">No events found.</string>
 
-    <!-- Create Event -->
     <string name="label_geolocation_required">Require geolocation at check-in</string>
 
-    <!-- My Events tabs (use with getString(..., count)) -->
     <string name="tab_waiting_fmt">Waiting (%1$d)</string>
     <string name="tab_selected_fmt">Selected (%1$d)</string>
     <string name="tab_confirmed_fmt">Confirmed (%1$d)</string>
     <string name="tab_past_fmt">Past (%1$d)</string>
     <string name="my_events_empty_generic">Nothing here yet.</string>
 
-    <!-- Browse item actions -->
     <string name="event_closed">Closed</string>
     <string name="join_waitlist">Join waitlist</string>
     <string name="view_event">View</string>
@@ -146,4 +145,7 @@
 
 
     <string name="manage_events_empty_default">No organized events yet.</string>
+
+    <string name="admin_image_id_fmt">ID: %1$s</string>
+    <string name="nav_item_admin_images">Manage images</string>
 </resources>

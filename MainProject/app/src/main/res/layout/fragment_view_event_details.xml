@@ -277,6 +277,21 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- View Poster Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_view_poster"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="View Poster"
+                    android:textColor="@color/colorBlack"
+                    app:strokeColor="#757575"
+                    app:icon="@android:drawable/ic_menu_gallery"
+                    app:iconTint="@color/colorBlack"
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
+
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_lottery_info"
                     style="@style/Widget.QuantiAgents.Card"

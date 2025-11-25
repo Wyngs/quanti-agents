@@ -1,18 +1,19 @@
 package com.quantiagents.app.Services;
 
 import android.content.Context;
-import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.quantiagents.app.Repository.AdminLogRepository;
-import com.quantiagents.app.Repository.ProfilesRepository;
+import com.quantiagents.app.Repository.FireBaseRepository;
+import com.quantiagents.app.Repository.UserRepository;
 import com.quantiagents.app.models.AdminActionLog;
 import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.User;
-import com.quantiagents.app.models.UserSummary;
 
 import java.util.List;
 
@@ -20,100 +21,116 @@ public class AdminService {
 
     private final EventService eventService;
     private final ImageService imageService;
-    private final ProfilesRepository profilesRepository;
+    private final UserRepository userRepository; // Direct repo access for admin deletes
+    private final UserService userService;       // Kept for local profile cleanup
     private final AdminLogRepository logRepository;
     private final DeviceIdManager deviceIdManager;
-    private final UserService userService;
 
     public AdminService(Context context) {
-        // Instantiate services and repositories internally
-        this.eventService = new EventService(context);
-        this.imageService = new ImageService(context);
-        this.profilesRepository = new ProfilesRepository(context);
+        ServiceLocator locator = new ServiceLocator(context);
+        FireBaseRepository fbRepo = new FireBaseRepository();
+
+        this.eventService = locator.eventService();
+        this.imageService = locator.imageService();
+        this.userService = locator.userService();
+        this.userRepository = new UserRepository(fbRepo); // Needed for deleteUserById(String)
         this.logRepository = new AdminLogRepository(context);
         this.deviceIdManager = new DeviceIdManager(context);
-        this.userService = new UserService(context);
     }
 
-    //us 03.01.01a: browse all events
-    public List<Event> listAllEvents() {
-        return eventService.getAllEvents();
+    // --- Events ---
+
+    public void getAllEvents(OnSuccessListener<List<Event>> onSuccess, OnFailureListener onFailure) {
+        eventService.getAllEvents(onSuccess, onFailure);
     }
 
-    //us 03.01.01b+c: select and confirm deletion of an event (cascades images)
-    public boolean removeEvent(String eventId, boolean confirmed, @Nullable String note) {
+    public void removeEvent(String eventId, boolean confirmed, @Nullable String note,
+                            OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (!confirmed) {
-            throw new IllegalArgumentException("confirmation required");
+            onFailure.onFailure(new IllegalArgumentException("Confirmation required"));
+            return;
         }
-        
-        //cascade: delete event poster images by event id
+
+        // 1. Attempt to delete images (best effort)
         imageService.deleteImagesByEventId(eventId);
-        
-        // Delete event using EventService
-        boolean removed = eventService.deleteEvent(eventId);
-        
-        // Log the deletion
-        if (removed) {
-            logRepository.append(new AdminActionLog(
-                    AdminActionLog.KIND_EVENT,
-                    eventId,
-                    System.currentTimeMillis(),
-                    deviceIdManager.ensureDeviceId(),
-                    note
-            ));
-        }
-        
-        return removed;
+
+        // 2. Delete event
+        eventService.deleteEvent(eventId,
+                aVoid -> {
+                    logAction(AdminActionLog.KIND_EVENT, eventId, note);
+                    onSuccess.onSuccess(aVoid);
+                },
+                onFailure);
     }
 
-    //us 03.02.01a: browse all profiles (search handled in ui)
-    public List<UserSummary> listAllProfiles() {
-        return profilesRepository.listProfiles();
+    // --- Profiles ---
+
+    public void listAllProfiles(OnSuccessListener<List<User>> onSuccess, OnFailureListener onFailure) {
+        userRepository.getAllUsers(onSuccess, onFailure);
     }
 
-    //us 03.02.01b+c: select a profile and confirm deletion; also clears local profile if it matches
-    public boolean removeProfile(String userId, boolean confirmed, @Nullable String note) {
+    public void removeProfile(String userId, boolean confirmed, @Nullable String note,
+                              OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (!confirmed) {
-            throw new IllegalArgumentException("confirmation required");
+            onFailure.onFailure(new IllegalArgumentException("Confirmation required"));
+            return;
         }
-        boolean removed = profilesRepository.deleteProfile(userId);
-        //if the locally stored profile matches, clear it too
-        User local = userService.getCurrentUser();
-        if (local != null && userId != null && userId.equals(local.getUserId())) {
-            userService.deleteUserProfile();
-        }
-        if (removed) {
-            logRepository.append(new AdminActionLog(
-                    AdminActionLog.KIND_PROFILE,
-                    userId,
-                    System.currentTimeMillis(),
-                    deviceIdManager.ensureDeviceId(),
-                    note
-            ));
-        }
-        return removed;
+
+        // 1. Delete from Firestore
+        userRepository.deleteUserById(userId,
+                aVoid -> {
+                    // 2. If it matches local user, wipe local session
+                    userService.getCurrentUser(
+                            currentUser -> {
+                                if (currentUser != null && userId.equals(currentUser.getUserId())) {
+                                    userService.deleteUserProfile(
+                                            unused -> {}, // Already deleted from remote, just clearing local
+                                            e -> {}
+                                    );
+                                }
+                            },
+                            e -> {} // Ignore if we can't fetch current user
+                    );
+
+                    logAction(AdminActionLog.KIND_PROFILE, userId, note);
+                    onSuccess.onSuccess(aVoid);
+                },
+                onFailure
+        );
     }
 
-    //us 03.03.01a: list all uploaded images
+    // --- Images ---
+
     public List<Image> listAllImages() {
+        // Checking Turn 1 ImageService: it returns List<Image> synchronously via Repository Task.await().
+        // To avoid main thread blocks, the UI should wrap this in Executor.
         return imageService.getAllImages();
     }
 
-    //us 03.03.01b+c: select an image and confirm deletion
-    public boolean removeImage(String imageId, boolean confirmed, @Nullable String note) {
+    public void removeImage(String imageId, boolean confirmed, @Nullable String note,
+                            OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (!confirmed) {
-            throw new IllegalArgumentException("confirmation required");
+            onFailure.onFailure(new IllegalArgumentException("Confirmation required"));
+            return;
         }
-        boolean removed = imageService.deleteImage(imageId);
-        if (removed) {
-            logRepository.append(new AdminActionLog(
-                    AdminActionLog.KIND_IMAGE,
-                    imageId,
-                    System.currentTimeMillis(),
-                    deviceIdManager.ensureDeviceId(),
-                    note
-            ));
-        }
-        return removed;
+
+        imageService.deleteImage(imageId,
+                aVoid -> {
+                    logAction(AdminActionLog.KIND_IMAGE, imageId, note);
+                    onSuccess.onSuccess(aVoid);
+                },
+                onFailure);
+    }
+
+    // --- Helper ---
+
+    private void logAction(String kind, String targetId, String note) {
+        logRepository.append(new AdminActionLog(
+                kind,
+                targetId,
+                System.currentTimeMillis(),
+                deviceIdManager.ensureDeviceId(),
+                note
+        ));
     }
 }

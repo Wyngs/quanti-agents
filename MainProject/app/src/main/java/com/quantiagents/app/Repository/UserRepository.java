@@ -39,6 +39,12 @@ public class UserRepository {
      * Fetches a user document by id. Used sparingly since most flows key off device id.
      */
     public User getUserById(String userId) {
+        // CRITICAL FIX: Check for invalid ID before calling Firestore to prevent IllegalArgumentException crash
+        if (userId == null || userId.trim().isEmpty()) {
+            Log.w("Firestore", "getUserById called with null or empty ID");
+            return null;
+        }
+
         try {
             DocumentSnapshot snapshot = Tasks.await(context.document(userId).get());
             if (snapshot.exists()) {
@@ -47,10 +53,60 @@ public class UserRepository {
                 Log.d("Firestore", "No user found for ID: " + userId);
                 return null;
             }
+        } catch (IllegalArgumentException e) {
+            Log.e("Firestore", "Invalid argument for user ID: " + userId, e);
+            return null;
         } catch (ExecutionException | InterruptedException e) {
             Log.e("Firestore", "Error getting user", e);
             return null;
+        } catch (Exception e) {
+            Log.e("Firestore", "Unexpected error getting user", e);
+            return null;
         }
+    }
+
+    /**
+     * Synchronously fetches a user by their device ID.
+     * Efficiently queries Firestore instead of downloading the entire collection.
+     */
+    public User getUserByDeviceId(String deviceId) {
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            QuerySnapshot snapshot = Tasks.await(context.whereEqualTo("deviceId", deviceId).get());
+            if (!snapshot.isEmpty()) {
+                // Assuming one user per device ID, take the first match
+                return snapshot.getDocuments().get(0).toObject(User.class);
+            }
+            return null;
+        } catch (Exception e) {
+            Log.e("Firestore", "Error getting user by device ID", e);
+            return null;
+        }
+    }
+
+    /**
+     * Asynchronously fetches a user by their device ID.
+     */
+    public void getUserByDeviceId(String deviceId, OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            onSuccess.onSuccess(null);
+            return;
+        }
+        context.whereEqualTo("deviceId", deviceId).get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        User user = querySnapshot.getDocuments().get(0).toObject(User.class);
+                        onSuccess.onSuccess(user);
+                    } else {
+                        onSuccess.onSuccess(null);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("Firestore", "Error getting user by device ID", e);
+                    onFailure.onFailure(e);
+                });
     }
 
     /**

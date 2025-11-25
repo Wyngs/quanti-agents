@@ -96,7 +96,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="@string/login_reset_action" />
+                android:text="@string/sign_up_action" />
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
