@@ -6,6 +6,7 @@
     <string name="splash_subtitle">Tap to begin sign-in process.</string>
     <string name="sign_up_title">Set up your profile</string>
     <string name="sign_up_hint_name">Full name</string>
+    <string name="sign_up_hint_username">Username</string>
     <string name="sign_up_hint_email">Email</string>
     <string name="sign_up_hint_phone">Phone (optional)</string>
     <string name="sign_up_hint_password">Password</string>
@@ -14,6 +15,7 @@
     <string name="sign_up_login_action">Already have an account? Log in</string>
     <string name="sign_up_body">I only need this once. The device keeps you signed in.</string>
     <string name="error_name_required">Name is required</string>
+    <string name="error_username_required">Username is required</string>
     <string name="error_email_required">Email is required</string>
     <string name="error_email_invalid">Email looks off</string>
     <string name="error_password_requirement">Password needs at least 6 characters</string>

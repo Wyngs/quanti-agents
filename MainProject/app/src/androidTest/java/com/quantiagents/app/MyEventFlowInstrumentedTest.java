@@ -70,7 +70,7 @@ public class MyEventFlowInstrumentedTest {
     }
 
     private void seedTestData() {
-        User user = new User("test_user", "device_123", "Test Entrant", "test@example.com", "555-5555", "hash");
+        User user = new User("test_user", "device_123", "Test Entrant", "testEntry", "test@example.com", "555-5555", "hash");
         mockUserService.setActiveUser(user);
 
         createEventAndReg("evt_wait", "Waiting Event", constant.EventRegistrationStatus.WAITLIST, user.getUserId());
@@ -237,7 +237,7 @@ public class MyEventFlowInstrumentedTest {
 
         @Override
         public User getUserById(String userId) {
-            return new User(userId, "dev", "Organizer Name", "email", "phone", "hash");
+            return new User(userId, "dev", "Organizer Name", "Organizer", "email", "phone", "hash");
         }
     }
 
