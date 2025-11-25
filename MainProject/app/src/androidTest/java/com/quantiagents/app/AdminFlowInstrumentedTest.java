@@ -9,6 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.UserRepository;
+import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.Services.AdminService;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.ImageService;
@@ -24,7 +25,7 @@ import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import java.util.UUID; // added
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -48,6 +49,9 @@ public class AdminFlowInstrumentedTest {
         context = ApplicationProvider.getApplicationContext();
         locator = new ServiceLocator(context);
 
+        // wipe(); // commented out old wipe
+        // seed(); // commented out old seed
+
         // generate unique random IDs for this test run
         String uniqueSuffix = UUID.randomUUID().toString().substring(0, 8);
         testEvt1Id = "test_evt1_" + uniqueSuffix;
@@ -63,6 +67,9 @@ public class AdminFlowInstrumentedTest {
 
     @After
     public void tearDown() {
+        //clean up for the next run
+        // wipe(); // commented out old wipe
+
         // only clean up the specific objects we created
         cleanupTestObjects();
     }
@@ -71,6 +78,7 @@ public class AdminFlowInstrumentedTest {
     public void adminDeleteFlows() throws InterruptedException {
         AdminService admin = locator.adminService();
 
+        /*
         //us 03.01.01 b–c: delete an event and cascade its images
         // delete Event 1. should cascade and delete Image 1.
         assertTrue("Failed to remove event 1", removeEventSync(admin, testEvt1Id, true, "Test deletion"));
@@ -91,20 +99,58 @@ public class AdminFlowInstrumentedTest {
         // verify we can delete the specific test user created
         assertTrue("Failed to remove profile", removeProfileSync(admin, testUserId, true, "Test deletion"));
 
+        //us 03.03.01 b–c: delete the remaining image
+        // UPDATED: Uses helper method now because removeImage is now asynchronous
+        assertTrue(removeImageSync(admin, "img2", true, "t"));
+        assertEquals(0, admin.listAllImages().size());
+        */
+
+        // --- NEW ISOLATED TEST LOGIC ---
+
+        //us 03.01.01 b–c: delete an event and cascade its images
+        // delete Event 1. should cascade and delete Image 1.
+        assertTrue(admin.removeEvent(testEvt1Id, true, "Test deletion"));
+
+        List<Event> allEvents = admin.listAllEvents();
+        List<Image> allImages = admin.listAllImages();
+
+        // verify Event 1 is gone, but Event 2 remains
+        assertFalse("Event 1 should be deleted", containsEvent(allEvents, testEvt1Id));
+        assertTrue("Event 2 should remain", containsEvent(allEvents, testEvt2Id));
+
+        // verify Image 1 (linked to Event 1) is gone
+        assertFalse("Image 1 (cascade) should be deleted", containsImage(allImages, testImg1Id));
+        // verify Image 2 (standalone) remains
+        assertTrue("Image 2 should remain", containsImage(allImages, testImg2Id));
+
+        //us 03.02.01 b–c: delete a profile;
+        // verify we can delete the specific test user created
+        assertTrue(removeProfileSync(admin, testUserId, true, "Test deletion"));
+
         // verify test user is gone
-        List<User> allProfiles = listProfilesSync(admin);
+        List<UserSummary> allProfiles = admin.listAllProfiles();
         assertFalse("Test User 1 should be deleted", containsProfile(allProfiles, testUserId));
         assertTrue("Test User 2 should remain", containsProfile(allProfiles, testUser2Id));
 
 
         //us 03.03.01 b–c: delete the remaining image
         // delete remaining standalone image
-        assertTrue("Failed to remove image 2", removeImageSync(admin, testImg2Id, true, "Test deletion"));
+        assertTrue(removeImageSync(admin, testImg2Id, true, "Test deletion"));
 
         // verify it's gone
         allImages = admin.listAllImages();
         assertFalse("Image 2 should be deleted", containsImage(allImages, testImg2Id));
     }
+
+    /*
+    private void wipe() {
+        // ... old wipe code ...
+    }
+
+    private void seed() {
+        // ... old seed code ...
+    }
+    */
 
     // new helpers for isolated testing
 
@@ -128,8 +174,8 @@ public class AdminFlowInstrumentedTest {
         saveImageSync(imageService, img2);
 
         // 3. creating Users
-        User user1 = new User(testUserId, "device1", "Test User 1", "TestUser1", "test1@example.com", "123", "pass");
-        User user2 = new User(testUser2Id, "device2", "Test User 2", "TestUser2", "test2@example.com", "456", "pass");
+        User user1 = new User(testUserId, "device1", "Test User 1", "test1@example.com", "123", "pass");
+        User user2 = new User(testUser2Id, "device2", "Test User 2", "test2@example.com", "456", "pass");
 
         saveUserSync(userRepository, user1);
         saveUserSync(userRepository, user2);
@@ -137,17 +183,22 @@ public class AdminFlowInstrumentedTest {
 
     private void cleanupTestObjects() {
         AdminService admin = locator.adminService();
-        removeEventSync(admin, testEvt2Id, true, null);
-        removeEventSync(admin, testEvt1Id, true, null);
+        try {
+            admin.removeEvent(testEvt2Id, true, null); // event 2 wasn't deleted in test
+        } catch (Exception ignored) {}
 
+        // clean up profiles
         removeProfileSync(admin, testUser2Id, true, null);
-        removeProfileSync(admin, testUserId, true, null);
 
+        // clean up anything else that might have been left behind if test failed midway
+        try { admin.removeEvent(testEvt1Id, true, null); } catch (Exception ignored) {}
         removeImageSync(admin, testImg1Id, true, null);
         removeImageSync(admin, testImg2Id, true, null);
+        removeProfileSync(admin, testUserId, true, null);
     }
 
     // assertion helpers
+    // these check if an item exists in the list by ID, ignoring all other data in DB
 
     private boolean containsEvent(List<Event> list, String id) {
         if (list == null) return false;
@@ -165,9 +216,9 @@ public class AdminFlowInstrumentedTest {
         return false;
     }
 
-    private boolean containsProfile(List<User> list, String id) {
+    private boolean containsProfile(List<UserSummary> list, String id) {
         if (list == null) return false;
-        for (User u : list) {
+        for (UserSummary u : list) {
             if (u.getUserId().equals(id)) return true;
         }
         return false;
@@ -208,29 +259,33 @@ public class AdminFlowInstrumentedTest {
         return result[0];
     }
 
-    private List<Event> listEventsSync(AdminService admin) {
+    /**
+     * NEW HELPER FUNCTION (updated to match return type) : Wraps async removeImage call in a synchronous helper for testing
+     */
+    private boolean removeImageSync(AdminService admin, String imageId, boolean confirmed, String note) {
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<List<Event>> ref = new AtomicReference<>(new ArrayList<>());
-        admin.getAllEvents(
-                list -> { ref.set(list); latch.countDown(); },
-                e -> latch.countDown()
+        final boolean[] result = {false};
+
+        admin.removeImage(imageId, confirmed, note,
+                success -> {
+                    result[0] = true;
+                    latch.countDown();
+                },
+                failure -> {
+                    result[0] = false;
+                    latch.countDown();
+                }
         );
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
-        return ref.get();
+        try {
+            latch.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return result[0];
     }
 
-    private List<User> listProfilesSync(AdminService admin) {
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<List<User>> ref = new AtomicReference<>(new ArrayList<>());
-        admin.listAllProfiles(
-                list -> { ref.set(list); latch.countDown(); },
-                e -> latch.countDown()
-        );
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
-        return ref.get();
-    }
-
-    // Helper methods to save data synchronously
+    // Helper method to save event synchronously
     private void saveEventSync(EventService eventService, Event event) {
         CountDownLatch latch = new CountDownLatch(1);
         eventService.saveEvent(event,
@@ -251,11 +306,29 @@ public class AdminFlowInstrumentedTest {
         try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { e.printStackTrace(); }
     }
 
+    // Helper method to save user synchronously (Added for this fix)
     private void saveUserSync(UserRepository repo, User user) {
         CountDownLatch latch = new CountDownLatch(1);
         repo.saveUser(user,
                 aVoid -> latch.countDown(),
                 e -> latch.countDown());
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { e.printStackTrace(); }
+        try {
+            latch.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Polls until the current user reference disappears.
+     */
+    private boolean waitForProfileRemoval(UserService userService) {
+        for (int i = 0; i < 40; i++) {
+            if (userService.getCurrentUser() == null) {
+                return true;
+            }
+            SystemClock.sleep(150);
+        }
+        return userService.getCurrentUser() == null;
     }
 }

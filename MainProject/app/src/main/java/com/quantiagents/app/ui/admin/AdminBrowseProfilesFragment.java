@@ -4,12 +4,10 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -38,11 +36,6 @@ public class AdminBrowseProfilesFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        TextView titleView = view.findViewById(R.id.text_admin_title);
-        titleView.setText("Manage Profiles");
-
-        SearchView searchView = view.findViewById(R.id.admin_search_view);
-
         viewModel = new ViewModelProvider(this).get(AdminEventsViewModel.class);
 
         recyclerView = view.findViewById(R.id.admin_recycler_view);
@@ -52,20 +45,6 @@ public class AdminBrowseProfilesFragment extends Fragment {
             viewModel.deleteProfile(profile);
         });
         recyclerView.setAdapter(adapter);
-
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                viewModel.searchProfiles(query);
-                return true;
-            }
-
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                viewModel.searchProfiles(newText);
-                return true;
-            }
-        });
 
         viewModel.getProfiles().observe(getViewLifecycleOwner(), profiles -> {
             adapter.submitList(profiles);
