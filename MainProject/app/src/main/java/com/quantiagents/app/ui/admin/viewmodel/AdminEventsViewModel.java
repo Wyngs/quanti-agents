@@ -104,7 +104,7 @@ public class AdminEventsViewModel extends AndroidViewModel {
                     List<UserSummary> summaries = new ArrayList<>();
                     if (users != null) {
                         for (User u : users) {
-                            summaries.add(new UserSummary(u.getUserId(), u.getName(), u.getEmail()));
+                            summaries.add(new UserSummary(u.getUserId(), u.getName(), u.getUsername(), u.getEmail()));
                         }
                     }
                     masterProfileList = new ArrayList<>(summaries);

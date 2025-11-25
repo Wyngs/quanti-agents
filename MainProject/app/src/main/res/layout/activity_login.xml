@@ -3,21 +3,21 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorSurface">
+    android:background="@color/splashColor">
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/card_shell"
         style="@style/Widget.QuantiAgents.Card"
         android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_margin="2dp"
+        android:layout_height="match_parent"
+        android:layout_margin="4dp"
         app:cardBackgroundColor="@color/colorSurface"
-        app:strokeColor="@color/colorPrimary"
-        app:strokeWidth="2dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:strokeColor="@color/buttonBoxBlue"
+        app:strokeWidth="6dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -30,6 +30,7 @@
                 android:id="@+id/image_logo"
                 android:layout_width="140dp"
                 android:layout_height="150dp"
+                android:layout_marginTop="40dp"
                 android:rotation="-35"
                 android:contentDescription="@string/app_name"
                 android:src="@drawable/ic_logo_ticket" />
@@ -42,14 +43,15 @@
                 android:text="@string/login_screen_title"
                 android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
                 android:textColor="@color/colorPrimary"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:textSize="25sp"/>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/login_username_layout"
                 style="@style/Widget.QuantiAgents.TextInputLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="36dp"
+                android:layout_marginTop="48dp"
                 android:background="@null"
                 android:hint="@string/login_username_hint">
 
@@ -57,7 +59,9 @@
                     android:id="@+id/input_username"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textEmailAddress" />
+                    android:inputType="textEmailAddress"
+                    android:textStyle="bold"
+                    android:textColorHint="@color/hintColor"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -72,16 +76,66 @@
                     android:id="@+id/input_password"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPassword" />
+                    android:inputType="textPassword"
+                    android:textStyle="bold"
+                    android:textColorHint="@color/hintColor"/>
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/button_continue"
-                style="@style/Widget.QuantiAgents.Button"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:text="@string/login_primary_action" />
+                android:layout_height="85dp"
+                >
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_continue"
+                    style="@style/Widget.QuantiAgents.Button"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="3"
+                    android:layout_marginTop="28dp"
+                    android:text="@string/login_primary_action"
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                >
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_switch_user"
+                    style="@style/Widget.QuantiAgents.Button.Tonal"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="@string/sign_up_action"
+                    android:layout_weight="3"
+                    android:textStyle="bold"
+                    android:textSize="16sp"/>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/text_forgot_password"
@@ -91,14 +145,6 @@
                 android:text="@string/login_forgot_password"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                 android:textColor="@color/colorPrimary" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/button_switch_user"
-                style="@style/Widget.QuantiAgents.Button.Tonal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/sign_up_action" />
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

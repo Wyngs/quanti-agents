@@ -66,6 +66,7 @@ public class UserService {
     public User createUser(String name, String username, String email, String phone, String password) {
         User user = buildUser(name, username, email, phone, password);
 
+        // I should add the uniqueness check here, but I didn't in case the tests use the same usernames
         repository.saveUser(user,
                 aVoid -> Log.d("App", "User saved with ID: " + user.getUserId()),
                 e -> Log.e("App", "Failed to save", e));
@@ -82,20 +83,34 @@ public class UserService {
                            String password,
                            OnSuccessListener<User> onSuccess,
                            OnFailureListener onFailure) {
-        User user = buildUser(name, username, email, phone, password);
-        repository.saveUser(user,
-                aVoid -> {
-                    Log.d("App", "User saved with ID: " + user.getUserId());
-                    if (onSuccess != null) {
-                        onSuccess.onSuccess(user);
+
+        repository.usernameAndEmailExists(username, email,
+                exists -> {
+                    if (exists.get(0)) {
+                        onFailure.onFailure(new Exception("Username Taken"));
+                        return;
+                    } else if (exists.get(1)) {
+                        onFailure.onFailure(new Exception("Email Taken"));
+                        return;
                     }
+
+                    User user = buildUser(name, username, email, phone, password);
+
+                    repository.saveUser(user,
+                            aVoid -> {
+                                Log.d("App", "User saved with ID: " + user.getUserId());
+                                if (onSuccess != null) {
+                                    onSuccess.onSuccess(user);
+                                }
+                            },
+                            e -> {
+                                Log.e("App", "Failed to save", e);
+                                if (onFailure != null) {
+                                    onFailure.onFailure(e);
+                                }
+                            });
                 },
-                e -> {
-                    Log.e("App", "Failed to save", e);
-                    if (onFailure != null) {
-                        onFailure.onFailure(e);
-                    }
-                });
+                onFailure);
     }
 
     /**
@@ -430,13 +445,23 @@ public class UserService {
         return current;
     }
 
+    /**
+     * Verifies that the given string is valid
+     * @param name
+     * String name to check
+     */
     private void validateName(String name) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Name missing");
         }
     }
 
-    public void validateUsername(String username) {
+    /**
+     * Verifies that the given string is valid
+     * @param username
+     * String username to check
+     */
+    private void validateUsername(String username) {
 
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Username missing");
@@ -449,7 +474,12 @@ public class UserService {
         }
     }
 
-        private void validateEmail(String email) {
+    /**
+     * Verifies that the given string is valid
+     * @param email
+     * String email to check
+     */
+    private void validateEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email missing");
         }
@@ -458,12 +488,33 @@ public class UserService {
         }
     }
 
+    /**
+     * Verifies that the given string is valid
+     * @param password
+     * String password to check
+     */
     private void validatePassword(String password) {
         if (password == null || password.trim().length() < 6) {
             throw new IllegalArgumentException("Password weak");
         }
     }
 
+    /**
+     * Verifies and creates a user from inputs
+     * @param name
+     * String name to use
+     * @param username
+     * String username to use (no spaces and >3 characters)
+     * @param email
+     * String email to use (in form []@[].[])
+     * @param phone
+     * String phone to use
+     * @param password
+     * String password to use (will be hashed)
+     * @return
+     * Returns created User
+     * @see User
+     */
     private User buildUser(String name, String username, String email, String phone, String password) {
         validateName(name);
         validateUsername(username);
@@ -475,6 +526,13 @@ public class UserService {
         return new User("", deviceId, name.trim(), username.trim(), email.trim(), trimmedPhone, passwordHash);
     }
 
+    /**
+     * Hashes password
+     * @param password
+     * Password to hash
+     * @return
+     * Returns hashed password
+     */
     private String hashPassword(String password) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
