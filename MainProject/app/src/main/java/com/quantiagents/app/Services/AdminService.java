@@ -122,15 +122,26 @@ public class AdminService {
                 onFailure);
     }
 
-    // --- Helper ---
+    //us 03.03.01a: list all uploaded images
+    public List<Image> listAllImages() {
+        return imageService.getAllImages();
+    }
 
-    private void logAction(String kind, String targetId, String note) {
-        logRepository.append(new AdminActionLog(
-                kind,
-                targetId,
-                System.currentTimeMillis(),
-                deviceIdManager.ensureDeviceId(),
-                note
-        ));
+    //us 03.03.01b+c: select an image and confirm deletion
+    public boolean removeImage(String imageId, boolean confirmed, @Nullable String note) {
+        if (!confirmed) {
+            throw new IllegalArgumentException("confirmation required");
+        }
+        boolean removed = imageService.deleteImage(imageId);
+        if (removed) {
+            logRepository.append(new AdminActionLog(
+                    AdminActionLog.KIND_IMAGE,
+                    imageId,
+                    System.currentTimeMillis(),
+                    deviceIdManager.ensureDeviceId(),
+                    note
+            ));
+        }
+        return removed;
     }
 }
