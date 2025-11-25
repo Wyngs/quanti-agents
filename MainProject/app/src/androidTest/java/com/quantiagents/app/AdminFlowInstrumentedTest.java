@@ -3,7 +3,6 @@ package com.quantiagents.app;
 import static org.junit.Assert.*;
 
 import android.content.Context;
-import android.os.SystemClock;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -14,22 +13,22 @@ import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.Services.AdminService;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.ImageService;
-import com.quantiagents.app.Services.UserService;
-import com.quantiagents.app.Repository.ProfilesRepository;
+import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.User;
-import com.quantiagents.app.models.UserSummary;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID; // added
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(AndroidJUnit4.class)
 public class AdminFlowInstrumentedTest {
@@ -47,7 +46,6 @@ public class AdminFlowInstrumentedTest {
 
     @Before
     public void setUp() {
-        //always start from a clean slate
         context = ApplicationProvider.getApplicationContext();
         locator = new ServiceLocator(context);
 
@@ -77,28 +75,29 @@ public class AdminFlowInstrumentedTest {
     }
 
     @Test
-    public void adminStories0301to0303Work() {
+    public void adminDeleteFlows() throws InterruptedException {
         AdminService admin = locator.adminService();
 
         /*
         //us 03.01.01 b–c: delete an event and cascade its images
-        String evt1Id = "evt1";
-        assertTrue(admin.removeEvent(evt1Id, true, "t"));
-        List<Event> events = admin.listAllEvents();
-        assertEquals(1, events.size());                   //evt2 remains
-        assertEquals(1, admin.listAllImages().size());    //img1 removed, img2 remains
+        // delete Event 1. should cascade and delete Image 1.
+        assertTrue("Failed to remove event 1", removeEventSync(admin, testEvt1Id, true, "Test deletion"));
 
-        //us 03.02.01 b–c: delete a profile; if it is our local user, local profile is cleared
-        User local = locator.userService().getCurrentUser();
-        assertNotNull(local);
+        List<Event> allEvents = listEventsSync(admin);
+        List<Image> allImages = admin.listAllImages(); // This method is sync in AdminService
 
-        assertTrue(removeProfileSync(admin, local.getUserId(), true, "t"));
+        // verify Event 1 is gone, but Event 2 remains
+        assertFalse("Event 1 should be deleted", containsEvent(allEvents, testEvt1Id));
+        assertTrue("Event 2 should remain", containsEvent(allEvents, testEvt2Id));
 
-        // Fix: Wait for async deletion to propagate
-        boolean removed = waitForProfileRemoval(locator.userService());
-        assertTrue("Local user profile should be removed", removed);
+        // verify Image 1 (linked to Event 1) is gone
+        assertFalse("Image 1 (cascade) should be deleted", containsImage(allImages, testImg1Id));
+        // verify Image 2 (standalone) remains
+        assertTrue("Image 2 should remain", containsImage(allImages, testImg2Id));
 
-        assertEquals(1, admin.listAllProfiles().size());  //u2 remains
+        //us 03.02.01 b–c: delete a profile;
+        // verify we can delete the specific test user created
+        assertTrue("Failed to remove profile", removeProfileSync(admin, testUserId, true, "Test deletion"));
 
         //us 03.03.01 b–c: delete the remaining image
         // UPDATED: Uses helper method now because removeImage is now asynchronous
@@ -225,33 +224,38 @@ public class AdminFlowInstrumentedTest {
         return false;
     }
 
-    // Helper functions
+    // Sync wrappers for Async Admin Service calls
 
-    /**
-     * Wraps the async removeProfile call in a synchronous helper for testing.
-     */
+    private boolean removeEventSync(AdminService admin, String eventId, boolean confirmed, String note) {
+        CountDownLatch latch = new CountDownLatch(1);
+        final boolean[] result = {false};
+        admin.removeEvent(eventId, confirmed, note,
+                success -> { result[0] = true; latch.countDown(); },
+                failure -> { result[0] = false; latch.countDown(); }
+        );
+        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
+        return result[0];
+    }
+
     private boolean removeProfileSync(AdminService admin, String userId, boolean confirmed, String note) {
         CountDownLatch latch = new CountDownLatch(1);
         final boolean[] result = {false};
-
         admin.removeProfile(userId, confirmed, note,
-                success -> {
-                    result[0] = true;
-                    latch.countDown();
-                },
-                failure -> {
-                    result[0] = false;
-                    latch.countDown();
-                }
+                success -> { result[0] = true; latch.countDown(); },
+                failure -> { result[0] = false; latch.countDown(); }
         );
+        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
+        return result[0];
+    }
 
-        try {
-            // Waits for up to 5 seconds for the database to respond
-            latch.await(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            return false;
-        }
+    private boolean removeImageSync(AdminService admin, String imageId, boolean confirmed, String note) {
+        CountDownLatch latch = new CountDownLatch(1);
+        final boolean[] result = {false};
+        admin.removeImage(imageId, confirmed, note,
+                success -> { result[0] = true; latch.countDown(); },
+                failure -> { result[0] = false; latch.countDown(); }
+        );
+        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
         return result[0];
     }
 
@@ -285,26 +289,21 @@ public class AdminFlowInstrumentedTest {
     private void saveEventSync(EventService eventService, Event event) {
         CountDownLatch latch = new CountDownLatch(1);
         eventService.saveEvent(event,
-                aVoid -> latch.countDown(),
+                id -> {
+                    // Update ID if auto-generated (though we set it manually in this test)
+                    if(event.getEventId() == null || event.getEventId().isEmpty()) event.setEventId(id);
+                    latch.countDown();
+                },
                 e -> latch.countDown());
-        try {
-            latch.await(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { e.printStackTrace(); }
     }
 
-    // Helper method to save image synchronously
     private void saveImageSync(ImageService imageService, Image image) {
         CountDownLatch latch = new CountDownLatch(1);
         imageService.saveImage(image,
-                aVoid -> latch.countDown(),
+                id -> latch.countDown(),
                 e -> latch.countDown());
-        try {
-            latch.await(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { e.printStackTrace(); }
     }
 
     // Helper method to save user synchronously (Added for this fix)

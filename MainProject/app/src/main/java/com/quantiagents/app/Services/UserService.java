@@ -38,15 +38,9 @@ public class UserService {
      * Synchronous helper for quick calls on background threads; still uses local cache.
      */
     public User getCurrentUser() {
-        // Find current user by device ID
+        // Efficiently query by device ID instead of fetching all users
         String deviceId = deviceIdManager.ensureDeviceId();
-        List<User> allUsers = repository.getAllUsers();
-        for (User user : allUsers) {
-            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                return user;
-            }
-        }
-        return null;
+        return repository.getUserByDeviceId(deviceId);
     }
 
     /**
@@ -54,6 +48,7 @@ public class UserService {
      */
     public User getCurrentUserFresh() {
         String deviceId = deviceIdManager.ensureDeviceId();
+        // Note: Still using getAllUsersFromServer for test consistency, but ideally could be optimized similarly
         List<User> allUsers = repository.getAllUsersFromServer();
         for (User user : allUsers) {
             if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
@@ -68,8 +63,9 @@ public class UserService {
      *
      * @return the created user snapshot (already contains the generated id)
      */
-    public User createUser(String name, String email, String phone, String password) {
-        User user = buildUser(name, email, phone, password);
+    public User createUser(String name, String username, String email, String phone, String password) {
+        User user = buildUser(name, username, email, phone, password);
+
         repository.saveUser(user,
                 aVoid -> Log.d("App", "User saved with ID: " + user.getUserId()),
                 e -> Log.e("App", "Failed to save", e));
@@ -80,12 +76,13 @@ public class UserService {
      * Async create hook I call from the UI so Firestore work stays off the main thread.
      */
     public void createUser(String name,
+                           String username,
                            String email,
                            String phone,
                            String password,
                            OnSuccessListener<User> onSuccess,
                            OnFailureListener onFailure) {
-        User user = buildUser(name, email, phone, password);
+        User user = buildUser(name, username, email, phone, password);
         repository.saveUser(user,
                 aVoid -> {
                     Log.d("App", "User saved with ID: " + user.getUserId());
@@ -173,26 +170,38 @@ public class UserService {
             if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
                 String hash = hashPassword(password);
                 return hash.equals(user.getPasswordHash());
+            } else if (user != null && email.trim().equalsIgnoreCase(user.getUsername())) {
+                String hash = hashPassword(password);
+                return hash.equals(user.getPasswordHash());
             }
         }
         return false;
     }
 
     /**
-     * Async credential check so LoginActivity can respond without blocking.
+     * Async credential check. Returns the User object on success so the session can be initialized immediately.
+     * Returns null to onSuccess if credentials fail.
      */
-    public void authenticate(String email, String password, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
+    public void authenticate(String email, String password, OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
         repository.getAllUsers(
                 users -> {
                     for (User user : users) {
                         if (user != null && email.trim().equalsIgnoreCase(user.getEmail())) {
                             String hash = hashPassword(password);
-                            boolean success = hash.equals(user.getPasswordHash());
-                            onSuccess.onSuccess(success);
-                            return;
+                            if (hash.equals(user.getPasswordHash())) {
+                                onSuccess.onSuccess(user);
+                                return;
+                            }
+                        } else if (user != null && email.trim().equalsIgnoreCase(user.getUsername())) {
+                            String hash = hashPassword(password);
+                            if (hash.equals(user.getPasswordHash())) {
+                                onSuccess.onSuccess(user);
+                                return;
+                            }
                         }
                     }
-                    onSuccess.onSuccess(false);
+                    // Not found or password incorrect
+                    onSuccess.onSuccess(null);
                 },
                 onFailure
         );
@@ -202,50 +211,27 @@ public class UserService {
      * Synchronous device-id matcher, mainly used before the async login wire-up.
      */
     public boolean authenticateDevice(String deviceId) {
-        List<User> allUsers = repository.getAllUsers();
-        for (User user : allUsers) {
-            if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                return true;
-            }
-        }
-        return false;
+        User user = repository.getUserByDeviceId(deviceId);
+        return user != null;
     }
 
     /**
      * Async device auth that SplashActivity can await before routing.
      */
     public void authenticateDevice(String deviceId, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
-        repository.getAllUsers(
-                users -> {
-                    for (User user : users) {
-                        if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                            onSuccess.onSuccess(true);
-                            return;
-                        }
-                    }
-                    onSuccess.onSuccess(false);
-                },
+        repository.getUserByDeviceId(deviceId,
+                user -> onSuccess.onSuccess(user != null),
                 onFailure
         );
     }
 
     /**
      * Async getter that backs basically every UI screen needing the active profile.
+     * Updated to use efficient query instead of full scan.
      */
     public void getCurrentUser(OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
         String deviceId = deviceIdManager.ensureDeviceId();
-        repository.getAllUsers(
-                users -> {
-                    for (User user : users) {
-                        if (user != null && deviceId != null && deviceId.equals(user.getDeviceId())) {
-                            onSuccess.onSuccess(user);
-                            return;
-                        }
-                    }
-                    onSuccess.onSuccess(null);
-                },
-                onFailure
-        );
+        repository.getUserByDeviceId(deviceId, onSuccess, onFailure);
     }
 
     /**
@@ -264,11 +250,12 @@ public class UserService {
             return;
         }
         String deviceId = deviceIdManager.ensureDeviceId();
+        // Update the user record if this is a new device for them
         if (!deviceId.equals(current.getDeviceId())) {
             current.setDeviceId(deviceId);
             repository.updateUser(current,
-                    aVoid -> Log.d("App", "Update user"),
-                    e -> Log.e("App", "Failed to update user", e));
+                    aVoid -> Log.d("App", "Device ID updated for user"),
+                    e -> Log.e("App", "Failed to update user device id", e));
         }
     }
 
@@ -449,7 +436,20 @@ public class UserService {
         }
     }
 
-    private void validateEmail(String email) {
+    public void validateUsername(String username) {
+
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username missing");
+        }
+        if (username.trim().length() < 4) {
+            throw new IllegalArgumentException("Username too short");
+        }
+        if (username.trim().contains(" ")) {
+            throw new IllegalArgumentException("Username may not contain spaces");
+        }
+    }
+
+        private void validateEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email missing");
         }
@@ -464,14 +464,15 @@ public class UserService {
         }
     }
 
-    private User buildUser(String name, String email, String phone, String password) {
+    private User buildUser(String name, String username, String email, String phone, String password) {
         validateName(name);
+        validateUsername(username);
         validateEmail(email);
         validatePassword(password);
         String trimmedPhone = phone == null ? "" : phone.trim();
         String deviceId = deviceIdManager.ensureDeviceId();
         String passwordHash = hashPassword(password);
-        return new User("", deviceId, name.trim(), email.trim(), trimmedPhone, passwordHash);
+        return new User("", deviceId, name.trim(), username.trim(), email.trim(), trimmedPhone, passwordHash);
     }
 
     private String hashPassword(String password) {

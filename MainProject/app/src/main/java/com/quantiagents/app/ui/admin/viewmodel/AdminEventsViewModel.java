@@ -12,6 +12,7 @@ import com.quantiagents.app.App;
 import com.quantiagents.app.Services.AdminService;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
+import com.quantiagents.app.models.User;
 import com.quantiagents.app.models.UserSummary;
 
 import java.util.List;
@@ -60,21 +61,16 @@ public class AdminEventsViewModel extends AndroidViewModel {
     }
 
     public void deleteEvent(Event event) {
-        new Thread(() -> {
-            try {
-                boolean success = adminService.removeEvent(event.getEventId(), true, "Admin deletion");
-
-                if (success) {
+        adminService.removeEvent(event.getEventId(), true, "Admin deletion",
+                aVoid -> {
                     toastMessage.postValue("Event deleted");
                     loadEvents();
-                } else {
-                    toastMessage.postValue("Error: Failed to delete event. Check logs.");
+                },
+                e -> {
+                    Log.e("AdminVM", "Error deleting event", e);
+                    toastMessage.postValue("Error: " + e.getMessage());
                 }
-            } catch (Exception e) {
-                Log.e("AdminVM", "Error deleting event", e);
-                toastMessage.postValue("Error: " + e.getMessage());
-            }
-        }).start();
+        );
     }
 
     public void loadProfiles() {
@@ -92,13 +88,10 @@ public class AdminEventsViewModel extends AndroidViewModel {
     public void deleteProfile(UserSummary profile) {
         adminService.removeProfile(profile.getUserId(), true, "Admin deletion",
                 success -> {
-
                     toastMessage.postValue("Profile deleted");
-
                     loadProfiles();
                 },
                 failure -> {
-
                     Log.e("AdminVM", "Error deleting profile", failure);
                     toastMessage.postValue("Error: " + failure.getMessage());
                 }

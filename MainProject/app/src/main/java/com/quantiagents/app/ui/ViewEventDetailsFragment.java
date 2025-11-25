@@ -1,10 +1,13 @@
 package com.quantiagents.app.ui;
 
+import android.app.Dialog;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -15,6 +18,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.quantiagents.app.App;
@@ -22,12 +26,14 @@ import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.GeoLocationService;
+import com.quantiagents.app.Services.ImageService;
 import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.Services.QRCodeService;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.GeoLocation;
+import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.QRCode;
 import com.quantiagents.app.models.RegistrationHistory;
 import com.quantiagents.app.models.User;
@@ -61,6 +67,7 @@ public class ViewEventDetailsFragment extends Fragment {
     private RegistrationHistoryService registrationHistoryService;
     private QRCodeService qrCodeService;
     private GeoLocationService geoLocationService;
+    private ImageService imageService;
 
     // Views
     private MaterialButton buttonBack;
@@ -69,6 +76,7 @@ public class ViewEventDetailsFragment extends Fragment {
     private MaterialButton buttonJoin;
     private MaterialButton buttonLeave;
     private MaterialButton buttonRegistrationClosed;
+    private MaterialButton buttonViewPoster;
     private ProgressBar progressBar;
     private View cardContent;
     private View layoutError;
@@ -139,6 +147,7 @@ public class ViewEventDetailsFragment extends Fragment {
         registrationHistoryService = locator.registrationHistoryService();
         qrCodeService = locator.qrCodeService();
         geoLocationService = locator.geoLocationService();
+        imageService = locator.imageService();
 
         if (TextUtils.isEmpty(eventId)) {
             showError(getString(R.string.view_event_error_message));
@@ -155,6 +164,7 @@ public class ViewEventDetailsFragment extends Fragment {
         buttonJoin = view.findViewById(R.id.button_join_waitlist);
         buttonLeave = view.findViewById(R.id.button_leave_waitlist);
         buttonRegistrationClosed = view.findViewById(R.id.button_registration_closed);
+        buttonViewPoster = view.findViewById(R.id.button_view_poster);
         progressBar = view.findViewById(R.id.progress_loading);
         cardContent = view.findViewById(R.id.card_content);
         layoutError = view.findViewById(R.id.layout_error);
@@ -184,6 +194,7 @@ public class ViewEventDetailsFragment extends Fragment {
         });
         buttonJoin.setOnClickListener(v -> joinWaitingList());
         buttonLeave.setOnClickListener(v -> leaveWaitingList());
+        buttonViewPoster.setOnClickListener(v -> showPoster());
     }
 
     @Override
@@ -322,6 +333,13 @@ public class ViewEventDetailsFragment extends Fragment {
         int waitingCount = countWaiting(histories);
         textWaitingListCount.setText(getString(R.string.view_event_waiting_list_count, waitingCount));
 
+        // Poster Button Visibility
+        if (event.getPosterImageId() != null && !event.getPosterImageId().isEmpty()) {
+            buttonViewPoster.setVisibility(View.VISIBLE);
+        } else {
+            buttonViewPoster.setVisibility(View.GONE);
+        }
+
         // Update status card & action buttons
         updateUserStatusCard(entry);
         updateActionButtons(waitingCount);
@@ -410,6 +428,12 @@ public class ViewEventDetailsFragment extends Fragment {
             return;
         }
 
+        // Fix: Prevent organizer from joining their own event
+        if (currentUser.getUserId().equals(currentEvent.getOrganizerId())) {
+            Toast.makeText(getContext(), "Organizers cannot join their own events.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         int waitingCount = countWaiting(waitingEntries);
         double waitLimit = currentEvent.getWaitingListLimit();
         if (waitLimit > 0 && waitingCount >= waitLimit) {
@@ -428,6 +452,15 @@ public class ViewEventDetailsFragment extends Fragment {
 
         registrationHistoryService.saveRegistrationHistory(history,
                 aVoid -> {
+                    // Fix: Sync Event waiting list in Event object
+                    if (currentEvent.getWaitingList() == null) {
+                        currentEvent.setWaitingList(new ArrayList<>());
+                    }
+                    if (!currentEvent.getWaitingList().contains(currentUser.getUserId())) {
+                        currentEvent.getWaitingList().add(currentUser.getUserId());
+                        eventService.updateEvent(currentEvent, v -> {}, e -> Log.e("ViewEvent", "Failed to sync waiting list", e));
+                    }
+
                     if (!isAdded()) return;
                     handleGeoLocationJoin();
                     requireActivity().runOnUiThread(() -> {
@@ -464,6 +497,12 @@ public class ViewEventDetailsFragment extends Fragment {
         setActionEnabled(false);
         registrationHistoryService.deleteRegistrationHistory(currentEvent.getEventId(), currentUser.getUserId(),
                 aVoid -> {
+                    // Fix: Sync Event waiting list remove
+                    if (currentEvent.getWaitingList() != null && currentEvent.getWaitingList().contains(currentUser.getUserId())) {
+                        currentEvent.getWaitingList().remove(currentUser.getUserId());
+                        eventService.updateEvent(currentEvent, v -> {}, e -> Log.e("ViewEvent", "Failed to sync waiting list remove", e));
+                    }
+
                     if (!isAdded()) return;
                     if (currentEvent.isGeoLocationOn() && geoLocationService != null) {
                         geoLocationService.deleteGeoLocation(currentUser.getUserId(), currentEvent.getEventId(),
@@ -484,6 +523,44 @@ public class ViewEventDetailsFragment extends Fragment {
                 });
     }
 
+    /**
+     * Fetches the image object and displays the URI in a dialog.
+     */
+    private void showPoster() {
+        if (currentEvent == null || currentEvent.getPosterImageId() == null) return;
+
+        io.execute(() -> {
+            Image img = imageService.getImageById(currentEvent.getPosterImageId());
+            if (isAdded()) {
+                requireActivity().runOnUiThread(() -> {
+                    if (img != null && img.getUri() != null) {
+                        showImageDialog(img.getUri());
+                    } else {
+                        Toast.makeText(getContext(), "Poster not found", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
+    }
+
+    private void showImageDialog(String uri) {
+        Dialog dialog = new Dialog(requireContext());
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_image_viewer);
+
+        ImageView imageView = dialog.findViewById(R.id.image_preview);
+        if (imageView != null) {
+            Glide.with(this).load(uri).into(imageView);
+        }
+
+        dialog.show();
+        // Make dialog larger
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+    }
+
     private void setActionEnabled(boolean enabled) {
         if (buttonJoin != null) {
             buttonJoin.setEnabled(enabled);
@@ -493,6 +570,9 @@ public class ViewEventDetailsFragment extends Fragment {
         }
         if (buttonToggleQr != null) {
             buttonToggleQr.setEnabled(enabled);
+        }
+        if (buttonViewPoster != null) {
+            buttonViewPoster.setEnabled(enabled);
         }
     }
 

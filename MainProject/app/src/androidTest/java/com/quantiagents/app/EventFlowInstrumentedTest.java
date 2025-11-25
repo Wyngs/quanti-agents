@@ -1,9 +1,9 @@
 package com.quantiagents.app;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.content.Context;
@@ -21,15 +21,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * Covers the lifecycle of an Event: Create, Read, Update, Delete.
- */
 @RunWith(AndroidJUnit4.class)
 public class EventFlowInstrumentedTest {
 
@@ -42,7 +38,6 @@ public class EventFlowInstrumentedTest {
         context = ApplicationProvider.getApplicationContext();
         locator = new ServiceLocator(context);
         eventService = locator.eventService();
-        // Clean up potentially messy state before starting
         wipeEvents();
     }
 
@@ -51,9 +46,6 @@ public class EventFlowInstrumentedTest {
         wipeEvents();
     }
 
-    /**
-     * Verifies that an event can be saved and retrieved by ID.
-     */
     @Test
     public void createAndRetrieveEvent() {
         Event newEvent = new Event();
@@ -72,9 +64,6 @@ public class EventFlowInstrumentedTest {
         assertEquals(100, fetched.getEventCapacity(), 0.0);
     }
 
-    /**
-     * Verifies that updating an event persists changes.
-     */
     @Test
     public void updateEventDetails() {
         Event event = new Event();
@@ -94,16 +83,13 @@ public class EventFlowInstrumentedTest {
                     latch.countDown();
                 });
         awaitLatch(latch);
-        assertNull(errorRef.get());
+        assertNull("Update should not return error", errorRef.get());
 
         Event fetched = eventService.getEventById(event.getEventId());
         assertEquals("Updated Title", fetched.getTitle());
         assertEquals(constant.EventStatus.CLOSED, fetched.getStatus());
     }
 
-    /**
-     * Verifies that deleting an event removes it from the list.
-     */
     @Test
     public void deleteEventRemovesIt() {
         Event event = new Event();
@@ -120,9 +106,6 @@ public class EventFlowInstrumentedTest {
         assertNull("Event should be null after delete", eventService.getEventById(id));
     }
 
-    /**
-     * Verifies input validation in EventService.
-     */
     @Test
     public void createEventRequiresTitle() {
         Event badEvent = new Event();
@@ -140,8 +123,61 @@ public class EventFlowInstrumentedTest {
         awaitLatch(latch);
 
         assertNotNull("Should return error", errorRef.get());
-        // Based on Service logic: IllegalArgumentException
         assertEquals(IllegalArgumentException.class, errorRef.get().getClass());
+    }
+
+    @Test
+    public void updateEventRequiresTitle() {
+        Event event = new Event();
+        event.setTitle("Valid Title");
+        event = createEventSync(event);
+
+        event.setTitle("");
+
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<Exception> errorRef = new AtomicReference<>();
+
+        eventService.updateEvent(event,
+                aVoid -> latch.countDown(),
+                e -> {
+                    errorRef.set(e);
+                    latch.countDown();
+                });
+        awaitLatch(latch);
+
+        assertNotNull("Update should fail with empty title", errorRef.get());
+        assertEquals(IllegalArgumentException.class, errorRef.get().getClass());
+    }
+
+    @Test
+    public void getAllEventsReturnsList() {
+        Event e1 = new Event();
+        e1.setTitle("Event One");
+        createEventSync(e1);
+
+        Event e2 = new Event();
+        e2.setTitle("Event Two");
+        createEventSync(e2);
+
+        List<Event> all = eventService.getAllEvents();
+        assertNotNull(all);
+        assertTrue("Should find at least 2 events", all.size() >= 2);
+
+        boolean found1 = false;
+        boolean found2 = false;
+        for(Event e : all) {
+            if("Event One".equals(e.getTitle())) found1 = true;
+            if("Event Two".equals(e.getTitle())) found2 = true;
+        }
+        assertTrue("Should contain Event One", found1);
+        assertTrue("Should contain Event Two", found2);
+    }
+
+    @Test
+    public void getEventHandlesInvalidIds() {
+        assertNull(eventService.getEventById(null));
+        assertNull(eventService.getEventById(""));
+        assertNull(eventService.getEventById("   "));
     }
 
     private Event createEventSync(Event event) {

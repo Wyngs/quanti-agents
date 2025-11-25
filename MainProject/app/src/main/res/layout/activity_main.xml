@@ -33,15 +33,16 @@
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
+    <!-- Navigation Drawer on the Right (End) -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navigation_view"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:fitsSystemWindows="true"
+        android:layout_gravity="end"
         android:background="@android:color/white"
-        app:itemBackground="@drawable/bg_nav_item"
+        android:fitsSystemWindows="true"
         app:headerLayout="@layout/nav_header_main"
+        app:itemBackground="@drawable/bg_nav_item"
         app:itemIconTint="@color/nav_item_selector"
         app:itemTextColor="@color/colorOnSurface"
         app:menu="@menu/menu_main_nav" />

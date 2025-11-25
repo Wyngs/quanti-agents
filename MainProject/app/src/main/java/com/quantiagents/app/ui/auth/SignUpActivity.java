@@ -3,6 +3,7 @@ package com.quantiagents.app.ui.auth;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -23,10 +24,12 @@ import com.quantiagents.app.ui.main.MainActivity;
 public class SignUpActivity extends AppCompatActivity {
 
     private TextInputLayout nameLayout;
+    private TextInputLayout usernameLayout;
     private TextInputLayout emailLayout;
     private TextInputLayout passwordLayout;
     private TextInputLayout phoneLayout;
     private TextInputEditText nameField;
+    private TextInputEditText usernameField;
     private TextInputEditText emailField;
     private TextInputEditText passwordField;
     private TextInputEditText phoneField;
@@ -45,10 +48,22 @@ public class SignUpActivity extends AppCompatActivity {
         userService = app.locator().userService();
         loginService = app.locator().loginService();
         bindViews();
+
         createButton = findViewById(R.id.button_create_profile);
         MaterialButton cancelButton = findViewById(R.id.button_cancel_sign_up);
+        MaterialButton loginButton = findViewById(R.id.button_login_instead);
+
         createButton.setOnClickListener(v -> handleCreateProfile());
-        cancelButton.setOnClickListener(v -> finish());
+
+        // Both "Cancel" and "Log in instead" now route to the Login screen
+        // to prevent the app from closing if the user lands here from SplashActivity.
+        cancelButton.setOnClickListener(v -> navigateToLogin());
+        loginButton.setOnClickListener(v -> navigateToLogin());
+    }
+
+    private void navigateToLogin() {
+        startActivity(new Intent(this, LoginActivity.class));
+        finish();
     }
 
     /**
@@ -56,10 +71,12 @@ public class SignUpActivity extends AppCompatActivity {
      */
     private void bindViews() {
         nameLayout = findViewById(R.id.input_name_layout);
+        usernameLayout = findViewById(R.id.input_username_layout);
         emailLayout = findViewById(R.id.input_email_layout);
         passwordLayout = findViewById(R.id.input_password_layout);
         phoneLayout = findViewById(R.id.input_phone_layout);
         nameField = findViewById(R.id.input_name);
+        usernameField = findViewById(R.id.input_username);
         emailField = findViewById(R.id.input_email);
         passwordField = findViewById(R.id.input_password);
         phoneField = findViewById(R.id.input_phone);
@@ -71,6 +88,7 @@ public class SignUpActivity extends AppCompatActivity {
     private void handleCreateProfile() {
         clearErrors();
         String name = safeText(nameField);
+        String username = safeText(usernameField);
         String email = safeText(emailField);
         String password = safeText(passwordField);
         String phone = safeText(phoneField);
@@ -78,6 +96,11 @@ public class SignUpActivity extends AppCompatActivity {
 
         if (TextUtils.isEmpty(name)) {
             nameLayout.setError(getString(R.string.error_name_required));
+            hasError = true;
+        }
+
+        if (TextUtils.isEmpty(username)) {
+            usernameLayout.setError(getString((R.string.error_username_required)));
             hasError = true;
         }
 
@@ -99,8 +122,11 @@ public class SignUpActivity extends AppCompatActivity {
         }
 
         createButton.setEnabled(false);
+        Log.d("DEBUG", "Calling createUser...");
+
         userService.createUser(
                 name,
+                username,
                 email,
                 phone,
                 password,
@@ -149,6 +175,7 @@ public class SignUpActivity extends AppCompatActivity {
      */
     private void clearErrors() {
         nameLayout.setError(null);
+        usernameLayout.setError(null);
         emailLayout.setError(null);
         passwordLayout.setError(null);
         phoneLayout.setError(null);

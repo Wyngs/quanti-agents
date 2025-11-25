@@ -19,8 +19,14 @@
     <color name="textSecondary">#6C757D</color>
     <color name="textHint">#9E9E9E</color>
 
+    <!-- Field Colors -->
+    <color name="fieldLight">#EFF5FF</color>
+
+
     <!-- Button / Action -->
     <color name="buttonBlack">#212121</color>
+    <color name="buttonBoxBlue">#E0E7FF</color>
+    <color name="buttonTextBlue">#332E86</color>
     <color name="buttonTextWhite">#FFFFFF</color>
 
     <!-- Dividers / Borders -->

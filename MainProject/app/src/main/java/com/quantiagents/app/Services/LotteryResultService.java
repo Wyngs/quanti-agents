@@ -10,6 +10,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.LotteryResultRepository;
+import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.LotteryResult;
 import com.quantiagents.app.models.RegistrationHistory;
 
@@ -26,7 +27,6 @@ public class LotteryResultService {
     private final EventService eventService;
 
     public LotteryResultService(Context context) {
-        // LotteryResultService instantiates its own repositories internally
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
         this.repository = new LotteryResultRepository(fireBaseRepository);
         this.registrationHistoryService = new RegistrationHistoryService(context);
@@ -46,83 +46,28 @@ public class LotteryResultService {
     }
 
     public void saveLotteryResult(LotteryResult result, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        // Validate lottery result before saving
         if (result == null) {
-            onFailure.onFailure(new IllegalArgumentException("Lottery result cannot be null"));
+            onFailure.onFailure(new IllegalArgumentException("Result cannot be null"));
             return;
         }
-        if (result.getEventId() == null || result.getEventId().trim().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
-            return;
-        }
-        if (result.getEntrantIds() == null || result.getEntrantIds().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Entrant IDs cannot be null or empty"));
-            return;
-        }
-        
-        repository.saveLotteryResult(result,
-                aVoid -> {
-                    Log.d("App", "Lottery result saved for event: " + result.getEventId());
-                    onSuccess.onSuccess(aVoid);
-                },
-                e -> {
-                    Log.e("App", "Failed to save lottery result", e);
-                    onFailure.onFailure(e);
-                });
-    }
-
-    public void updateLotteryResult(@NonNull LotteryResult result,
-                                   @NonNull OnSuccessListener<Void> onSuccess,
-                                   @NonNull OnFailureListener onFailure) {
-        // Validate lottery result before updating
-        if (result.getEventId() == null || result.getEventId().trim().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
-            return;
-        }
-        if (result.getEntrantIds() == null || result.getEntrantIds().isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("Entrant IDs cannot be null or empty"));
-            return;
-        }
-        
-        repository.updateLotteryResult(result,
-                aVoid -> {
-                    Log.d("App", "Lottery result updated for event: " + result.getEventId());
-                    onSuccess.onSuccess(aVoid);
-                },
-                e -> {
-                    Log.e("App", "Failed to update lottery result", e);
-                    onFailure.onFailure(e);
-                });
+        repository.saveLotteryResult(result, onSuccess, onFailure);
     }
 
     public void deleteLotteryResult(Date timestamp, String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        repository.deleteLotteryResultByTimestampAndEventId(timestamp, eventId,
-                aVoid -> {
-                    Log.d("App", "Lottery result deleted: timestamp=" + timestamp + ", eventId=" + eventId);
-                    onSuccess.onSuccess(aVoid);
-                },
-                e -> {
-                    Log.e("App", "Failed to delete lottery result", e);
-                    onFailure.onFailure(e);
-                });
-    }
-
-    public boolean deleteLotteryResult(Date timestamp, String eventId) {
-        return repository.deleteLotteryResultByTimestampAndEventId(timestamp, eventId);
+        repository.deleteLotteryResultByTimestampAndEventId(timestamp, eventId, onSuccess, onFailure);
     }
 
     /**
-     * Runs a lottery for a given event, randomly selecting the specified number of entrants
-     * from confirmed registrations for that event.
-     * 
-     * @param eventId The ID of the event to run the lottery for
-     * @param numberOfEntrants The number of entrants to select
-     * @param onSuccess Callback for successful lottery execution
-     * @param onFailure Callback for failed lottery execution
+     * Runs a lottery drawing from the WAITING list.
+     * 1. Checks event exists.
+     * 2. Filters registrations for WAITLIST status.
+     * 3. Randomly selects 'numberOfEntrants'.
+     * 4. Updates their status to SELECTED.
+     * 5. Saves the LotteryResult.
      */
     public void runLottery(String eventId, int numberOfEntrants,
-                          OnSuccessListener<LotteryResult> onSuccess,
-                          OnFailureListener onFailure) {
+                           OnSuccessListener<LotteryResult> onSuccess,
+                           OnFailureListener onFailure) {
         // Validate inputs
         if (eventId == null || eventId.trim().isEmpty()) {
             onFailure.onFailure(new IllegalArgumentException("Event ID is required"));
@@ -133,52 +78,110 @@ public class LotteryResultService {
             return;
         }
 
-        // Verify event exists
-        if (eventService.getEventById(eventId) == null) {
+        // 1. Verify event
+        Event event = eventService.getEventById(eventId);
+        if (event == null) {
             onFailure.onFailure(new IllegalArgumentException("Event not found with ID: " + eventId));
             return;
         }
 
-        // Get all registration histories for this event
-        List<RegistrationHistory> registrations = registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
-        
-        // Filter for confirmed registrations only
-        List<String> confirmedUserIds = new ArrayList<>();
-        for (RegistrationHistory registration : registrations) {
-            if (registration.getEventRegistrationStatus() == constant.EventRegistrationStatus.CONFIRMED) {
-                confirmedUserIds.add(registration.getUserId());
+        // 2. Get Waiting List
+        List<RegistrationHistory> allRegistrations = registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
+        List<RegistrationHistory> waitingList = new ArrayList<>();
+        for (RegistrationHistory reg : allRegistrations) {
+            if (reg.getEventRegistrationStatus() == constant.EventRegistrationStatus.WAITLIST) {
+                waitingList.add(reg);
             }
         }
 
-        // Check if we have enough confirmed registrations
-        if (confirmedUserIds.isEmpty()) {
-            onFailure.onFailure(new IllegalArgumentException("No confirmed registrations found for event: " + eventId));
+        if (waitingList.isEmpty()) {
+            onFailure.onFailure(new IllegalStateException("No entrants on the waiting list."));
             return;
         }
 
-        if (confirmedUserIds.size() < numberOfEntrants) {
-            Log.w("App", "Requested " + numberOfEntrants + " entrants, but only " + confirmedUserIds.size() + " confirmed registrations available. Selecting all available.");
-            numberOfEntrants = confirmedUserIds.size();
+        // Cap the number of entrants if waitlist is smaller than requested
+        int drawCount = Math.min(numberOfEntrants, waitingList.size());
+
+        // 3. Random Selection
+        Collections.shuffle(waitingList, new Random());
+        List<RegistrationHistory> winners = waitingList.subList(0, drawCount);
+        List<String> winnerIds = new ArrayList<>();
+
+        // 4. Update Status to SELECTED
+        for (RegistrationHistory winner : winners) {
+            winner.setEventRegistrationStatus(constant.EventRegistrationStatus.SELECTED);
+            winnerIds.add(winner.getUserId());
+            // We perform individual updates here. In a production app, a batch write would be better.
+            registrationHistoryService.updateRegistrationHistory(winner,
+                    aVoid -> Log.d("Lottery", "User " + winner.getUserId() + " selected"),
+                    e -> Log.e("Lottery", "Failed to update user status", e));
         }
 
-        // Randomly select entrants
-        List<String> selectedEntrants = new ArrayList<>(confirmedUserIds);
-        Collections.shuffle(selectedEntrants, new Random());
-        List<String> finalSelectedEntrants = new ArrayList<>(selectedEntrants.subList(0, numberOfEntrants));
-        final int finalSelectedCount = finalSelectedEntrants.size();
+        // BUG FIX: Sync Event lists (remove from waiting, add to selected)
+        List<String> evWaiting = event.getWaitingList();
+        if (evWaiting == null) evWaiting = new ArrayList<>();
 
-        // Create lottery result
-        LotteryResult result = new LotteryResult(eventId, finalSelectedEntrants);
+        List<String> evSelected = event.getSelectedList();
+        if (evSelected == null) evSelected = new ArrayList<>();
 
-        // Save lottery result
+        for (String winnerId : winnerIds) {
+            evWaiting.remove(winnerId);
+            if (!evSelected.contains(winnerId)) {
+                evSelected.add(winnerId);
+            }
+        }
+        event.setWaitingList(evWaiting);
+        event.setSelectedList(evSelected);
+        event.setFirstLotteryDone(true); // Mark as done
+
+        eventService.updateEvent(event, v -> {}, e -> Log.e("Lottery", "Failed to sync event lists", e));
+
+        // 5. Save Result
+        LotteryResult result = new LotteryResult(eventId, winnerIds);
         repository.saveLotteryResult(result,
                 aVoid -> {
-                    Log.d("App", "Lottery completed for event: " + eventId + " with " + finalSelectedCount + " entrants");
+                    Log.d("App", "Lottery completed for event: " + eventId);
                     onSuccess.onSuccess(result);
                 },
-                e -> {
-                    Log.e("App", "Failed to save lottery result", e);
-                    onFailure.onFailure(e);
-                });
+                onFailure);
+    }
+
+    /**
+     * Refills canceled slots by drawing new winners from the waiting list.
+     * Calculates open slots based on WaitingListLimit - (Selected + Confirmed).
+     */
+    public void refillCanceledSlots(String eventId,
+                                    OnSuccessListener<LotteryResult> onSuccess,
+                                    OnFailureListener onFailure) {
+        Event event = eventService.getEventById(eventId);
+        if (event == null) {
+            onFailure.onFailure(new IllegalArgumentException("Event not found"));
+            return;
+        }
+
+        List<RegistrationHistory> allRegs = registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
+        int occupiedCount = 0;
+        for (RegistrationHistory reg : allRegs) {
+            if (reg.getEventRegistrationStatus() == constant.EventRegistrationStatus.SELECTED ||
+                    reg.getEventRegistrationStatus() == constant.EventRegistrationStatus.CONFIRMED) {
+                occupiedCount++;
+            }
+        }
+
+        // Assuming waitingListLimit acts as the total capacity for the event roster
+        double limit = event.getWaitingListLimit();
+        // If limit is 0 (unlimited) or very large, we might default to capacity or just draw 1.
+        // For safety here, we'll use eventCapacity if limit is 0.
+        if (limit <= 0) limit = event.getEventCapacity();
+
+        int openSlots = (int) limit - occupiedCount;
+
+        if (openSlots <= 0) {
+            onFailure.onFailure(new IllegalStateException("No open slots to refill (Limit reached)."));
+            return;
+        }
+
+        // Reuse the runLottery logic to draw 'openSlots' new people
+        runLottery(eventId, openSlots, onSuccess, onFailure);
     }
 }

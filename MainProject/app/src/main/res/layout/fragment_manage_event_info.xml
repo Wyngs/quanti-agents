@@ -5,61 +5,47 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- HEADER (own scroll area) -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/headerScroll"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fillViewport="true"
-        android:overScrollMode="ifContentScrolls">
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Action row -->
             <LinearLayout
                 android:id="@+id/actionRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="12dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:orientation="horizontal">
 
-                <!-- Back to Manage Events -->
                 <Button
                     android:id="@+id/btnBackToManageEvents"
                     android:layout_width="wrap_content"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
                     android:text="Back" />
 
-                <!-- Spacer so the redraw button sticks to the right -->
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:layout_weight="1" />
+                <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
 
-                <!-- Existing Redraw button -->
                 <Button
                     android:id="@+id/btnRedrawCanceled"
                     android:layout_width="wrap_content"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
                     android:text="Redraw Canceled" />
             </LinearLayout>
 
-
-            <!-- Edit Details card -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_event_details"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="12dp"
-                android:layout_marginBottom="8dp"
-                app:strokeColor="?attr/colorPrimary"
+                android:layout_margin="12dp"
+                app:cardElevation="0dp"
                 app:strokeWidth="1dp"
-                app:cardElevation="0dp">
+                app:strokeColor="?attr/colorPrimary">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -67,50 +53,37 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <!-- Title -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/input_name_layout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Event name">
+                        android:hint="Event Name">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/input_name"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:maxLines="1"
-                            android:inputType="textCapSentences"/>
+                            android:layout_height="wrap_content"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Description -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/input_description_layout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
                         android:hint="Description">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/input_description"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:minLines="3"
-                            android:gravity="top"
-                            android:inputType="textMultiLine"/>
+                            android:layout_height="wrap_content"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Row: Capacity / Waiting list limit -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginTop="12dp"
-                        android:baselineAligned="false">
-
+                        android:orientation="horizontal">
                         <com.google.android.material.textfield.TextInputLayout
                             android:id="@+id/input_capacity_layout"
                             android:layout_width="0dp"
-                            android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:layout_marginEnd="8dp"
+                            android:layout_height="wrap_content"
                             android:hint="Capacity">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/input_capacity"
@@ -118,14 +91,12 @@
                                 android:layout_height="wrap_content"
                                 android:inputType="number"/>
                         </com.google.android.material.textfield.TextInputLayout>
-
                         <com.google.android.material.textfield.TextInputLayout
                             android:id="@+id/input_waiting_list_layout"
                             android:layout_width="0dp"
-                            android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:layout_marginStart="8dp"
-                            android:hint="Waiting list limit">
+                            android:layout_height="wrap_content"
+                            android:hint="Wait Limit">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/input_waiting_list"
                                 android:layout_width="match_parent"
@@ -134,34 +105,28 @@
                         </com.google.android.material.textfield.TextInputLayout>
                     </LinearLayout>
 
-                    <!-- Price -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/input_price_layout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
                         android:hint="Price">
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/input_price"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:maxLines="1"
                             android:inputType="numberDecimal"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Save button -->
-                    <com.google.android.material.button.MaterialButton
+                    <Button
                         android:id="@+id/btnSaveEventDetails"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:text="Save changes" />
+                        android:text="Save Changes" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- LISTS (NOT inside the NestedScrollView) -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabs"
         android:layout_width="match_parent"
