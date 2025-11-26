@@ -19,13 +19,17 @@
     <color name="textSecondary">#6C757D</color>
     <color name="textHint">#9E9E9E</color>
 
+    <!-- Splash screen and logo color -->
+    <color name="splashColor">#4F39F6</color>
+
     <!-- Field Colors -->
     <color name="fieldLight">#EFF5FF</color>
-
+    <color name="hintColor">#BCC4D2</color>
 
     <!-- Button / Action -->
     <color name="buttonBlack">#212121</color>
     <color name="buttonBoxBlue">#E0E7FF</color>
+    <color name="buttonBoxGrey">#DFDFDF</color>
     <color name="buttonTextBlue">#332E86</color>
     <color name="buttonTextWhite">#FFFFFF</color>
 

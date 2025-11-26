@@ -43,6 +43,7 @@ public class ProfilesRepository {
                 out.add(new UserSummary(
                         o.optString("userId", ""),
                         o.optString("name", ""),
+                        o.optString("username", ""),
                         o.optString("email", "")
                 ));
             }

@@ -217,6 +217,14 @@ public class UserRepository {
         }
     }
 
+    /**
+     * A function that collects all users and sums them into a List
+     * @param onSuccess
+     * Calls a function on success with list of users
+     * @param onFailure
+     * Calls a function on failure
+     * @see User
+     */
     public void getAllUsers(OnSuccessListener<List<User>> onSuccess, OnFailureListener onFailure) {
         context.get()
                 .addOnSuccessListener(querySnapshot -> {
@@ -234,4 +242,41 @@ public class UserRepository {
                     onFailure.onFailure(e);
                 });
     }
+
+    /**
+     * Takes in a username and checks the database
+     * @param username
+     * String username to check
+     * @param email
+     * String email to check
+     * @param onSuccess
+     * Calls a function on success containing a list of booleans
+     * @param onFailure
+     * Calls a function on failure
+     */
+    public void usernameAndEmailExists(String username, String email,
+                                       OnSuccessListener<List<Boolean>> onSuccess,
+                                       OnFailureListener onFailure) {
+
+        Task<QuerySnapshot> usernameTask = context.whereEqualTo("username", username.trim())
+                .limit(1)
+                .get();
+
+        Task<QuerySnapshot> emailTask = context.whereEqualTo("email", email.trim())
+                .limit(1)
+                .get();
+
+        List<Boolean> checks = new ArrayList<>();
+
+        Tasks.whenAllSuccess(usernameTask, emailTask)
+                .addOnSuccessListener(results -> {
+                    checks.add(!usernameTask.getResult().isEmpty());
+                    checks.add(!emailTask.getResult().isEmpty());
+
+                    onSuccess.onSuccess(checks);
+                })
+                .addOnFailureListener(onFailure);
+    }
+
+
 }
