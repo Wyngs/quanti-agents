@@ -9,20 +9,46 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.quantiagents.app.R;
-import com.quantiagents.app.models.RegistrationHistory;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** Recycler adapter for entrant rows (name/id + status line). */
+/**
+ * Recycler adapter for entrant rows on the manage-event-info screen.
+ * Each row shows:
+ *   Line 1: full name
+ *   Line 2: "Username: @username"
+ *   Line 3: "Joined: <date>"
+ */
 public class ManageEventInfoUserAdapter extends RecyclerView.Adapter<ManageEventInfoUserAdapter.VH> {
 
-    private final List<RegistrationHistory> data = new ArrayList<>();
+    /**
+     * Simple UI model for one row.
+     */
+    public static class Row {
+        final String name;
+        final String username;
+        final String joined;
 
-    /** ViewHolder for item layout with two text lines. */
+        public Row(String name, String username, String joined) {
+            this.name = name;
+            this.username = username;
+            this.joined = joined;
+        }
+    }
+
+    private final List<Row> data = new ArrayList<>();
+
+    /**
+     * ViewHolder for item layout with two text lines.
+     * We’ll put:
+     *   name -> name TextView
+     *   username + joined -> sub TextView (2 lines).
+     */
     public static class VH extends RecyclerView.ViewHolder {
         final TextView name;
         final TextView sub;
+
         VH(@NonNull View v) {
             super(v);
             name = v.findViewById(R.id.name);
@@ -40,23 +66,37 @@ public class ManageEventInfoUserAdapter extends RecyclerView.Adapter<ManageEvent
 
     @Override
     public void onBindViewHolder(@NonNull VH h, int position) {
-        RegistrationHistory rh = data.get(position);
-        String title = safe(rh == null ? null : rh.getUserId());
-        String status = safe(rh == null ? null : rh.getEventRegistrationStatus());
-        String sub = status.isEmpty() ? "" : ("status: " + status);
-        h.name.setText(title);
-        h.sub.setText(sub);
+        Row row = data.get(position);
+
+        // Line 1: full name
+        h.name.setText(row.name != null ? row.name : "");
+
+        // Line 2 + 3 combined in one TextView
+        StringBuilder sb = new StringBuilder();
+
+        if (row.username != null && !row.username.isEmpty()) {
+            sb.append("Username: @").append(row.username);
+        }
+
+        if (row.joined != null && !row.joined.isEmpty()) {
+            if (sb.length() > 0) sb.append("\n");
+            sb.append("Joined: ").append(row.joined);
+        }
+
+        h.sub.setText(sb.toString());
     }
 
     @Override
-    public int getItemCount() { return data.size(); }
+    public int getItemCount() {
+        return data.size();
+    }
 
-    /** Replace entire dataset; fine for current scale. */
-    public void submit(@NonNull List<RegistrationHistory> rows) {
+    /**
+     * Replace the entire dataset.
+     */
+    public void submit(@NonNull List<Row> rows) {
         data.clear();
         data.addAll(rows);
         notifyDataSetChanged();
     }
-
-    private static String safe(Object o) { return o == null ? "" : String.valueOf(o); }
 }

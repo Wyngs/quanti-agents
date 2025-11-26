@@ -6,7 +6,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 /**
  * Pager adapter for the manage-event-info screen. Provides four pages
- * (WAITING, SELECTED, CONFIRMED, CANCELED) scoped to the same event.
+ * (WAITLIST, SELECTED, CONFIRMED, CANCELLED) scoped to the same event.
  */
 public class ManageEventInfoPagerAdapter extends FragmentStateAdapter {
 
@@ -30,8 +30,8 @@ public class ManageEventInfoPagerAdapter extends FragmentStateAdapter {
         final String status = switch (position) {
             case 1 -> "SELECTED";
             case 2 -> "CONFIRMED";
-            case 3 -> "CANCELED";
-            default -> "WAITING";
+            case 3 -> "CANCELLED";
+            default -> "WAITLIST";
         };
         return ManageEventInfoListFragment.newInstance(eventId, status);
     }

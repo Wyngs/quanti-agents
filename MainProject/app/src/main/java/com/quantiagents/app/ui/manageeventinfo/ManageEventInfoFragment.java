@@ -107,7 +107,7 @@ public class ManageEventInfoFragment extends Fragment {
         pager.setAdapter(adapter);
 
         TabLayout tabs = view.findViewById(R.id.tabs);
-        final String[] labels = {"Waiting", "Selected", "Confirmed", "Canceled"};
+        final String[] labels = {"Waiting", "Selected", "Confirmed", "Cancelled"};
         new TabLayoutMediator(tabs, pager, (tab, pos) -> tab.setText(labels[pos])).attach();
     }
 
