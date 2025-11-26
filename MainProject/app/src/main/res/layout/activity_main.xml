@@ -22,6 +22,16 @@
             app:navigationIcon="@drawable/ic_menu"
             app:titleCentered="false" />
 
+        <ImageButton
+            android:id="@+id/toolbar_menu_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Menu"
+            android:src="@drawable/ic_menu"
+            app:tint="@color/colorPrimary" />
+
         <FrameLayout
             android:id="@+id/content_container"
             android:layout_width="match_parent"
