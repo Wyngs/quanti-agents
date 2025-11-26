@@ -99,8 +99,11 @@ public class SignUpActivity extends AppCompatActivity {
             hasError = true;
         }
 
-        if (TextUtils.isEmpty(username)) {
-            usernameLayout.setError(getString((R.string.error_username_required)));
+        if (TextUtils.isEmpty(username) || username.length() < 4) {
+            usernameLayout.setError(getString((R.string.error_username_requirement)));
+            hasError = true;
+        } else if (username.trim().contains(" ")) {
+            usernameLayout.setError(getString(R.string.error_username_spaces));
             hasError = true;
         }
 
@@ -110,6 +113,12 @@ public class SignUpActivity extends AppCompatActivity {
         } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             emailLayout.setError(getString(R.string.error_email_invalid));
             hasError = true;
+        } else {
+            String tld = email.substring(email.trim().lastIndexOf('.') + 1);
+            if (tld.length() < 2) {
+                emailLayout.setError(getString(R.string.error_email_invalid));
+                hasError = true;
+            }
         }
 
         if (TextUtils.isEmpty(password) || password.length() < 6) {
@@ -122,7 +131,6 @@ public class SignUpActivity extends AppCompatActivity {
         }
 
         createButton.setEnabled(false);
-        Log.d("DEBUG", "Calling createUser...");
 
         userService.createUser(
                 name,
@@ -152,8 +160,16 @@ public class SignUpActivity extends AppCompatActivity {
                         }
                 ),
                 e -> {
-                    createButton.setEnabled(true);
-                    emailLayout.setError(getString(R.string.error_email_invalid));
+                    if (e.getMessage().equals("Username Taken")) {
+                        createButton.setEnabled(true);
+                        usernameLayout.setError(getString(R.string.error_username_taken));
+                    } else if (e.getMessage().equals("Email Taken")) {
+                        createButton.setEnabled(true);
+                        emailLayout.setError(getString(R.string.error_email_taken));
+                    } else {
+                        createButton.setEnabled(true);
+                        emailLayout.setError(getString(R.string.error_email_invalid));
+                    }
                 }
         );
     }

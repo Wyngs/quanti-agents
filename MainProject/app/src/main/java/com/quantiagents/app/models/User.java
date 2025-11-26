@@ -8,7 +8,7 @@ import java.util.Date;
  * <p>
  * Contains:
  * </p>
- * String: user id, String: device id, String: name, String: email, String: phone, String: password hash, boolean: notifications on, Date: creation, (UserRole): role, RegistrationHistory: history
+ * String: user id, String: device id, String: name, String: username, String: email, String: phone, String: password hash, boolean: notifications on, Date: creation, (UserRole): role, RegistrationHistory: history, Date: lastViewedBrowse
  * @see RegistrationHistory
  */
 public class User implements Serializable {
