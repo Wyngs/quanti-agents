@@ -14,6 +14,7 @@ import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.User;
+import android.widget.EditText;
 
 import java.util.List;
 
@@ -44,6 +45,16 @@ public class AdminService {
         eventService.getAllEvents(onSuccess, onFailure);
     }
 
+    private void logAction(String kind, String targetId, String note) {
+        logRepository.append(new AdminActionLog(
+                kind,
+                targetId,
+                System.currentTimeMillis(),
+                deviceIdManager.ensureDeviceId(),
+                note
+        ));
+    }
+
     public void removeEvent(String eventId, boolean confirmed, @Nullable String note,
                             OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (!confirmed) {
@@ -65,9 +76,7 @@ public class AdminService {
 
     // --- Profiles ---
 
-    public void listAllProfiles(OnSuccessListener<List<User>> onSuccess, OnFailureListener onFailure) {
-        userRepository.getAllUsers(onSuccess, onFailure);
-    }
+
 
     public void removeProfile(String userId, boolean confirmed, @Nullable String note,
                               OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
@@ -99,13 +108,35 @@ public class AdminService {
         );
     }
 
-    // --- Images ---
+    public void listAllProfiles(OnSuccessListener<List<User>> onSuccess, OnFailureListener onFailure) {
+        userRepository.getAllUsers(onSuccess, onFailure);
+    }
 
+    // --- Images ---
+    //us 03.03.01a: list all uploaded images
+    /**
+     * Synchronous listAllImages (Legacy support or if ImageService is sync).
+     * If ImageService.getAllImages() is blocking, wrap in thread in ViewModel.
+     */
     public List<Image> listAllImages() {
-        // Checking Turn 1 ImageService: it returns List<Image> synchronously via Repository Task.await().
-        // To avoid main thread blocks, the UI should wrap this in Executor.
         return imageService.getAllImages();
     }
+
+    /**
+     * Asynchronous overload for listAllImages.
+     * Useful if we want to move the thread logic here.
+     */
+    public void listAllImages(OnSuccessListener<List<Image>> onSuccess, OnFailureListener onFailure) {
+        new Thread(() -> {
+            try {
+                List<Image> images = imageService.getAllImages();
+                onSuccess.onSuccess(images);
+            } catch (Exception e) {
+                onFailure.onFailure(e);
+            }
+        }).start();
+    }
+
 
     public void removeImage(String imageId, boolean confirmed, @Nullable String note,
                             OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
@@ -122,10 +153,7 @@ public class AdminService {
                 onFailure);
     }
 
-    //us 03.03.01a: list all uploaded images
-    public List<Image> listAllImages() {
-        return imageService.getAllImages();
-    }
+
 
     //us 03.03.01b+c: select an image and confirm deletion
     public boolean removeImage(String imageId, boolean confirmed, @Nullable String note) {
