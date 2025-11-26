@@ -13,16 +13,16 @@
         <item name="android:textAllCaps">false</item>
 
         <!-- Tint & text color -->
-        <item name="backgroundTint">@color/colorPrimary</item>
-        <item name="android:textColor">@color/colorOnPrimary</item>
+        <item name="backgroundTint">@color/buttonBoxBlue</item>
+        <item name="android:textColor">@color/buttonTextBlue</item>
 
         <!-- Rounded shape -->
-        <item name="shapeAppearance">@style/Shape.QuantiAgents.Large</item>
+        <item name="shapeAppearance">@style/Shape.QuantiAgents.Medium</item>
     </style>
 
     <!-- Tonal/secondary button -->
     <style name="Widget.QuantiAgents.Button.Tonal" parent="Widget.QuantiAgents.Button">
-        <item name="backgroundTint">@color/colorSurfaceVariant</item>
+        <item name="backgroundTint">@color/buttonBoxGrey</item>
         <item name="android:textColor">@color/colorOnSurface</item>
     </style>
 
