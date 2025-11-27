@@ -24,11 +24,11 @@ import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
-import kotlin.OptIn;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.vision.barcode.BarcodeScanning;
 import com.google.mlkit.vision.barcode.common.Barcode;
@@ -47,6 +47,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@ExperimentalGetImage
+@SuppressWarnings("UnsafeOptInUsageError")
 public class ScanQRCodeFragment extends Fragment {
 
     private EventService eventService;
@@ -54,6 +56,7 @@ public class ScanQRCodeFragment extends Fragment {
 
     // Views
     private PreviewView previewView;
+    private TextInputEditText qrCodeInput;
     private MaterialCardView errorCard;
     private TextView errorText;
     private MaterialCardView quickAccessCard;
@@ -95,6 +98,7 @@ public class ScanQRCodeFragment extends Fragment {
         qrCodeService = locator.qrCodeService();
 
         bindViews(view);
+        setupClickListeners();
         setupPermissionLauncher();
         setupQuickAccess();
 
@@ -111,10 +115,35 @@ public class ScanQRCodeFragment extends Fragment {
 
     private void bindViews(View view) {
         previewView = view.findViewById(R.id.previewView);
+        qrCodeInput = view.findViewById(R.id.qrCodeInput);
         errorCard = view.findViewById(R.id.errorCard);
         errorText = view.findViewById(R.id.errorText);
         quickAccessCard = view.findViewById(R.id.quickAccessCard);
         eventsRecyclerView = view.findViewById(R.id.eventsRecyclerView);
+    }
+
+    private void setupClickListeners() {
+        // Search button click
+        View view = getView();
+        if (view != null) {
+            View searchButton = view.findViewById(R.id.searchButton);
+            if (searchButton != null) {
+                searchButton.setOnClickListener(v -> handleManualSearch());
+            }
+        }
+
+        // Manual input Enter key
+        if (qrCodeInput != null) {
+            qrCodeInput.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH ||
+                    (event != null && event.getAction() == android.view.KeyEvent.ACTION_DOWN &&
+                     event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
+                    handleManualSearch();
+                    return true;
+                }
+                return false;
+            });
+        }
     }
 
     private void setupPermissionLauncher() {
@@ -208,7 +237,7 @@ public class ScanQRCodeFragment extends Fragment {
         }
     }
 
-    @OptIn(markerClass = ExperimentalGetImage.class)
+    @ExperimentalGetImage
     private class QRCodeAnalyzer implements ImageAnalysis.Analyzer {
         private final com.google.mlkit.vision.barcode.BarcodeScanner barcodeScanner;
 
@@ -230,10 +259,7 @@ public class ScanQRCodeFragment extends Fragment {
                 return;
             }
 
-            InputImage inputImage = InputImage.fromMediaImage(
-                    image.getImage(),
-                    image.getImageInfo().getRotationDegrees()
-            );
+            InputImage inputImage = createInputImageFromProxy(image);
 
             isScanning = true;
             barcodeScanner.process(inputImage)
@@ -251,15 +277,40 @@ public class ScanQRCodeFragment extends Fragment {
                         image.close();
                     });
         }
+        
+        @ExperimentalGetImage
+        private InputImage createInputImageFromProxy(androidx.camera.core.ImageProxy image) {
+            return InputImage.fromMediaImage(
+                    image.getImage(),
+                    image.getImageInfo().getRotationDegrees()
+            );
+        }
     }
 
     private void handleQRCodeScanned(String qrCodeValue) {
         if (!isAdded()) return;
 
         requireActivity().runOnUiThread(() -> {
+            // Update input field with scanned value
+            if (qrCodeInput != null) {
+                qrCodeInput.setText(qrCodeValue);
+            }
             // Find and navigate to event
             findEventByQRCode(qrCodeValue);
         });
+    }
+
+    private void handleManualSearch() {
+        if (qrCodeInput == null) return;
+
+        String qrCodeValue = qrCodeInput.getText() != null ? qrCodeInput.getText().toString().trim() : "";
+        if (TextUtils.isEmpty(qrCodeValue)) {
+            showError(getString(R.string.scan_qr_error_not_found));
+            return;
+        }
+
+        hideError();
+        findEventByQRCode(qrCodeValue);
     }
 
     private void findEventByQRCode(String qrCodeValue) {

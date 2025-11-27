@@ -155,7 +155,7 @@
     <string name="scan_qr_title">QR Code Scanner</string>
     <string name="scan_qr_subtitle">Scan event QR codes to view details and join waiting lists</string>
     <string name="scan_qr_card_title">Scan QR Code</string>
-    <string name="scan_qr_card_description">Use the camera to scan QR codes</string>
+    <string name="scan_qr_card_description">Enter the QR code manually or use the camera to scan</string>
     <string name="scan_qr_manual_label">Or enter QR code manually</string>
     <string name="scan_qr_input_hint">Enter QR code (e.g., QR_swimming_001)</string>
     <string name="scan_qr_search_button">Search</string>
