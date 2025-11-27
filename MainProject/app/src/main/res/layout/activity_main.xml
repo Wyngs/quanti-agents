@@ -19,7 +19,6 @@
             android:theme="@style/ThemeOverlay.Material3.Light"
             android:title="@string/app_name"
             android:titleTextColor="@color/colorPrimary"
-            app:navigationIcon="@drawable/ic_menu"
             app:titleCentered="false" />
 
         <ImageButton
@@ -44,7 +43,7 @@
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    <!-- Navigation Drawer on the Right (End) -->
+    <!-- Navigation Drawer on the Right -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navigation_view"
         android:layout_width="wrap_content"

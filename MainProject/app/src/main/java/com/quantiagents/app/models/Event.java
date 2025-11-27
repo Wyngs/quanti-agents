@@ -20,6 +20,7 @@ public class Event implements Serializable {
     private String title;
     private String posterImageId;
     private String description;
+    private String category;
     private Date eventStartDate;
     private Date eventEndDate;
     private Date registrationStartDate;
@@ -102,6 +103,22 @@ public class Event implements Serializable {
      */
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    /**
+     * Gets the category of the event.
+     * @return The category string.
+     */
+    public String getCategory() {
+        return category;
+    }
+
+    /**
+     * Sets the category of the event.
+     * @param category The category string.
+     */
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     /**

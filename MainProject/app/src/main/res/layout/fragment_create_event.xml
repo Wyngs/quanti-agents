@@ -84,6 +84,30 @@
                         android:inputType="text" />
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <!-- Category (New Field) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Category"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorBlack"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/input_category_layout"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/input_category"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="e.g. Sports, Music, Education"
+                        android:inputType="text" />
+                </com.google.android.material.textfield.TextInputLayout>
+
                 <!-- Description -->
                 <TextView
                     android:layout_width="wrap_content"
@@ -343,6 +367,7 @@
                         android:layout_height="56dp"
                         android:text="Locate"
                         android:layout_marginTop="4dp"
+                        android:textColor="@android:color/white"
                         app:backgroundTint="#333333"/>
                 </LinearLayout>
 
@@ -416,6 +441,7 @@
                     android:layout_height="60dp"
                     android:layout_marginTop="24dp"
                     app:backgroundTint="#333333"
+                    android:textColor="@android:color/white"
                     android:text="@string/create_event_button" />
 
             </LinearLayout>

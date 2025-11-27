@@ -55,10 +55,10 @@ public class CreateEventFragment extends Fragment {
     private ImageService imageService;
 
     // Form fields
-    private TextInputLayout nameLayout, descriptionLayout, startDateLayout, endDateLayout,
+    private TextInputLayout nameLayout, descriptionLayout, categoryLayout, startDateLayout, endDateLayout,
             regStartDateLayout, regEndDateLayout, capacityLayout, priceLayout, waitingListLayout;
 
-    private TextInputEditText nameField, descriptionField, startDateField, endDateField,
+    private TextInputEditText nameField, descriptionField, categoryField, startDateField, endDateField,
             regStartDateField, regEndDateField, capacityField, priceField, waitingListField, locationField;
 
     private SwitchMaterial geolocationSwitch;
@@ -112,6 +112,7 @@ public class CreateEventFragment extends Fragment {
     private void bindViews(View view) {
         nameLayout = view.findViewById(R.id.input_name_layout);
         descriptionLayout = view.findViewById(R.id.input_description_layout);
+        categoryLayout = view.findViewById(R.id.input_category_layout); // Bind new layout
         startDateLayout = view.findViewById(R.id.input_start_date_layout);
         endDateLayout = view.findViewById(R.id.input_end_date_layout);
         regStartDateLayout = view.findViewById(R.id.input_reg_start_date_layout);
@@ -122,6 +123,7 @@ public class CreateEventFragment extends Fragment {
 
         nameField = view.findViewById(R.id.input_name);
         descriptionField = view.findViewById(R.id.input_description);
+        categoryField = view.findViewById(R.id.input_category); // Bind new field
         startDateField = view.findViewById(R.id.input_start_date);
         endDateField = view.findViewById(R.id.input_end_date);
         regStartDateField = view.findViewById(R.id.input_reg_start_date);
@@ -188,6 +190,7 @@ public class CreateEventFragment extends Fragment {
         boolean isValid = true;
         if (TextUtils.isEmpty(safeText(nameField))) { nameLayout.setError("Required"); isValid = false; }
         if (TextUtils.isEmpty(safeText(descriptionField))) { descriptionLayout.setError("Required"); isValid = false; }
+        // Category is optional for now, or we can make it required
         if (TextUtils.isEmpty(safeText(startDateField))) { startDateLayout.setError("Required"); isValid = false; }
         if (TextUtils.isEmpty(safeText(endDateField))) { endDateLayout.setError("Required"); isValid = false; }
         if (TextUtils.isEmpty(safeText(regStartDateField))) { regStartDateLayout.setError("Required"); isValid = false; }
@@ -208,8 +211,9 @@ public class CreateEventFragment extends Fragment {
             Event event = new Event();
             event.setTitle(safeText(nameField));
             event.setDescription(safeText(descriptionField));
+            event.setCategory(safeText(categoryField)); // Save category
             event.setOrganizerId(user.getUserId());
-            event.setLocation(safeText(locationField)); // Set location
+            event.setLocation(safeText(locationField));
 
             event.setEventStartDate(dateFormat.parse(safeText(startDateField)));
             event.setEventEndDate(dateFormat.parse(safeText(endDateField)));
@@ -235,7 +239,6 @@ public class CreateEventFragment extends Fragment {
                     eventId -> {
                         event.setEventId(eventId);
                         if (selectedPosterUri != null) {
-                            // Upload logic would go here. For now, saving URI string to Image object.
                             savePoster(selectedPosterUri.toString(), eventId, user.getUserId(),
                                     imgId -> {
                                         event.setPosterImageId(imgId);
@@ -275,13 +278,14 @@ public class CreateEventFragment extends Fragment {
 
     private void clearErrors() {
         nameLayout.setError(null); descriptionLayout.setError(null);
+        categoryLayout.setError(null);
         startDateLayout.setError(null); endDateLayout.setError(null);
         regStartDateLayout.setError(null); regEndDateLayout.setError(null);
         capacityLayout.setError(null); priceLayout.setError(null);
     }
 
     private void resetForm() {
-        nameField.setText(""); descriptionField.setText("");
+        nameField.setText(""); descriptionField.setText(""); categoryField.setText("");
         startDateField.setText(""); endDateField.setText("");
         regStartDateField.setText(""); regEndDateField.setText("");
         capacityField.setText(""); priceField.setText("");
