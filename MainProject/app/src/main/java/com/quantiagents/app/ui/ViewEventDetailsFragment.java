@@ -48,6 +48,19 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.content.res.ColorStateList;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.ContextCompat;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import android.annotation.SuppressLint;
+
+
+
 /**
  * Fragment that displays entrant-facing details for a single event, including waiting-list actions.
  */
@@ -102,6 +115,10 @@ public class ViewEventDetailsFragment extends Fragment {
     private User organizerUser;
     private RegistrationHistory currentEntry;
     private List<RegistrationHistory> waitingEntries = new ArrayList<>();
+    private FusedLocationProviderClient fusedLocationClient;
+    private ActivityResultLauncher<String[]> locationPermissionLauncher;
+    private Location pendingJoinLocation;
+
     private String qrCodeValue;
     private boolean showQr;
 
@@ -148,6 +165,19 @@ public class ViewEventDetailsFragment extends Fragment {
         qrCodeService = locator.qrCodeService();
         geoLocationService = locator.geoLocationService();
         imageService = locator.imageService();
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext());
+        locationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestMultiplePermissions(),
+                result -> {
+                    boolean granted = Boolean.TRUE.equals(result.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false))
+                            || Boolean.TRUE.equals(result.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false));
+                    if (granted) {
+                        fetchLocationAndJoin();
+                    } else {
+                        setActionEnabled(true);
+                        Toast.makeText(getContext(), "Location is required to join this event.", Toast.LENGTH_LONG).show();
+                    }
+                });
 
         if (TextUtils.isEmpty(eventId)) {
             showError(getString(R.string.view_event_error_message));
@@ -420,7 +450,7 @@ public class ViewEventDetailsFragment extends Fragment {
 
         imageQrCode.setVisibility(View.GONE); // Placeholder: no QR bitmap generation yet.
     }
-
+    @SuppressLint("MissingPermission")
     private void joinWaitingList() {
         if (currentEvent == null) return;
         if (currentUser == null || TextUtils.isEmpty(currentUser.getUserId())) {
@@ -441,54 +471,119 @@ public class ViewEventDetailsFragment extends Fragment {
             return;
         }
 
+        if (eventRequiresLocation() && !hasLocationPermission()) {
+            setActionEnabled(false);
+            locationPermissionLauncher.launch(new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+            });
+            return;
+        }
+
+
         setActionEnabled(false);
 
-        RegistrationHistory history = new RegistrationHistory(
-                currentEvent.getEventId(),
-                currentUser.getUserId(),
-                constant.EventRegistrationStatus.WAITLIST,
-                new Date()
-        );
+// Get location first (required for geo events; harmless for others)
+        if (!hasLocationPermission()) {
+            setActionEnabled(true);
+            return;
+        }
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(loc -> {
+                    pendingJoinLocation = loc;
 
-        registrationHistoryService.saveRegistrationHistory(history,
-                aVoid -> {
-                    // Fix: Sync Event waiting list in Event object
-                    if (currentEvent.getWaitingList() == null) {
-                        currentEvent.setWaitingList(new ArrayList<>());
-                    }
-                    if (!currentEvent.getWaitingList().contains(currentUser.getUserId())) {
-                        currentEvent.getWaitingList().add(currentUser.getUserId());
-                        eventService.updateEvent(currentEvent, v -> {}, e -> Log.e("ViewEvent", "Failed to sync waiting list", e));
-                    }
 
-                    if (!isAdded()) return;
-                    handleGeoLocationJoin();
-                    requireActivity().runOnUiThread(() -> {
-                        Toast.makeText(getContext(), R.string.view_event_toast_join_success, Toast.LENGTH_SHORT).show();
-                        loadContent();
-                    });
-                },
-                e -> {
-                    if (!isAdded()) return;
-                    requireActivity().runOnUiThread(() -> {
-                        setActionEnabled(true);
-                        Toast.makeText(getContext(), R.string.view_event_toast_join_failure, Toast.LENGTH_LONG).show();
-                    });
+                    RegistrationHistory history = new RegistrationHistory(
+                            currentEvent.getEventId(),
+                            currentUser.getUserId(),
+                            constant.EventRegistrationStatus.WAITLIST,
+                            new Date()
+                    );
+
+                    registrationHistoryService.saveRegistrationHistory(history,
+                            aVoid -> {
+                                if (currentEvent.getWaitingList() == null) currentEvent.setWaitingList(new ArrayList<>());
+                                if (!currentEvent.getWaitingList().contains(currentUser.getUserId())) {
+                                    currentEvent.getWaitingList().add(currentUser.getUserId());
+                                    eventService.updateEvent(currentEvent, v -> {}, e -> Log.e("ViewEvent", "Failed to sync waiting list", e));
+                                }
+
+                                // Save real geo only if required and location available
+                                if (eventRequiresLocation() && pendingJoinLocation != null) {
+                                    handleGeoLocationJoin(pendingJoinLocation);
+                                }
+
+                                if (!isAdded()) return;
+                                requireActivity().runOnUiThread(() -> {
+                                    Toast.makeText(getContext(), R.string.view_event_toast_join_success, Toast.LENGTH_SHORT).show();
+                                    loadContent();
+                                });
+                            },
+                            e -> {
+                                if (!isAdded()) return;
+                                requireActivity().runOnUiThread(() -> {
+                                    setActionEnabled(true);
+                                    Toast.makeText(getContext(), R.string.view_event_toast_join_failure, Toast.LENGTH_LONG).show();
+                                });
+                            });
+
+                })
+                .addOnFailureListener(e -> {
+                    setActionEnabled(true);
+                    Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
+                });
+
+    }
+    private boolean eventRequiresLocation() {
+        return currentEvent != null && currentEvent.isGeoLocationOn();
+    }
+
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @SuppressLint("MissingPermission")
+    private void fetchLocationAndJoin() {
+        if (!hasLocationPermission()) {
+            setActionEnabled(true);
+            return;
+        }
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(loc -> {
+                    pendingJoinLocation = loc;
+                    doJoinWithLocation();
+                })
+                .addOnFailureListener(e -> {
+                    setActionEnabled(true);
+                    Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
                 });
     }
 
-    private void handleGeoLocationJoin() {
-        if (currentEvent == null || !currentEvent.isGeoLocationOn()) {
+    private void doJoinWithLocation() {
+        if (pendingJoinLocation == null) {
+            Toast.makeText(getContext(), "Location unavailable. Please try again.", Toast.LENGTH_LONG).show();
+            setActionEnabled(true);
             return;
         }
-        if (geoLocationService == null || currentUser == null || TextUtils.isEmpty(currentUser.getUserId())) {
-            return;
-        }
-        GeoLocation location = generateMockLocation(currentUser.getUserId(), currentEvent.getEventId());
-        geoLocationService.saveGeoLocation(location,
-                docId -> { },
-                e -> { });
+        handleGeoLocationJoin(pendingJoinLocation);
+        if (!isAdded()) return;
+        requireActivity().runOnUiThread(() -> {
+            Toast.makeText(getContext(), R.string.view_event_toast_join_success, Toast.LENGTH_SHORT).show();
+            loadContent();
+        });
     }
+
+
+    private void handleGeoLocationJoin(Location loc) {
+        if (currentEvent == null || !currentEvent.isGeoLocationOn()) return;
+        if (geoLocationService == null || currentUser == null || TextUtils.isEmpty(currentUser.getUserId())) return;
+        if (loc == null) return;
+
+        GeoLocation geo = new GeoLocation(loc.getLatitude(), loc.getLongitude(), currentUser.getUserId(), currentEvent.getEventId());
+        geoLocationService.saveGeoLocation(geo, docId -> { }, e -> { });
+    }
+
 
     private void leaveWaitingList() {
         if (currentEvent == null || currentUser == null || TextUtils.isEmpty(currentUser.getUserId())) {

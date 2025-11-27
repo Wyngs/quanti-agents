@@ -1,5 +1,6 @@
 package com.quantiagents.app.ui.myevents;
 
+import android.annotation.SuppressLint;
 import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.text.Editable;
@@ -13,6 +14,17 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.ContextCompat;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.quantiagents.app.Services.GeoLocationService;
+import com.quantiagents.app.models.GeoLocation;
+
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -33,6 +45,7 @@ import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.RegistrationHistory;
+import com.quantiagents.app.models.User;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -53,6 +66,12 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
     private RegistrationHistoryService regService;
     private UserService userService;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private GeoLocationService geoLocationService;
+    private FusedLocationProviderClient fusedLocationClient;
+    private ActivityResultLauncher<String[]> locationPermissionLauncher;
+    private Event pendingEvent;
+    private User pendingUser;
+
 
     private SwipeRefreshLayout swipe;
     private ProgressBar progress;
@@ -83,6 +102,22 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         eventService = app.locator().eventService();
         regService = app.locator().registrationHistoryService();
         userService = app.locator().userService();
+
+        geoLocationService = app.locator().geoLocationService();
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext());
+        locationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestMultiplePermissions(),
+                result -> {
+                    boolean granted = Boolean.TRUE.equals(result.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false))
+                            || Boolean.TRUE.equals(result.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false));
+                    if (granted) {
+                        continueJoinWithLocation();
+                    } else {
+                        progress.setVisibility(View.GONE);
+                        Toast.makeText(getContext(), "Location required for this event.", Toast.LENGTH_LONG).show();
+                    }
+                });
 
         swipe = v.findViewById(R.id.swipe);
         progress = v.findViewById(R.id.progress);
@@ -236,7 +271,7 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         }
         return true;
     }
-
+    @SuppressLint("MissingPermission")
     @Override
     public void onJoinWaitlist(@NonNull Event event) {
         progress.setVisibility(View.VISIBLE);
@@ -259,53 +294,73 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                         }
                         return;
                     }
-
                     String eventId = event.getEventId();
+                    if (event.isGeoLocationOn() && !hasLocationPermission()) {
+                        requestLocationThenJoin(event, user);
+                        return;
+                    }
 
-                    executor.execute(() -> {
-                        RegistrationHistory existing = regService.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
 
-                        if (existing != null) {
-                            if (isAdded()) {
-                                requireActivity().runOnUiThread(() -> {
-                                    progress.setVisibility(View.GONE);
-                                    Toast.makeText(getContext(), "Already registered!", Toast.LENGTH_SHORT).show();
-                                });
-                            }
+                    if (!hasLocationPermission()) {
+                        if (event.isGeoLocationOn()) {
+                            requestLocationThenJoin(event, user);
+                            return;
+                        } else {
+                            executor.execute(() -> actuallyJoin(event, user, null));
                             return;
                         }
+                    }
+                    fusedLocationClient.getLastLocation()
+                            .addOnSuccessListener(loc -> {
+                                executor.execute(() -> {
+                                    RegistrationHistory existing = regService.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
 
-                        RegistrationHistory newReg = new RegistrationHistory(
-                                eventId,
-                                userId,
-                                constant.EventRegistrationStatus.WAITLIST,
-                                new Date()
-                        );
-
-                        regService.saveRegistrationHistory(newReg,
-                                aVoid -> {
-                                    if (event.getWaitingList() == null) event.setWaitingList(new ArrayList<>());
-                                    if (!event.getWaitingList().contains(userId)) {
-                                        event.getWaitingList().add(userId);
-                                        eventService.updateEvent(event, v -> {}, e -> Log.e("BrowseEvents", "Failed to sync waiting list", e));
-                                    }
-
-                                    if (isAdded()) {
-                                        requireActivity().runOnUiThread(() -> {
+                                    if (existing != null) {
+                                        if (isAdded()) requireActivity().runOnUiThread(() -> {
                                             progress.setVisibility(View.GONE);
-                                            Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(getContext(), "Already registered!", Toast.LENGTH_SHORT).show();
                                         });
+                                        return;
                                     }
-                                },
-                                e -> {
-                                    if (isAdded()) {
-                                        requireActivity().runOnUiThread(() -> {
-                                            progress.setVisibility(View.GONE);
-                                            Toast.makeText(getContext(), "Failed to join", Toast.LENGTH_SHORT).show();
-                                        });
-                                    }
+
+                                    RegistrationHistory newReg = new RegistrationHistory(
+                                            eventId,
+                                            userId,
+                                            constant.EventRegistrationStatus.WAITLIST,
+                                            new Date()
+                                    );
+
+                                    regService.saveRegistrationHistory(newReg,
+                                            aVoid -> {
+                                                if (event.getWaitingList() == null) event.setWaitingList(new ArrayList<>());
+                                                if (!event.getWaitingList().contains(userId)) {
+                                                    event.getWaitingList().add(userId);
+                                                    eventService.updateEvent(event, v -> {}, e -> Log.e("BrowseEvents", "Failed to sync waiting list", e));
+                                                }
+
+                                                // NEW: save geo point if required and we have a location
+                                                if (event.isGeoLocationOn() && loc != null && geoLocationService != null) {
+                                                    GeoLocation geo = new GeoLocation(loc.getLatitude(), loc.getLongitude(), userId, eventId);
+                                                    geoLocationService.saveGeoLocation(geo, id -> {}, err -> {});
+                                                }
+
+                                                if (isAdded()) requireActivity().runOnUiThread(() -> {
+                                                    progress.setVisibility(View.GONE);
+                                                    Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
+                                                });
+                                            },
+                                            e -> {
+                                                if (isAdded()) requireActivity().runOnUiThread(() -> {
+                                                    progress.setVisibility(View.GONE);
+                                                    Toast.makeText(getContext(), "Failed to join", Toast.LENGTH_SHORT).show();
+                                                });
+                                            });
                                 });
-                    });
+                            })
+                            .addOnFailureListener(err -> {
+                                progress.setVisibility(View.GONE);
+                                Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
+                            });
                 },
                 e -> {
                     progress.setVisibility(View.GONE);
@@ -334,6 +389,87 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
     public static boolean isOpen(Event e) {
         return e != null && e.getStatus() == constant.EventStatus.OPEN;
     }
+
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestLocationThenJoin(Event event, User user) {
+        pendingEvent = event;
+        pendingUser = user;
+        locationPermissionLauncher.launch(new String[]{
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+        });
+    }
+    @SuppressLint("MissingPermission")
+    private void continueJoinWithLocation() {
+        if (pendingEvent == null || pendingUser == null) {
+            progress.setVisibility(View.GONE);
+            return;
+        }
+        if (!hasLocationPermission()) {
+            progress.setVisibility(View.GONE);
+            return;
+        }
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(loc -> actuallyJoin(pendingEvent, pendingUser, loc))
+                .addOnFailureListener(e -> {
+                    progress.setVisibility(View.GONE);
+                    Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
+                });
+    }
+
+    private void actuallyJoin(Event event, User user, Location loc) {
+        String userId = user.getUserId();
+        String eventId = event.getEventId();
+
+        executor.execute(() -> {
+            RegistrationHistory existing = regService.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
+            if (existing != null) {
+                if (isAdded()) requireActivity().runOnUiThread(() -> {
+                    progress.setVisibility(View.GONE);
+                    Toast.makeText(getContext(), "Already registered!", Toast.LENGTH_SHORT).show();
+                });
+                return;
+            }
+
+            RegistrationHistory newReg = new RegistrationHistory(
+                    eventId,
+                    userId,
+                    constant.EventRegistrationStatus.WAITLIST,
+                    new Date()
+            );
+
+            regService.saveRegistrationHistory(newReg,
+                    aVoid -> {
+                        if (event.getWaitingList() == null) event.setWaitingList(new ArrayList<>());
+                        if (!event.getWaitingList().contains(userId)) {
+                            event.getWaitingList().add(userId);
+                            eventService.updateEvent(event, v -> {}, e -> Log.e("BrowseEvents", "Failed to sync waiting list", e));
+                        }
+
+                        if (event.isGeoLocationOn() && loc != null && geoLocationService != null) {
+                            GeoLocation geo = new GeoLocation(loc.getLatitude(), loc.getLongitude(), userId, eventId);
+                            geoLocationService.saveGeoLocation(geo, id -> {}, err -> {});
+                        }
+
+                        if (isAdded()) requireActivity().runOnUiThread(() -> {
+                            progress.setVisibility(View.GONE);
+                            Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
+                            loadEvents();
+                        });
+                    },
+                    e -> {
+                        if (isAdded()) requireActivity().runOnUiThread(() -> {
+                            progress.setVisibility(View.GONE);
+                            Toast.makeText(getContext(), "Failed to join", Toast.LENGTH_SHORT).show();
+                        });
+                    });
+        });
+    }
+
 
     @Override
     public void onDestroy() {
