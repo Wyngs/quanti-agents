@@ -51,4 +51,17 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("com.google.android.gms:play-services-maps:18.2.0")
 
+    // For QR Code.... -> https://github.com/journeyapps/zxing-android-embedded
+    implementation ("com.journeyapps:zxing-android-embedded:4.3.0")
+
+    // Include the CameraX libraries
+    implementation ("androidx.camera:camera-core:1.5.1")
+    implementation ("androidx.camera:camera-camera2:1.5.1")
+    implementation ("androidx.camera:camera-lifecycle:1.5.1")
+    implementation ("androidx.camera:camera-view:1.5.1")
+    implementation ("androidx.camera:camera-extensions:1.5.1")
+
+    // ML Kit Barcode Scanning for CameraX
+    implementation ("com.google.mlkit:barcode-scanning:17.3.0")
+
 }
