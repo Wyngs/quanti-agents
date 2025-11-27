@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.quantiagents.app"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.quantiagents.app"

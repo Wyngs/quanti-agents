@@ -1,44 +1,80 @@
 package com.quantiagents.app.ui.ScanQRCode;
 
-import android.content.Intent;
-import android.graphics.Bitmap;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
-
-import androidx.activity.result.PickVisualMediaRequest;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.WriterException;
-import com.google.zxing.integration.android.IntentIntegrator;
-import com.google.zxing.integration.android.IntentResult;
-import com.journeyapps.barcodescanner.BarcodeEncoder;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.camera.core.Camera;
+import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ExperimentalGetImage;
+import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.Preview;
+import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.camera.view.PreviewView;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+
+import kotlin.OptIn;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.card.MaterialCardView;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.mlkit.vision.barcode.BarcodeScanning;
+import com.google.mlkit.vision.barcode.common.Barcode;
+import com.google.mlkit.vision.common.InputImage;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.QRCodeService;
+import com.quantiagents.app.Services.ServiceLocator;
+import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.QRCode;
-import com.quantiagents.app.ui.CreateEventFragment;
-import com.quantiagents.app.ui.main.MainActivity;
+import com.quantiagents.app.ui.ViewEventDetailsFragment;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ScanQRCodeFragment extends Fragment {
 
-    private EventService _eventService;
-    private QRCodeService _qrCodeService;
+    private EventService eventService;
+    private QRCodeService qrCodeService;
 
-    public static ScanQRCodeFragment newInstance(){
+    // Views
+    private PreviewView previewView;
+    private MaterialCardView errorCard;
+    private TextView errorText;
+    private MaterialCardView quickAccessCard;
+    private RecyclerView eventsRecyclerView;
+
+    // Camera and scanning
+    private ProcessCameraProvider cameraProvider;
+    private Camera camera;
+    private ImageAnalysis imageAnalysis;
+    private ExecutorService cameraExecutor;
+    private ActivityResultLauncher<String> requestPermissionLauncher;
+
+    // State
+    private boolean isScanning = false;
+    private long lastScanTime = 0;
+    private static final long SCAN_THROTTLE_MS = 2000; // Prevent duplicate scans
+
+    // Quick Access
+    private QRQuickAccessAdapter quickAccessAdapter;
+
+    public static ScanQRCodeFragment newInstance() {
         return new ScanQRCodeFragment();
     }
 
@@ -54,20 +90,299 @@ public class ScanQRCodeFragment extends Fragment {
 
         // Initialize services
         App app = (App) requireActivity().getApplication();
-        _eventService = app.locator().eventService();
-        _qrCodeService = app.locator().qrCodeService();
+        ServiceLocator locator = app.locator();
+        eventService = locator.eventService();
+        qrCodeService = locator.qrCodeService();
 
         bindViews(view);
+        setupPermissionLauncher();
+        setupQuickAccess();
 
-        // Set UP Onclick Listeners
+        // Start camera if permission granted
+        if (hasCameraPermission()) {
+            startCamera();
+        } else {
+            requestCameraPermission();
+        }
 
+        // Load quick access events
+        loadQuickAccessEvents();
     }
 
-    private void bindViews(View view)
-    {
-
+    private void bindViews(View view) {
+        previewView = view.findViewById(R.id.previewView);
+        errorCard = view.findViewById(R.id.errorCard);
+        errorText = view.findViewById(R.id.errorText);
+        quickAccessCard = view.findViewById(R.id.quickAccessCard);
+        eventsRecyclerView = view.findViewById(R.id.eventsRecyclerView);
     }
 
+    private void setupPermissionLauncher() {
+        requestPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                isGranted -> {
+                    if (isGranted) {
+                        startCamera();
+                    } else {
+                        Toast.makeText(requireContext(), getString(R.string.scan_qr_permission_required), Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
 
+    private void setupQuickAccess() {
+        quickAccessAdapter = new QRQuickAccessAdapter((event, qrCodeValue) -> {
+            // Simulate scanning by directly finding the event
+            onEventFound(event.getEventId());
+        });
+        eventsRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        eventsRecyclerView.setAdapter(quickAccessAdapter);
+    }
 
+    private boolean hasCameraPermission() {
+        return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestCameraPermission() {
+        requestPermissionLauncher.launch(Manifest.permission.CAMERA);
+    }
+
+    private void startCamera() {
+        if (cameraExecutor == null) {
+            cameraExecutor = Executors.newSingleThreadExecutor();
+        }
+
+        ListenableFuture<ProcessCameraProvider> cameraProviderFuture =
+                ProcessCameraProvider.getInstance(requireContext());
+
+        cameraProviderFuture.addListener(() -> {
+            try {
+                ProcessCameraProvider provider = cameraProviderFuture.get();
+                bindCameraUseCases(provider);
+            } catch (Exception e) {
+                if (isAdded()) {
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), getString(R.string.scan_qr_camera_error), Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        }, ContextCompat.getMainExecutor(requireContext()));
+    }
+
+    private void bindCameraUseCases(@NonNull ProcessCameraProvider cameraProvider) {
+        // Unbind use cases before rebinding
+        if (this.cameraProvider != null) {
+            this.cameraProvider.unbindAll();
+        }
+        this.cameraProvider = cameraProvider;
+
+        // Preview
+        Preview preview = new Preview.Builder().build();
+        preview.setSurfaceProvider(previewView.getSurfaceProvider());
+
+        // Image Analysis for QR code scanning
+        ImageAnalysis.Builder imageAnalysisBuilder = new ImageAnalysis.Builder();
+        imageAnalysis = imageAnalysisBuilder.build();
+        imageAnalysis.setAnalyzer(cameraExecutor, new QRCodeAnalyzer());
+
+        // Camera selector - use back camera
+        CameraSelector cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
+
+        try {
+            // Unbind all use cases before rebinding
+            cameraProvider.unbindAll();
+
+            // Bind use cases to camera
+            camera = cameraProvider.bindToLifecycle(
+                    this,
+                    cameraSelector,
+                    preview,
+                    imageAnalysis
+            );
+        } catch (Exception e) {
+            if (isAdded()) {
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), getString(R.string.scan_qr_camera_error), Toast.LENGTH_SHORT).show();
+                });
+            }
+        }
+    }
+
+    @OptIn(markerClass = ExperimentalGetImage.class)
+    private class QRCodeAnalyzer implements ImageAnalysis.Analyzer {
+        private final com.google.mlkit.vision.barcode.BarcodeScanner barcodeScanner;
+
+        QRCodeAnalyzer() {
+            barcodeScanner = BarcodeScanning.getClient();
+        }
+
+        @Override
+        public void analyze(@NonNull androidx.camera.core.ImageProxy image) {
+            if (isScanning) {
+                image.close();
+                return;
+            }
+
+            // Throttle scans to avoid duplicate processing
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastScanTime < SCAN_THROTTLE_MS) {
+                image.close();
+                return;
+            }
+
+            InputImage inputImage = InputImage.fromMediaImage(
+                    image.getImage(),
+                    image.getImageInfo().getRotationDegrees()
+            );
+
+            isScanning = true;
+            barcodeScanner.process(inputImage)
+                    .addOnSuccessListener(barcodes -> {
+                        if (!barcodes.isEmpty() && !TextUtils.isEmpty(barcodes.get(0).getRawValue())) {
+                            String qrValue = barcodes.get(0).getRawValue();
+                            lastScanTime = currentTime;
+                            handleQRCodeScanned(qrValue);
+                        }
+                        isScanning = false;
+                        image.close();
+                    })
+                    .addOnFailureListener(e -> {
+                        isScanning = false;
+                        image.close();
+                    });
+        }
+    }
+
+    private void handleQRCodeScanned(String qrCodeValue) {
+        if (!isAdded()) return;
+
+        requireActivity().runOnUiThread(() -> {
+            // Find and navigate to event
+            findEventByQRCode(qrCodeValue);
+        });
+    }
+
+    private void findEventByQRCode(String qrCodeValue) {
+        // Find QR code by value, then get the event
+        new Thread(() -> {
+            try {
+                // Get all QR codes and find matching one
+                List<QRCode> allQRCodes = qrCodeService.getAllQRCodes();
+                QRCode foundQR = null;
+
+                for (QRCode qr : allQRCodes) {
+                    if (qr != null && qrCodeValue.equals(qr.getQrCodeValue())) {
+                        foundQR = qr;
+                        break;
+                    }
+                }
+
+                if (foundQR != null && !TextUtils.isEmpty(foundQR.getEventId())) {
+                    // Found QR code, get the event
+                    final String eventId = foundQR.getEventId();
+                    Event event = eventService.getEventById(eventId);
+
+                    if (event != null && isAdded()) {
+                        requireActivity().runOnUiThread(() -> onEventFound(eventId));
+                    } else if (isAdded()) {
+                        requireActivity().runOnUiThread(() -> {
+                            showError(getString(R.string.scan_qr_error_not_found));
+                        });
+                    }
+                } else if (isAdded()) {
+                    requireActivity().runOnUiThread(() -> {
+                        showError(getString(R.string.scan_qr_error_not_found));
+                    });
+                }
+            } catch (Exception e) {
+                if (isAdded()) {
+                    requireActivity().runOnUiThread(() -> {
+                        showError(getString(R.string.scan_qr_error_not_found));
+                    });
+                }
+            }
+        }).start();
+    }
+
+    private void onEventFound(String eventId) {
+        hideError();
+        // Navigate to event details
+        Fragment eventDetailsFragment = ViewEventDetailsFragment.newInstance(eventId);
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.content_container, eventDetailsFragment)
+                .addToBackStack(null)
+                .commit();
+    }
+
+    private void loadQuickAccessEvents() {
+        // Load all events and their QR codes for quick access
+        eventService.getAllEvents(
+                events -> {
+                    if (!isAdded() || events == null || events.isEmpty()) {
+                        return;
+                    }
+
+                    // Load QR codes for each event
+                    new Thread(() -> {
+                        List<QRQuickAccessAdapter.EventQRPair> pairs = new ArrayList<>();
+                        for (Event event : events) {
+                            if (event == null || TextUtils.isEmpty(event.getEventId())) continue;
+
+                            List<QRCode> qrCodes = qrCodeService.getQRCodesByEventId(event.getEventId());
+                            if (!qrCodes.isEmpty() && qrCodes.get(0) != null) {
+                                String qrValue = qrCodes.get(0).getQrCodeValue();
+                                if (!TextUtils.isEmpty(qrValue)) {
+                                    pairs.add(new QRQuickAccessAdapter.EventQRPair(event, qrValue));
+                                }
+                            }
+                        }
+
+                        if (isAdded()) {
+                            requireActivity().runOnUiThread(() -> {
+                                if (!pairs.isEmpty()) {
+                                    quickAccessAdapter.setItems(pairs);
+                                    quickAccessCard.setVisibility(View.VISIBLE);
+                                } else {
+                                    quickAccessCard.setVisibility(View.GONE);
+                                }
+                            });
+                        }
+                    }).start();
+                },
+                e -> {
+                    // Error loading events - just hide quick access
+                    if (isAdded()) {
+                        quickAccessCard.setVisibility(View.GONE);
+                    }
+                }
+        );
+    }
+
+    private void showError(String message) {
+        if (errorCard != null && errorText != null) {
+            errorText.setText(message);
+            errorCard.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void hideError() {
+        if (errorCard != null) {
+            errorCard.setVisibility(View.GONE);
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (cameraProvider != null) {
+            cameraProvider.unbindAll();
+            cameraProvider = null;
+        }
+        if (cameraExecutor != null) {
+            cameraExecutor.shutdown();
+            cameraExecutor = null;
+        }
+        isScanning = false;
+    }
 }
