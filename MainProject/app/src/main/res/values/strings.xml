@@ -145,6 +145,28 @@
     <string name="event_closed">Closed</string>
     <string name="join_waitlist">Join waitlist</string>
     <string name="view_event">View</string>
+    <!-- Manage Event Info -->
+    <string name="manage_event_info_back">Back</string>
+    <string name="manage_event_info_redraw_canceled">Redraw Canceled</string>
+    <string name="manage_event_info_name">Event name</string>
+    <string name="manage_event_info_description">Description</string>
+    <string name="manage_event_info_capacity">Capacity</string>
+    <string name="manage_event_info_waiting_list_limit">Waiting list limit</string>
+    <string name="manage_event_info_price">Price</string>
+    <string name="manage_event_info_save_changes">Save changes</string>
+
+    <!-- Draw Lottery card -->
+    <string name="manage_event_info_draw_title">Draw Lottery</string>
+    <string name="manage_event_info_draw_subtitle">Number of entrants to select from the waiting list</string>
+    <string name="manage_event_info_draw_hint">No. of entrants</string>
+    <string name="manage_event_info_draw_button">Draw</string>
+    <string name="manage_event_info_draw_empty">Please enter a number of entrants.</string>
+    <string name="manage_event_info_draw_invalid_zero">Number of entrants must be at least 1.</string>
+    <string name="manage_event_info_draw_success">Selected %1$d new entrant(s) from the waitlist.</string>
+    <string name="manage_event_info_draw_error">Lottery failed. Please try again.</string>
+    <string name="manage_event_info_draw_failed">
+    Lottery failed. Please try again.
+</string>
 
 
 

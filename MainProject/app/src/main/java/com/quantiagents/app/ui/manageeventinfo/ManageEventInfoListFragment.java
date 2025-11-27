@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,14 +20,14 @@ import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.RegistrationHistory;
 import com.quantiagents.app.models.User;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
- * A single tab page that displays entrants filtered by status for one event.
- *
- * Uses RegistrationHistoryService to fetch histories scoped to an eventId,
- * then joins with UserService to show name + username + joined date.
+ * Fragment showing a single status list (WAITLIST / SELECTED / CONFIRMED / CANCELLED)
+ * for the ManageEventInfo screen.
  */
 public class ManageEventInfoListFragment extends Fragment {
 
@@ -37,25 +36,22 @@ public class ManageEventInfoListFragment extends Fragment {
 
     private String eventId;
     private String status;
-
     private SwipeRefreshLayout swipe;
     private TextView empty;
     private ManageEventInfoUserAdapter adapter;
-    private RegistrationHistoryService registrationHistoryService;
-    private UserService userService;
+    private RegistrationHistoryService regSvc;
+    private UserService userSvc;
 
-    public static ManageEventInfoListFragment newInstance(@NonNull String eventId,
-                                                          @NonNull String status) {
+    /**
+     * Factory method creating a list fragment for a given event and status.
+     */
+    public static ManageEventInfoListFragment newInstance(String eventId, String status) {
         Bundle b = new Bundle();
         b.putString(ARG_EVENT, eventId);
         b.putString(ARG_STATUS, status);
         ManageEventInfoListFragment f = new ManageEventInfoListFragment();
         f.setArguments(b);
         return f;
-    }
-
-    public ManageEventInfoListFragment() {
-        // Required empty public constructor
     }
 
     @Nullable
@@ -69,10 +65,8 @@ public class ManageEventInfoListFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view,
                               @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
         eventId = requireArguments().getString(ARG_EVENT);
-        status  = requireArguments().getString(ARG_STATUS);
+        status = requireArguments().getString(ARG_STATUS);
 
         RecyclerView rv = view.findViewById(R.id.list);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -83,93 +77,73 @@ public class ManageEventInfoListFragment extends Fragment {
         empty = view.findViewById(R.id.empty);
 
         App app = (App) requireActivity().getApplication();
-        registrationHistoryService = app.locator().registrationHistoryService();
-        userService = app.locator().userService();
+        regSvc = app.locator().registrationHistoryService();
+        userSvc = app.locator().userService();
 
         swipe.setOnRefreshListener(this::load);
-
-        // Listen for parent broadcasts to refresh after save/redraw.
         getParentFragmentManager().setFragmentResultListener(
                 ManageEventInfoFragment.RESULT_REFRESH,
                 this,
-                (key, bundle) -> load()
+                (k, b) -> load()
         );
 
         load();
     }
 
     /**
-     * Trigger a background fetch + join with user profiles,
-     * then bind results to the adapter.
+     * Loads registration histories and corresponding user info for this status.
+     * Runs DB work on a background thread and posts results to the adapter on the UI thread.
      */
     private void load() {
         swipe.setRefreshing(true);
+
         new Thread(() -> {
-            try {
-                // 1) Get all histories for this event
-                List<RegistrationHistory> all =
-                        registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
+            List<RegistrationHistory> all = regSvc.getRegistrationHistoriesByEventId(eventId);
+            List<ManageEventInfoUserAdapter.Row> rows = new ArrayList<>();
+            SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
-                // 2) Filter by requested status (WAITLIST, SELECTED, etc.)
-                List<RegistrationHistory> filtered = new ArrayList<>();
-                if (all != null) {
-                    for (RegistrationHistory r : all) {
-                        if (r == null || r.getEventRegistrationStatus() == null) {
-                            continue;
-                        }
-                        if (r.getEventRegistrationStatus().name().equalsIgnoreCase(status)) {
-                            filtered.add(r);
-                        }
-                    }
+            for (RegistrationHistory r : all) {
+                if (r == null || r.getEventRegistrationStatus() == null) continue;
+
+                // Filter by status enum name (WAITLIST, SELECTED, CONFIRMED, CANCELLED)
+                if (!r.getEventRegistrationStatus().name().equalsIgnoreCase(status)) {
+                    continue;
                 }
 
-                // 3) Build UI rows: name, username, joined
-                List<ManageEventInfoUserAdapter.Row> rows = new ArrayList<>();
-                for (RegistrationHistory r : filtered) {
-                    String uid = r.getUserId();
+                String userId = r.getUserId();
+                String displayName = userId;
+                String username = "";
+                String joinedText = "";
 
-                    // Adjust this call if your UserService uses a different method name
-                    User u = null;
-                    try {
-                        u = userService.getUserById(uid);
-                    } catch (Exception ignored) {
-                        // keep u == null and just fall back to uid
+                // Fetch user details
+                try {
+                    User u = userSvc.getUserById(userId);
+                    if (u != null) {
+                        if (u.getName() != null && !u.getName().isEmpty()) {
+                            displayName = u.getName();
+                        }
+                        if (u.getUsername() != null) {
+                            username = u.getUsername();
+                        }
                     }
+                } catch (Exception ignored) { }
 
-                    String name = (u != null && u.getName() != null && !u.getName().isEmpty())
-                            ? u.getName()
-                            : uid;
-
-                    String username = (u != null && u.getUsername() != null)
-                            ? u.getUsername()
-                            : "";
-
-                    Object reg = r.getRegisteredAt();
-                    String joined = reg != null ? reg.toString() : "";
-
-                    rows.add(new ManageEventInfoUserAdapter.Row(name, username, joined));
+                if (r.getRegisteredAt() != null) {
+                    joinedText = fmt.format(r.getRegisteredAt());
                 }
 
-                if (!isAdded()) return;
-                List<ManageEventInfoUserAdapter.Row> finalRows = rows;
+                rows.add(new ManageEventInfoUserAdapter.Row(
+                        displayName,
+                        username,
+                        joinedText
+                ));
+            }
+
+            if (isAdded()) {
                 requireActivity().runOnUiThread(() -> {
                     swipe.setRefreshing(false);
-                    adapter.submit(finalRows);
-                    empty.setVisibility(finalRows.isEmpty() ? View.VISIBLE : View.GONE);
-                    if (finalRows.isEmpty()) {
-                        empty.setText(R.string.manage_events_empty_default);
-                    }
-                });
-            } catch (Exception e) {
-                if (!isAdded()) return;
-                requireActivity().runOnUiThread(() -> {
-                    swipe.setRefreshing(false);
-                    adapter.submit(new ArrayList<>());
-                    empty.setVisibility(View.VISIBLE);
-                    empty.setText("Failed to load entrants.");
-                    Toast.makeText(getContext(),
-                            "Error loading entrants: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
+                    adapter.submit(rows);
+                    empty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
                 });
             }
         }).start();

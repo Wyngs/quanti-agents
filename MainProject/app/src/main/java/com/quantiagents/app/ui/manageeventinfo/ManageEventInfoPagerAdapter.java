@@ -5,28 +5,37 @@ import androidx.fragment.app.Fragment;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 /**
- * Pager adapter for the manage-event-info screen. Provides four pages
- * (WAITLIST, SELECTED, CONFIRMED, CANCELLED) scoped to the same event.
+ * Pager adapter for the Manage Event Info screen.
+ *
+ * It exposes four pages, one for each registration status:
+ * <ol>
+ *     <li>WAITLIST</li>
+ *     <li>SELECTED</li>
+ *     <li>CONFIRMED</li>
+ *     <li>CANCELLED</li>
+ * </ol>
+ *
+ * Each page is an instance of {@link ManageEventInfoListFragment}.
  */
 public class ManageEventInfoPagerAdapter extends FragmentStateAdapter {
 
     private final String eventId;
 
     /**
-     * Constructs the adapter using the host fragment (so it uses the host's child FragmentManager).
+     * Creates a new adapter for the given event.
      *
-     * @param host    Fragment host that owns this adapter.
-     * @param eventId Event identifier to pass to each page.
+     * @param host    parent fragment hosting the ViewPager2.
+     * @param eventId ID of the event whose registrations we are displaying.
      */
     public ManageEventInfoPagerAdapter(@NonNull Fragment host, @NonNull String eventId) {
         super(host);
         this.eventId = eventId;
     }
 
-    /** Creates the page fragment for a given position. */
     @NonNull
     @Override
     public Fragment createFragment(int position) {
+        // NOTE: Strings here must exactly match the enum names in constant.EventRegistrationStatus.
         final String status = switch (position) {
             case 1 -> "SELECTED";
             case 2 -> "CONFIRMED";
@@ -36,7 +45,11 @@ public class ManageEventInfoPagerAdapter extends FragmentStateAdapter {
         return ManageEventInfoListFragment.newInstance(eventId, status);
     }
 
-    /** @return Fixed page count: 4 statuses. */
+    /**
+     * @return fixed page count – one for each status.
+     */
     @Override
-    public int getItemCount() { return 4; }
+    public int getItemCount() {
+        return 4;
+    }
 }
