@@ -15,7 +15,7 @@
         android:enableOnBackInvokedCallback="true">
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBuWdMaCLhnyIRYI_3PMepJSwPuKl4QDZM" />
+            android:value="AIzaSyBnz_e_U514uORwVCUSTi8WVzLHnEpAmSI" />
 
         <activity
             android:name=".ui.profile.EditProfileActivity"
