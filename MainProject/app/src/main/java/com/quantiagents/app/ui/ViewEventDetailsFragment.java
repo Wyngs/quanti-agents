@@ -27,6 +27,7 @@ import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.GeoLocationService;
 import com.quantiagents.app.Services.ImageService;
+import com.quantiagents.app.Services.NotificationService;
 import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.Services.QRCodeService;
@@ -34,6 +35,7 @@ import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.GeoLocation;
 import com.quantiagents.app.models.Image;
+import com.quantiagents.app.models.Notification;
 import com.quantiagents.app.models.QRCode;
 import com.quantiagents.app.models.RegistrationHistory;
 import com.quantiagents.app.models.User;
@@ -78,6 +80,7 @@ public class ViewEventDetailsFragment extends Fragment {
     private EventService eventService;
     private UserService userService;
     private RegistrationHistoryService registrationHistoryService;
+    private NotificationService notificationService;
     private QRCodeService qrCodeService;
     private GeoLocationService geoLocationService;
     private ImageService imageService;
@@ -162,9 +165,11 @@ public class ViewEventDetailsFragment extends Fragment {
         eventService = locator.eventService();
         userService = locator.userService();
         registrationHistoryService = locator.registrationHistoryService();
+        notificationService = locator.notificationService();
         qrCodeService = locator.qrCodeService();
         geoLocationService = locator.geoLocationService();
         imageService = locator.imageService();
+        notificationService = locator.notificationService();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext());
         locationPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestMultiplePermissions(),
@@ -483,56 +488,70 @@ public class ViewEventDetailsFragment extends Fragment {
 
         setActionEnabled(false);
 
-// Get location first (required for geo events; harmless for others)
-        if (!hasLocationPermission()) {
-            setActionEnabled(true);
+        // Get location if event requires it, otherwise proceed without location
+        if (eventRequiresLocation() && hasLocationPermission()) {
+            // Event requires location and we have permission - get location first
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(loc -> {
+                        pendingJoinLocation = loc;
+                        proceedWithRegistration();
+                    })
+                    .addOnFailureListener(e -> {
+                        if (!isAdded()) return;
+                        setActionEnabled(true);
+                        Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
+                    });
+        } else {
+            // Event doesn't require location - proceed without location
+            pendingJoinLocation = null;
+            proceedWithRegistration();
+        }
+    }
+
+    private void proceedWithRegistration() {
+        if (currentEvent == null || currentUser == null) {
+            if (isAdded()) {
+                requireActivity().runOnUiThread(() -> setActionEnabled(true));
+            }
             return;
         }
-        fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(loc -> {
-                    pendingJoinLocation = loc;
 
+        RegistrationHistory history = new RegistrationHistory(
+                currentEvent.getEventId(),
+                currentUser.getUserId(),
+                constant.EventRegistrationStatus.WAITLIST,
+                new Date()
+        );
 
-                    RegistrationHistory history = new RegistrationHistory(
-                            currentEvent.getEventId(),
-                            currentUser.getUserId(),
-                            constant.EventRegistrationStatus.WAITLIST,
-                            new Date()
-                    );
+        registrationHistoryService.saveRegistrationHistory(history,
+                aVoid -> {
+                    if (currentEvent.getWaitingList() == null) currentEvent.setWaitingList(new ArrayList<>());
+                    if (!currentEvent.getWaitingList().contains(currentUser.getUserId())) {
+                        currentEvent.getWaitingList().add(currentUser.getUserId());
+                        eventService.updateEvent(currentEvent, v -> {}, e -> Log.e("ViewEvent", "Failed to sync waiting list", e));
+                    }
 
-                    registrationHistoryService.saveRegistrationHistory(history,
-                            aVoid -> {
-                                if (currentEvent.getWaitingList() == null) currentEvent.setWaitingList(new ArrayList<>());
-                                if (!currentEvent.getWaitingList().contains(currentUser.getUserId())) {
-                                    currentEvent.getWaitingList().add(currentUser.getUserId());
-                                    eventService.updateEvent(currentEvent, v -> {}, e -> Log.e("ViewEvent", "Failed to sync waiting list", e));
-                                }
+                    // Save real geo only if required and location available
+                    if (eventRequiresLocation() && pendingJoinLocation != null) {
+                        handleGeoLocationJoin(pendingJoinLocation);
+                    }
 
-                                // Save real geo only if required and location available
-                                if (eventRequiresLocation() && pendingJoinLocation != null) {
-                                    handleGeoLocationJoin(pendingJoinLocation);
-                                }
+                    // Send notifications to organizer and user
+                    sendRegistrationNotifications(currentEvent, currentUser);
 
-                                if (!isAdded()) return;
-                                requireActivity().runOnUiThread(() -> {
-                                    Toast.makeText(getContext(), R.string.view_event_toast_join_success, Toast.LENGTH_SHORT).show();
-                                    loadContent();
-                                });
-                            },
-                            e -> {
-                                if (!isAdded()) return;
-                                requireActivity().runOnUiThread(() -> {
-                                    setActionEnabled(true);
-                                    Toast.makeText(getContext(), R.string.view_event_toast_join_failure, Toast.LENGTH_LONG).show();
-                                });
-                            });
-
-                })
-                .addOnFailureListener(e -> {
-                    setActionEnabled(true);
-                    Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
+                    if (!isAdded()) return;
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), R.string.view_event_toast_join_success, Toast.LENGTH_SHORT).show();
+                        loadContent();
+                    });
+                },
+                e -> {
+                    if (!isAdded()) return;
+                    requireActivity().runOnUiThread(() -> {
+                        setActionEnabled(true);
+                        Toast.makeText(getContext(), R.string.view_event_toast_join_failure, Toast.LENGTH_LONG).show();
+                    });
                 });
-
     }
     private boolean eventRequiresLocation() {
         return currentEvent != null && currentEvent.isGeoLocationOn();
@@ -767,5 +786,53 @@ public class ViewEventDetailsFragment extends Fragment {
             return String.valueOf(longValue);
         }
         return String.format(Locale.getDefault(), "%.2f", value);
+    }
+
+    /**
+     * Sends notifications to both the organizer and the user when a user signs up for an event.
+     */
+    private void sendRegistrationNotifications(Event event, User user) {
+        if (event == null || user == null) return;
+
+        String eventId = event.getEventId();
+        String userId = user.getUserId();
+        String organizerId = event.getOrganizerId();
+
+        if (eventId == null || userId == null || organizerId == null) return;
+
+        // Convert String IDs to int for notifications
+        int eventIdInt = Math.abs(eventId.hashCode());
+        int userIdInt = Math.abs(userId.hashCode());
+        int organizerIdInt = Math.abs(organizerId.hashCode());
+
+        // Notification for the organizer (REMINDER type)
+        Notification organizerNotification = new Notification(
+                0, // Auto-generate ID
+                constant.NotificationType.REMINDER,
+                organizerIdInt,
+                0, // senderId (system)
+                eventIdInt
+        );
+
+        // Notification for the user (GOOD type - confirmation)
+        Notification userNotification = new Notification(
+                0, // Auto-generate ID
+                constant.NotificationType.GOOD,
+                userIdInt,
+                0, // senderId (system)
+                eventIdInt
+        );
+
+        // Save organizer notification
+        notificationService.saveNotification(organizerNotification,
+                aVoid -> Log.d("ViewEvent", "Notification sent to organizer"),
+                e -> Log.e("ViewEvent", "Failed to send notification to organizer", e)
+        );
+
+        // Save user notification
+        notificationService.saveNotification(userNotification,
+                aVoid -> Log.d("ViewEvent", "Notification sent to user"),
+                e -> Log.e("ViewEvent", "Failed to send notification to user", e)
+        );
     }
 }

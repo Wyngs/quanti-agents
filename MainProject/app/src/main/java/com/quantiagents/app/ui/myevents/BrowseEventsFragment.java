@@ -41,9 +41,11 @@ import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
+import com.quantiagents.app.Services.NotificationService;
 import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
+import com.quantiagents.app.models.Notification;
 import com.quantiagents.app.models.RegistrationHistory;
 import com.quantiagents.app.models.User;
 
@@ -65,6 +67,7 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
     private EventService eventService;
     private RegistrationHistoryService regService;
     private UserService userService;
+    private NotificationService notificationService;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private GeoLocationService geoLocationService;
     private FusedLocationProviderClient fusedLocationClient;
@@ -102,6 +105,7 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         eventService = app.locator().eventService();
         regService = app.locator().registrationHistoryService();
         userService = app.locator().userService();
+        notificationService = app.locator().notificationService();
 
         geoLocationService = app.locator().geoLocationService();
 
@@ -344,6 +348,9 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                                                     geoLocationService.saveGeoLocation(geo, id -> {}, err -> {});
                                                 }
 
+                                                // Send notifications to organizer and user
+                                                sendRegistrationNotifications(event, user);
+
                                                 if (isAdded()) requireActivity().runOnUiThread(() -> {
                                                     progress.setVisibility(View.GONE);
                                                     Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
@@ -455,6 +462,9 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                             geoLocationService.saveGeoLocation(geo, id -> {}, err -> {});
                         }
 
+                        // Send notifications to organizer and user
+                        sendRegistrationNotifications(event, user);
+
                         if (isAdded()) requireActivity().runOnUiThread(() -> {
                             progress.setVisibility(View.GONE);
                             Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
@@ -470,6 +480,54 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         });
     }
 
+
+    /**
+     * Sends notifications to both the organizer and the user when a user signs up for an event.
+     */
+    private void sendRegistrationNotifications(Event event, User user) {
+        if (event == null || user == null) return;
+
+        String eventId = event.getEventId();
+        String userId = user.getUserId();
+        String organizerId = event.getOrganizerId();
+
+        if (eventId == null || userId == null || organizerId == null) return;
+
+        // Convert String IDs to int for notifications
+        int eventIdInt = Math.abs(eventId.hashCode());
+        int userIdInt = Math.abs(userId.hashCode());
+        int organizerIdInt = Math.abs(organizerId.hashCode());
+
+        // Notification for the organizer (REMINDER type)
+        Notification organizerNotification = new Notification(
+                0, // Auto-generate ID
+                constant.NotificationType.REMINDER,
+                organizerIdInt,
+                0, // senderId (system)
+                eventIdInt
+        );
+
+        // Notification for the user (GOOD type - confirmation)
+        Notification userNotification = new Notification(
+                0, // Auto-generate ID
+                constant.NotificationType.GOOD,
+                userIdInt,
+                0, // senderId (system)
+                eventIdInt
+        );
+
+        // Save organizer notification
+        notificationService.saveNotification(organizerNotification,
+                aVoid -> Log.d("BrowseEvents", "Notification sent to organizer"),
+                e -> Log.e("BrowseEvents", "Failed to send notification to organizer", e)
+        );
+
+        // Save user notification
+        notificationService.saveNotification(userNotification,
+                aVoid -> Log.d("BrowseEvents", "Notification sent to user"),
+                e -> Log.e("BrowseEvents", "Failed to send notification to user", e)
+        );
+    }
 
     @Override
     public void onDestroy() {

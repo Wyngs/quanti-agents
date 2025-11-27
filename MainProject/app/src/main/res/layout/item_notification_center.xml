@@ -34,16 +34,16 @@
                 android:id="@+id/text_notification_message"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
-                android:textColor="?attr/colorOnSurface" />
+                android:textSize="16sp"
+                android:textColor="@color/colorOnSurface" />
 
             <TextView
                 android:id="@+id/text_event_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp"
+                android:textColor="@color/colorOnSurfaceVariant"
                 android:visibility="gone" />
 
             <TextView
@@ -51,8 +51,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:textSize="12sp"
+                android:textColor="@color/colorOnSurfaceVariant" />
 
         </LinearLayout>
 
