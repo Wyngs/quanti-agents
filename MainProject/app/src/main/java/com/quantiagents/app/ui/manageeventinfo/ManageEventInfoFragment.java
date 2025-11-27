@@ -2,6 +2,7 @@ package com.quantiagents.app.ui.manageeventinfo;
 
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +14,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.android.material.textfield.TextInputEditText;
@@ -21,10 +23,29 @@ import com.quantiagents.app.App;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.LotteryResultService;
+import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.quantiagents.app.Services.GeoLocationService;
+import com.quantiagents.app.models.GeoLocation;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.quantiagents.app.models.User;
+import java.util.HashMap;
+import java.util.Map;
+
+
 
 public class ManageEventInfoFragment extends Fragment {
 
@@ -36,6 +57,15 @@ public class ManageEventInfoFragment extends Fragment {
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private volatile Event loadedEvent;
+
+    private MapView mapView;
+    private GoogleMap googleMap;
+    private GeoLocationService geoSvc;
+
+    private UserService userService;
+    private final Map<String, User> markerUsers = new HashMap<>();
+
+
 
     public static ManageEventInfoFragment newInstance(@NonNull String eventId) {
         Bundle b = new Bundle();
@@ -63,6 +93,19 @@ public class ManageEventInfoFragment extends Fragment {
         App app = (App) requireActivity().getApplication();
         final EventService evtSvc = app.locator().eventService();
         final LotteryResultService lottoSvc = app.locator().lotteryResultService();
+        geoSvc = app.locator().geoLocationService();
+        userService = app.locator().userService();
+
+
+        mapView = view.findViewById(R.id.map_join_locations);
+        if (mapView != null) {
+            mapView.onCreate(savedInstanceState);
+            mapView.getMapAsync(map -> {
+                googleMap = map;
+                loadGeoMarkers(eventId);
+            });
+        }
+
 
         // Bind inputs
         nameLayout = view.findViewById(R.id.input_name_layout);
@@ -153,9 +196,74 @@ public class ManageEventInfoFragment extends Fragment {
         );
     }
 
+    private void loadGeoMarkers(String eventId) {
+        if (geoSvc == null || googleMap == null) return;
+        new Thread(() -> {
+            List<GeoLocation> points = geoSvc.getGeoLocationsByEventId(eventId);
+            if (points == null) points = new ArrayList<>();
+
+            // Pre-fetch users off the UI thread to avoid blocking the main thread.
+            List<Pair<GeoLocation, User>> entries = new ArrayList<>();
+            for (GeoLocation g : points) {
+                User u = userService.getUserById(g.getUserId());
+                entries.add(new Pair<>(g, u));
+            }
+
+            if (isAdded()) {
+                requireActivity().runOnUiThread(() -> {
+                    googleMap.clear();
+                    markerUsers.clear();
+                    googleMap.setOnMarkerClickListener(marker -> {
+                        marker.showInfoWindow();
+                        return true; // consume the click
+                    });
+
+                    LatLngBounds.Builder bounds = new LatLngBounds.Builder();
+                    for (Pair<GeoLocation, User> entry : entries) {
+                        GeoLocation g = entry.first;
+                        User u = entry.second;
+                        LatLng latLng = new LatLng(g.getLatitude(), g.getLongitude());
+                        Marker marker = googleMap.addMarker(new MarkerOptions().position(latLng));
+                        markerUsers.put(marker.getId(), u);
+                        if (u != null) {
+                            marker.setTitle(u.getName());
+                            marker.setSnippet(u.getEmail()); // or phone/username if preferred
+                        }
+                        bounds.include(latLng);
+                    }
+                    if (!entries.isEmpty()) {
+                        googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds.build(), 80));
+                    }
+                });
+            }
+        }).start();
+    }
+
+
     @Override
     public void onDestroyView() {
+        if (mapView != null) mapView.onDestroy();
         super.onDestroyView();
         io.shutdownNow();
     }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mapView != null) mapView.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        if (mapView != null) mapView.onPause();
+        super.onPause();
+    }
+
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        if (mapView != null) mapView.onLowMemory();
+    }
+
 }
