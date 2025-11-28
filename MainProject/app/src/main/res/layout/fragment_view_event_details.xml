@@ -212,6 +212,16 @@
                             tools:text="120 participants" />
 
                         <TextView
+                            android:id="@+id/text_event_geo_requirement"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="6dp"
+                            android:paddingBottom="6dp"
+                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textColor="@color/colorOnSurface"
+                            tools:text="Geolocation required to join" />
+
+                        <TextView
                             android:id="@+id/text_event_organizer"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"

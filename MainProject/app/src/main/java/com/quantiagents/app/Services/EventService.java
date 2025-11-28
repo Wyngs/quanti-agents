@@ -65,11 +65,11 @@ public class EventService {
      * Validates and saves a new Event.
      * <p>
      * Validation:
+     * </p>
      * <ul>
      *     <li>Event cannot be null.</li>
      *     <li>Event title is required.</li>
      * </ul>
-     * </p>
      *
      * @param event     The event to save.
      * @param onSuccess Callback receiving the saved Event ID.
@@ -101,10 +101,10 @@ public class EventService {
      * Validates and updates an existing Event.
      * <p>
      * Validation:
+     * </p>
      * <ul>
      *     <li>Event title is required.</li>
      * </ul>
-     * </p>
      *
      * @param event     The event to update.
      * @param onSuccess Callback invoked on success.

@@ -118,6 +118,8 @@
     <string name="view_event_capacity_unknown">Not specified</string>
     <string name="view_event_status_waiting_heading">You\'re on the waiting list</string>
     <string name="view_event_status_waiting_detail">We\'ll notify you when results are ready.</string>
+    <string name="view_event_geo_required">Geolocation required to join</string>
+    <string name="view_event_geo_not_required">Geolocation not required</string>
     <string name="view_event_status_selected_heading">You\'re selected!</string>
     <string name="view_event_status_selected_detail">Check your notifications to accept or decline the invitation.</string>
     <string name="view_event_status_confirmed_heading">You\'re confirmed!</string>
@@ -145,8 +147,28 @@
     <string name="event_closed">Closed</string>
     <string name="join_waitlist">Join waitlist</string>
     <string name="view_event">View</string>
+    <!-- Manage Event Info -->
+    <string name="manage_event_info_back">Back</string>
+    <string name="manage_event_info_redraw_canceled">Redraw Canceled</string>
+    <string name="manage_event_info_name">Event name</string>
+    <string name="manage_event_info_description">Description</string>
+    <string name="manage_event_info_capacity">Capacity</string>
+    <string name="manage_event_info_waiting_list_limit">Waiting list limit</string>
+    <string name="manage_event_info_price">Price</string>
+    <string name="manage_event_info_save_changes">Save changes</string>
 
-
+    <!-- Draw Lottery card -->
+    <string name="manage_event_info_draw_title">Draw Lottery</string>
+    <string name="manage_event_info_draw_subtitle">Number of entrants to select from the waiting list</string>
+    <string name="manage_event_info_draw_hint">No. of entrants</string>
+    <string name="manage_event_info_draw_button">Draw</string>
+    <string name="manage_event_info_draw_empty">Please enter a number of entrants.</string>
+    <string name="manage_event_info_draw_invalid_zero">Number of entrants must be at least 1.</string>
+    <string name="manage_event_info_draw_success">Selected %1$d new entrant(s) from the waitlist.</string>
+    <string name="manage_event_info_draw_error">Lottery failed. Please try again.</string>
+    <string name="manage_event_info_draw_failed">
+    Lottery failed. Please try again.
+</string>
 
 
     <string name="manage_events_empty_default">No organized events yet.</string>
@@ -156,4 +178,23 @@
     <string name="notification_center_empty_message">You\'ll receive notifications about lottery draws, event updates, and more.</string>
     <string name="notification_mark_as_read">Mark as read</string>
     <string name="notification_new_count">%1$d New</string>
+</resources>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <!-- QR Code Scanner Strings -->
+    <string name="scan_qr_title">QR Code Scanner</string>
+    <string name="scan_qr_subtitle">Scan event QR codes to view details and join waiting lists</string>
+    <string name="scan_qr_card_title">Scan QR Code</string>
+    <string name="scan_qr_card_description">Enter the QR code manually or use the camera to scan</string>
+    <string name="scan_qr_manual_label">Or enter QR code manually</string>
+    <string name="scan_qr_input_hint">Enter QR code (e.g., QR_swimming_001)</string>
+    <string name="scan_qr_search_button">Search</string>
+    <string name="scan_qr_error_not_found">Event not found. Please check the QR code and try again.</string>
+    <string name="scan_qr_quick_access_title">Quick Access</string>
+    <string name="scan_qr_quick_access_description">Simulate scanning available event QR codes</string>
+    <string name="scan_qr_quick_access_code_label">Code: %1$s</string>
+    <string name="scan_qr_quick_access_scan_button">Scan</string>
+    <string name="scan_qr_permission_required">Camera permission is required to scan QR codes</string>
+    <string name="scan_qr_camera_error">Failed to start camera. Please try again.</string>
 </resources>

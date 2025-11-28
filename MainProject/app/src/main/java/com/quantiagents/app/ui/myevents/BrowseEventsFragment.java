@@ -86,6 +86,8 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
     private final List<Event> allEvents = new ArrayList<>();
     private BrowseEventsAdapter adapter;
 
+    private static Date lastView;
+
     // Filter State
     private String filterCategory = "";
     private Date filterDate = null;
@@ -106,6 +108,11 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         regService = app.locator().registrationHistoryService();
         userService = app.locator().userService();
         notificationService = app.locator().notificationService();
+
+        userService.getCurrentUser(user -> {
+            lastView = user.getLastViewedBrowse();
+            user.setLastViewedBrowse(new Date());
+            }, error -> {String lastView = null;});
 
         geoLocationService = app.locator().geoLocationService();
 
@@ -290,29 +297,19 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
 
                     String userId = user.getUserId();
                     if (userId.equals(event.getOrganizerId())) {
-                        if (isAdded()) {
-                            requireActivity().runOnUiThread(() -> {
-                                progress.setVisibility(View.GONE);
-                                Toast.makeText(getContext(), "Organizers cannot join their own events.", Toast.LENGTH_SHORT).show();
-                            });
-                        }
-                        return;
+                    if (isAdded()) {
+                        requireActivity().runOnUiThread(() -> {
+                            progress.setVisibility(View.GONE);
+                            Toast.makeText(getContext(), "Organizers cannot join their own events.", Toast.LENGTH_SHORT).show();
+                        });
                     }
-                    String eventId = event.getEventId();
-                    if (event.isGeoLocationOn() && !hasLocationPermission()) {
+                    return;
+                }
+
+                if (event.isGeoLocationOn()) {
+                    if (!hasLocationPermission()) {
                         requestLocationThenJoin(event, user);
                         return;
-                    }
-
-
-                    if (!hasLocationPermission()) {
-                        if (event.isGeoLocationOn()) {
-                            requestLocationThenJoin(event, user);
-                            return;
-                        } else {
-                            executor.execute(() -> actuallyJoin(event, user, null));
-                            return;
-                        }
                     }
                     fusedLocationClient.getLastLocation()
                             .addOnSuccessListener(loc -> {
@@ -363,16 +360,26 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                                                 });
                                             });
                                 });
+                                if (loc == null) {
+                                    progress.setVisibility(View.GONE);
+                                    Toast.makeText(getContext(), "Location required to join this event.", Toast.LENGTH_LONG).show();
+                                    return;
+                                }
+                                actuallyJoin(event, user, loc);
                             })
                             .addOnFailureListener(err -> {
                                 progress.setVisibility(View.GONE);
                                 Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
                             });
-                },
-                e -> {
-                    progress.setVisibility(View.GONE);
-                    Toast.makeText(getContext(), "Failed to load user profile", Toast.LENGTH_SHORT).show();
+                } else {
+                    // Non-geo events can join without location
+                    actuallyJoin(event, user, null);
                 }
+            },
+            e -> {
+                progress.setVisibility(View.GONE);
+                Toast.makeText(getContext(), "Failed to load user profile", Toast.LENGTH_SHORT).show();
+            }
         );
     }
 
@@ -395,6 +402,12 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
 
     public static boolean isOpen(Event e) {
         return e != null && e.getStatus() == constant.EventStatus.OPEN;
+    }
+
+    public static boolean isNew(Event e) {
+        if (lastView!=null)
+            return e.getEventStartDate().after(lastView);
+        return false;
     }
 
     private boolean hasLocationPermission() {
@@ -433,6 +446,15 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         String eventId = event.getEventId();
 
         executor.execute(() -> {
+            if (event.isGeoLocationOn() && loc == null) {
+                if (isAdded()) {
+                    requireActivity().runOnUiThread(() -> {
+                        progress.setVisibility(View.GONE);
+                        Toast.makeText(getContext(), "Location required to join this event.", Toast.LENGTH_LONG).show();
+                    });
+                }
+                return;
+            }
             RegistrationHistory existing = regService.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
             if (existing != null) {
                 if (isAdded()) requireActivity().runOnUiThread(() -> {
