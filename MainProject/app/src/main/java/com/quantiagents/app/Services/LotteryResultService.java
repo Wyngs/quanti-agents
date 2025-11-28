@@ -19,7 +19,11 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Service layer for LotteryResult operations and running lotteries.
+ */
 public class LotteryResultService {
 
     private final LotteryResultRepository repository;
@@ -62,8 +66,12 @@ public class LotteryResultService {
      * 1. Checks event exists.
      * 2. Filters registrations for WAITLIST status.
      * 3. Randomly selects 'numberOfEntrants'.
-     * 4. Updates their status to SELECTED.
-     * 5. Saves the LotteryResult.
+     * 4. Updates their status to SELECTED (and waits for all updates to complete).
+     * 5. Syncs Event lists.
+     * 6. Saves the LotteryResult and triggers onSuccess.
+     *
+     * This method must be called OFF the main thread because it uses
+     * synchronous Firestore reads via EventService / RegistrationHistoryService.
      */
     public void runLottery(String eventId, int numberOfEntrants,
                            OnSuccessListener<LotteryResult> onSuccess,
@@ -78,7 +86,7 @@ public class LotteryResultService {
             return;
         }
 
-        // 1. Verify event
+        // 1. Verify event (synchronous read; caller must be off main thread)
         Event event = eventService.getEventById(eventId);
         if (event == null) {
             onFailure.onFailure(new IllegalArgumentException("Event not found with ID: " + eventId));
@@ -86,11 +94,15 @@ public class LotteryResultService {
         }
 
         // 2. Get Waiting List
-        List<RegistrationHistory> allRegistrations = registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
+        List<RegistrationHistory> allRegistrations =
+                registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
         List<RegistrationHistory> waitingList = new ArrayList<>();
-        for (RegistrationHistory reg : allRegistrations) {
-            if (reg.getEventRegistrationStatus() == constant.EventRegistrationStatus.WAITLIST) {
-                waitingList.add(reg);
+        if (allRegistrations != null) {
+            for (RegistrationHistory reg : allRegistrations) {
+                if (reg != null &&
+                        reg.getEventRegistrationStatus() == constant.EventRegistrationStatus.WAITLIST) {
+                    waitingList.add(reg);
+                }
             }
         }
 
@@ -107,17 +119,54 @@ public class LotteryResultService {
         List<RegistrationHistory> winners = waitingList.subList(0, drawCount);
         List<String> winnerIds = new ArrayList<>();
 
-        // 4. Update Status to SELECTED
+        // 4. Update Status to SELECTED, but wait for all async updates
+        AtomicInteger pending = new AtomicInteger(winners.size());
+        List<Exception> errors = new ArrayList<>();
+
         for (RegistrationHistory winner : winners) {
             winner.setEventRegistrationStatus(constant.EventRegistrationStatus.SELECTED);
             winnerIds.add(winner.getUserId());
-            // We perform individual updates here. In a production app, a batch write would be better.
-            registrationHistoryService.updateRegistrationHistory(winner,
-                    aVoid -> Log.d("Lottery", "User " + winner.getUserId() + " selected"),
-                    e -> Log.e("Lottery", "Failed to update user status", e));
-        }
 
-        // BUG FIX: Sync Event lists (remove from waiting, add to selected)
+            registrationHistoryService.updateRegistrationHistory(
+                    winner,
+                    aVoid -> {
+                        Log.d("Lottery", "User " + winner.getUserId() + " selected");
+                        if (pending.decrementAndGet() == 0) {
+                            // All updates done
+                            if (!errors.isEmpty()) {
+                                onFailure.onFailure(errors.get(0));
+                            } else {
+                                finalizeLottery(event, eventId, winnerIds, onSuccess, onFailure);
+                            }
+                        }
+                    },
+                    e -> {
+                        Log.e("Lottery", "Failed to update user status", e);
+                        errors.add(e);
+                        if (pending.decrementAndGet() == 0) {
+                            if (!errors.isEmpty()) {
+                                onFailure.onFailure(errors.get(0));
+                            } else {
+                                finalizeLottery(event, eventId, winnerIds, onSuccess, onFailure);
+                            }
+                        }
+                    }
+            );
+        }
+    }
+
+    /**
+     * After all RegistrationHistory updates are complete, sync the Event lists,
+     * update the Event document, then save the LotteryResult and finally
+     * call onSuccess.
+     */
+    private void finalizeLottery(Event event,
+                                 String eventId,
+                                 List<String> winnerIds,
+                                 OnSuccessListener<LotteryResult> onSuccess,
+                                 OnFailureListener onFailure) {
+
+        // Sync Event lists (remove winners from waiting, add to selected)
         List<String> evWaiting = event.getWaitingList();
         if (evWaiting == null) evWaiting = new ArrayList<>();
 
@@ -134,21 +183,36 @@ public class LotteryResultService {
         event.setSelectedList(evSelected);
         event.setFirstLotteryDone(true); // Mark as done
 
-        eventService.updateEvent(event, v -> {}, e -> Log.e("Lottery", "Failed to sync event lists", e));
-
-        // 5. Save Result
-        LotteryResult result = new LotteryResult(eventId, winnerIds);
-        repository.saveLotteryResult(result,
+        // First update the event document
+        eventService.updateEvent(
+                event,
                 aVoid -> {
-                    Log.d("App", "Lottery completed for event: " + eventId);
-                    onSuccess.onSuccess(result);
+                    Log.d("Lottery", "Event lists synced for event: " + eventId);
+
+                    // Then save the LotteryResult
+                    LotteryResult result = new LotteryResult(eventId, winnerIds);
+                    repository.saveLotteryResult(
+                            result,
+                            v -> {
+                                Log.d("App", "Lottery completed for event: " + eventId);
+                                onSuccess.onSuccess(result);
+                            },
+                            onFailure
+                    );
                 },
-                onFailure);
+                e -> {
+                    Log.e("Lottery", "Failed to sync event lists", e);
+                    onFailure.onFailure(e);
+                }
+        );
     }
 
     /**
      * Refills canceled slots by drawing new winners from the waiting list.
      * Calculates open slots based on WaitingListLimit - (Selected + Confirmed).
+     *
+     * This method should also be called off the main thread, because it uses
+     * EventService.getEventById synchronously.
      */
     public void refillCanceledSlots(String eventId,
                                     OnSuccessListener<LotteryResult> onSuccess,
@@ -159,19 +223,21 @@ public class LotteryResultService {
             return;
         }
 
-        List<RegistrationHistory> allRegs = registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
+        List<RegistrationHistory> allRegs =
+                registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
         int occupiedCount = 0;
-        for (RegistrationHistory reg : allRegs) {
-            if (reg.getEventRegistrationStatus() == constant.EventRegistrationStatus.SELECTED ||
-                    reg.getEventRegistrationStatus() == constant.EventRegistrationStatus.CONFIRMED) {
-                occupiedCount++;
+        if (allRegs != null) {
+            for (RegistrationHistory reg : allRegs) {
+                if (reg.getEventRegistrationStatus() == constant.EventRegistrationStatus.SELECTED ||
+                        reg.getEventRegistrationStatus() == constant.EventRegistrationStatus.CONFIRMED) {
+                    occupiedCount++;
+                }
             }
         }
 
         // Assuming waitingListLimit acts as the total capacity for the event roster
         double limit = event.getWaitingListLimit();
-        // If limit is 0 (unlimited) or very large, we might default to capacity or just draw 1.
-        // For safety here, we'll use eventCapacity if limit is 0.
+        // If limit is 0 (unlimited) or very large, we might default to capacity.
         if (limit <= 0) limit = event.getEventCapacity();
 
         int openSlots = (int) limit - occupiedCount;
