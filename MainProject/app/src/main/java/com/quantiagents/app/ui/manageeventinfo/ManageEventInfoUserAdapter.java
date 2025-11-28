@@ -8,91 +8,145 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.quantiagents.app.App;
 import com.quantiagents.app.R;
+import com.quantiagents.app.Services.UserService;
+import com.quantiagents.app.models.RegistrationHistory;
+import com.quantiagents.app.models.User;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
- * Recycler adapter for entrant rows in ManageEventInfo:
- * first line is display name, second line shows username and joined date.
+ * Adapter for the WAITING / SELECTED / CONFIRMED / CANCELLED lists
+ * shown in ManageEventInfoFragment.
+ *
+ * Row format:
+ *   Line 1: Name
+ *   Line 2: Username: @username
+ *   Line 3: Joined: <date>   (hook up real date in formatJoined())
  */
 public class ManageEventInfoUserAdapter
-        extends RecyclerView.Adapter<ManageEventInfoUserAdapter.VH> {
+        extends RecyclerView.Adapter<ManageEventInfoUserAdapter.UserViewHolder> {
 
-    /**
-     * Simple view-model for each row.
-     */
-    public static class Row {
-        public final String displayName;
-        public final String username;
-        public final String joinedDateText;
+    private final List<RegistrationHistory> registrations = new ArrayList<>();
+    private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private UserService userService;
 
-        public Row(String displayName, String username, String joinedDateText) {
-            this.displayName = displayName;
-            this.username = username;
-            this.joinedDateText = joinedDateText;
-        }
+    /** Old code expects a no-arg constructor, so we keep it. */
+    public ManageEventInfoUserAdapter() {
+        // list is already initialised
     }
 
-    private final List<Row> data = new ArrayList<>();
+    /** Optional convenience constructor if someone wants to pass initial data. */
+    public ManageEventInfoUserAdapter(List<RegistrationHistory> regs) {
+        submit(regs);
+    }
 
     /**
-     * ViewHolder for the two-line row layout.
+     * Keeps the old API used in ManageEventInfoListFragment:
+     * adapter.submit(list);
      */
-    public static class VH extends RecyclerView.ViewHolder {
-        final TextView name;
-        final TextView sub;
-
-        VH(@NonNull View v) {
-            super(v);
-            name = v.findViewById(R.id.name);
-            sub = v.findViewById(R.id.sub);
+    public void submit(List<RegistrationHistory> regs) {
+        registrations.clear();
+        if (regs != null) {
+            registrations.addAll(regs);
         }
+        notifyDataSetChanged();
     }
 
     @NonNull
     @Override
-    public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public UserViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        // Lazily grab UserService from the App locator (no signature changes elsewhere)
+        if (userService == null) {
+            App app = (App) parent.getContext().getApplicationContext();
+            userService = app.locator().userService();
+        }
+
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_manage_event_user, parent, false);
-        return new VH(v);
+        return new UserViewHolder(v);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull VH holder, int position) {
-        Row row = data.get(position);
+    public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
+        RegistrationHistory reg = registrations.get(position);
 
-        String title = row.displayName != null && !row.displayName.isEmpty()
-                ? row.displayName
-                : "";
+        final String fallbackId = reg.getUserId() != null ? reg.getUserId() : "Unknown user";
 
-        StringBuilder subText = new StringBuilder();
-        if (row.username != null && !row.username.isEmpty()) {
-            subText.append("Username: @").append(row.username);
-        }
-        if (row.joinedDateText != null && !row.joinedDateText.isEmpty()) {
-            if (subText.length() > 0) {
-                subText.append(" · ");
+        // Temporary placeholders while user lookup happens
+        holder.nameText.setText(fallbackId);
+        holder.infoText.setText("Username: @" + fallbackId);
+
+        // Do the user lookup off the main thread
+        io.execute(() -> {
+            if (userService == null) return;
+
+            User u = userService.getUserById(reg.getUserId());
+
+            String displayName = fallbackId;
+            String username = fallbackId;
+
+            if (u != null) {
+                if (u.getName() != null && !u.getName().trim().isEmpty()) {
+                    displayName = u.getName().trim();
+                }
+                // If you later add a proper username field, swap it in here.
+                if (u.getEmail() != null && !u.getEmail().trim().isEmpty()) {
+                    username = u.getEmail().trim();
+                }
             }
-            subText.append("Joined ").append(row.joinedDateText);
-        }
 
-        holder.name.setText(title);
-        holder.sub.setText(subText.toString());
+            String joined = formatJoined(reg); // hook up real date here if you have it
+
+            final String finalDisplayName = displayName;
+            final String finalUsername = username;
+            final String finalJoined = joined;
+
+            holder.itemView.post(() -> {
+                holder.nameText.setText(finalDisplayName);
+
+                StringBuilder sb = new StringBuilder();
+                sb.append("Username: @").append(finalUsername);
+                if (!finalJoined.isEmpty()) {
+                    sb.append("\nJoined: ").append(finalJoined);
+                }
+
+                holder.infoText.setText(sb.toString());
+            });
+        });
     }
 
     @Override
     public int getItemCount() {
-        return data.size();
+        return registrations.size();
+    }
+
+    static class UserViewHolder extends RecyclerView.ViewHolder {
+        final TextView nameText;   // Line 1
+        final TextView infoText;   // Line 2 + 3
+
+        UserViewHolder(@NonNull View itemView) {
+            super(itemView);
+            nameText = itemView.findViewById(R.id.text_user_name);
+            infoText = itemView.findViewById(R.id.text_user_info);
+        }
     }
 
     /**
-     * Replaces the dataset with a new list of rows.
+     * Returns the string for "Joined: ...".
+     *
+     * Right now this returns an empty string so everything compiles even if
+     * you haven't decided which field to use.
+     *
+     * TODO: Replace this with your real joined date, e.g. from reg or user:
+     *   Date joined = reg.getJoinedAt();
+     *   return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(joined);
      */
-    public void submit(@NonNull List<Row> rows) {
-        data.clear();
-        data.addAll(rows);
-        notifyDataSetChanged();
+    private String formatJoined(RegistrationHistory reg) {
+        return "";
     }
 }
