@@ -2,6 +2,7 @@ package com.quantiagents.app.ui.manageeventinfo;
 
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +18,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
@@ -34,9 +36,22 @@ import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.GeoLocation;
 import com.quantiagents.app.models.RegistrationHistory;
 
+import com.quantiagents.app.Services.UserService;
+import com.quantiagents.app.models.User;
+
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import com.google.maps.android.clustering.ClusterManager;
+import com.google.maps.android.clustering.view.DefaultClusterRenderer;
+import com.google.maps.android.clustering.ClusterItem;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+
+
 
 /**
  * Edit + manage screen for a single Event, including top-level fields
@@ -83,7 +98,11 @@ public class ManageEventInfoFragment extends Fragment {
     // Map-related
     private MapView mapView;
     private GoogleMap googleMap;
+    private ClusterManager<EntrantItem> clusterManager;
     private GeoLocationService geoSvc;
+
+    private UserService userService;
+
 
     /**
      * Factory method to create a new ManageEventInfoFragment.
@@ -129,6 +148,8 @@ public class ManageEventInfoFragment extends Fragment {
         final RegistrationHistoryService regSvcLocal = app.locator().registrationHistoryService();
         this.regSvc = regSvcLocal;
         this.geoSvc = app.locator().geoLocationService();
+        userService = app.locator().userService();
+
 
         // MapView
         mapView = view.findViewById(R.id.map_join_locations);
@@ -506,19 +527,76 @@ public class ManageEventInfoFragment extends Fragment {
             List<GeoLocation> points = geoSvc.getGeoLocationsByEventId(eventId);
             if (points == null || points.isEmpty()) return;
 
+            // Pre-fetch user info off the UI thread so we can show names/emails in clusters.
+            List<Pair<GeoLocation, User>> entries = new ArrayList<>();
+            for (GeoLocation g : points) {
+                User u = userService != null ? userService.getUserById(g.getUserId()) : null;
+                entries.add(new Pair<>(g, u));
+            }
+
             if (!isAdded()) return;
             requireActivity().runOnUiThread(() -> {
                 googleMap.clear();
+                clusterManager = new ClusterManager<>(requireContext(), googleMap);
+                clusterManager.setRenderer(new DefaultClusterRenderer<EntrantItem>(requireContext(), googleMap, clusterManager) {
+                    @Override
+                    protected void onBeforeClusterItemRendered(EntrantItem item, MarkerOptions markerOptions) {
+                        super.onBeforeClusterItemRendered(item, markerOptions);
+                        markerOptions.draggable(false);
+                    }
+
+                    @Override
+                    protected void onClusterItemRendered(EntrantItem clusterItem, Marker marker) {
+                        super.onClusterItemRendered(clusterItem, marker);
+                        marker.setDraggable(false);
+                    }
+                });
+                googleMap.setOnCameraIdleListener(clusterManager);
+                googleMap.setOnMarkerClickListener(clusterManager);
+                googleMap.setOnInfoWindowClickListener(clusterManager);
+                googleMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
+                    @Override public void onMarkerDragStart(Marker marker) {}
+                    @Override public void onMarkerDrag(Marker marker) {
+                        marker.setPosition(marker.getPosition()); // snap back
+                    }
+                    @Override public void onMarkerDragEnd(Marker marker) {
+                        marker.setPosition(marker.getPosition()); // snap back
+                    }
+                });
+
                 LatLngBounds.Builder bounds = new LatLngBounds.Builder();
-                for (GeoLocation g : points) {
+                for (Pair<GeoLocation, User> entry : entries) {
+                    GeoLocation g = entry.first;
+                    User u = entry.second;
                     LatLng latLng = new LatLng(g.getLatitude(), g.getLongitude());
-                    googleMap.addMarker(new MarkerOptions().position(latLng));
+                    String title = u != null ? u.getName() : "";
+                    String snippet = u != null ? u.getEmail() : "";
+                    clusterManager.addItem(new EntrantItem(latLng, title, snippet));
                     bounds.include(latLng);
                 }
+                clusterManager.cluster();
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds.build(), 80));
             });
         });
     }
+
+    private static class EntrantItem implements ClusterItem {
+        private final LatLng position;
+        private final String title;
+        private final String snippet;
+
+        EntrantItem(LatLng position, String title, String snippet) {
+            this.position = position;
+            this.title = title;
+            this.snippet = snippet;
+        }
+
+        @Override public LatLng getPosition() { return position; }
+        @Override public String getTitle() { return title; }
+        @Override public String getSnippet() { return snippet; }
+        @Override public Float getZIndex() { return 0f; }
+    }
+
 
     // --- Fragment / MapView lifecycle wiring ---
 
