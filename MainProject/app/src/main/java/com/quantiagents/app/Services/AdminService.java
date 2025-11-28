@@ -14,7 +14,6 @@ import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.User;
-import android.widget.EditText;
 
 import java.util.List;
 

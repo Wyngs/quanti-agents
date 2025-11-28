@@ -131,6 +131,7 @@ public class ViewEventDetailsFragment extends Fragment {
      * Factory method for creating a ViewEventDetailsFragment.
      *
      * @param eventId Firestore identifier of the event to display.
+     * @return A new instance of fragment ViewEventDetailsFragment.
      */
     public static ViewEventDetailsFragment newInstance(@NonNull String eventId) {
         Bundle args = new Bundle();

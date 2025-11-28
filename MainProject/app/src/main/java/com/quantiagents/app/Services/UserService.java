@@ -504,7 +504,7 @@ public class UserService {
      * @param name
      * String name to use
      * @param username
-     * String username to use (no spaces and >3 characters)
+     * String username to use (no spaces and greater than 3 characters)
      * @param email
      * String email to use (in form []@[].[])
      * @param phone
