@@ -118,6 +118,8 @@
     <string name="view_event_capacity_unknown">Not specified</string>
     <string name="view_event_status_waiting_heading">You\'re on the waiting list</string>
     <string name="view_event_status_waiting_detail">We\'ll notify you when results are ready.</string>
+    <string name="view_event_geo_required">Geolocation required to join</string>
+    <string name="view_event_geo_not_required">Geolocation not required</string>
     <string name="view_event_status_selected_heading">You\'re selected!</string>
     <string name="view_event_status_selected_detail">Check your notifications to accept or decline the invitation.</string>
     <string name="view_event_status_confirmed_heading">You\'re confirmed!</string>

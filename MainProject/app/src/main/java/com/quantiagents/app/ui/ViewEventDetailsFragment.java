@@ -106,6 +106,7 @@ public class ViewEventDetailsFragment extends Fragment {
     private TextView textDateRange;
     private TextView textPrice;
     private TextView textCapacity;
+    private TextView textGeoRequirement;
     private TextView textOrganizer;
     private TextView textRegistrationOpen;
     private TextView textRegistrationClose;
@@ -211,6 +212,7 @@ public class ViewEventDetailsFragment extends Fragment {
         textDateRange = view.findViewById(R.id.text_event_date_range);
         textPrice = view.findViewById(R.id.text_event_price);
         textCapacity = view.findViewById(R.id.text_event_capacity);
+        textGeoRequirement = view.findViewById(R.id.text_event_geo_requirement);
         textOrganizer = view.findViewById(R.id.text_event_organizer);
         textRegistrationOpen = view.findViewById(R.id.text_registration_open);
         textRegistrationClose = view.findViewById(R.id.text_registration_close);
@@ -355,6 +357,15 @@ public class ViewEventDetailsFragment extends Fragment {
             capacityValue = getString(R.string.view_event_capacity_unknown);
         }
         textCapacity.setText(getString(R.string.view_event_capacity_label, capacityValue));
+
+        // Geolocation requirement
+        if (event.isGeoLocationOn()) {
+            textGeoRequirement.setVisibility(View.VISIBLE);
+            textGeoRequirement.setText(R.string.view_event_geo_required);
+        } else {
+            textGeoRequirement.setVisibility(View.VISIBLE);
+            textGeoRequirement.setText(R.string.view_event_geo_not_required);
+        }
 
         // Organizer
         if (organizer != null && !TextUtils.isEmpty(organizer.getName())) {
@@ -526,6 +537,11 @@ public class ViewEventDetailsFragment extends Fragment {
                 .addOnSuccessListener(loc -> {
                     pendingJoinLocation = loc;
 
+                    if (eventRequiresLocation() && pendingJoinLocation == null) {
+                        setActionEnabled(true);
+                        Toast.makeText(getContext(), "Location required to join this event.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
 
                     RegistrationHistory history = new RegistrationHistory(
                             currentEvent.getEventId(),

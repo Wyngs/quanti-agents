@@ -6,7 +6,6 @@ import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -14,7 +13,14 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.android.material.textfield.TextInputEditText;
@@ -23,8 +29,11 @@ import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
+import com.quantiagents.app.Services.GeoLocationService;
 import com.quantiagents.app.Services.LotteryResultService;
 import com.quantiagents.app.Services.UserService;
+import com.quantiagents.app.models.User;
+import com.quantiagents.app.models.GeoLocation;
 import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.RegistrationHistory;
@@ -33,21 +42,16 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import com.google.android.gms.maps.MapView;
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
-import com.google.android.gms.maps.model.MarkerOptions;
-import com.quantiagents.app.Services.GeoLocationService;
-import com.quantiagents.app.models.GeoLocation;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-import com.quantiagents.app.models.User;
-import java.util.HashMap;
-import java.util.Map;
+import com.google.maps.android.clustering.ClusterManager;
+import com.google.maps.android.clustering.view.DefaultClusterRenderer;
+import com.google.maps.android.clustering.ClusterItem;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 
 
@@ -92,24 +96,24 @@ public class ManageEventInfoFragment extends Fragment {
     private TextInputLayout drawCountLayout;
     private TextInputEditText drawCountField;
 
-    // Tabs + pager (need fields so we can update titles later)
+    // Tabs + pager
     private TabLayout tabs;
     private ViewPager2 pager;
 
-    // Services we reuse for counts / visibility
+    // Services for counts / visibility
     private RegistrationHistoryService regSvc;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private volatile Event loadedEvent;
     private String eventId;
 
+    // Map-related
     private MapView mapView;
     private GoogleMap googleMap;
+    private ClusterManager<EntrantItem> clusterManager;
     private GeoLocationService geoSvc;
 
     private UserService userService;
-    private final Map<String, User> markerUsers = new HashMap<>();
-
 
 
     /**
@@ -125,8 +129,9 @@ public class ManageEventInfoFragment extends Fragment {
         return f;
     }
 
-    /** Required empty public constructor. */
-    public ManageEventInfoFragment() { }
+    public ManageEventInfoFragment() {
+        // Required empty public constructor
+    }
 
     @Nullable
     @Override
@@ -154,10 +159,13 @@ public class ManageEventInfoFragment extends Fragment {
         App app = (App) requireActivity().getApplication();
         final EventService evtSvc = app.locator().eventService();
         final LotteryResultService lottoSvc = app.locator().lotteryResultService();
-        geoSvc = app.locator().geoLocationService();
+        final RegistrationHistoryService regSvcLocal = app.locator().registrationHistoryService();
+        this.regSvc = regSvcLocal;
+        this.geoSvc = app.locator().geoLocationService();
         userService = app.locator().userService();
 
 
+        // MapView
         mapView = view.findViewById(R.id.map_join_locations);
         if (mapView != null) {
             mapView.onCreate(savedInstanceState);
@@ -166,10 +174,6 @@ public class ManageEventInfoFragment extends Fragment {
                 loadGeoMarkers(eventId);
             });
         }
-
-        final RegistrationHistoryService regSvcLocal = app.locator().registrationHistoryService();
-        // keep a field reference for counts
-        this.regSvc = regSvcLocal;
 
         // Bind header inputs
         nameLayout        = view.findViewById(R.id.input_name_layout);
@@ -187,12 +191,12 @@ public class ManageEventInfoFragment extends Fragment {
         // Draw card inputs
         drawCountLayout   = view.findViewById(R.id.input_draw_count_layout);
         drawCountField    = view.findViewById(R.id.input_draw_count);
-        Button drawButton = view.findViewById(R.id.btnDrawLottery);
+        MaterialButton drawButton = view.findViewById(R.id.btnDrawLottery);
 
         // Buttons
-        Button btnSave   = view.findViewById(R.id.btnSaveEventDetails);
-        Button btnRedraw = view.findViewById(R.id.btnRedrawCanceled);
-        View   btnBack   = view.findViewById(R.id.btnBackToManageEvents);
+        MaterialButton btnSave   = view.findViewById(R.id.btnSaveEventDetails);
+        MaterialButton btnRedraw = view.findViewById(R.id.btnRedrawCanceled);
+        MaterialButton btnBack   = view.findViewById(R.id.btnBackToManageEvents);
 
         // Load Event (blocking read off main thread)
         io.execute(() -> {
@@ -222,7 +226,7 @@ public class ManageEventInfoFragment extends Fragment {
         // Draw Button: normal lottery draw from WAITLIST
         drawButton.setOnClickListener(v -> onClickDraw(lottoSvc, eventId));
 
-        // Redraw Button: refill cancelled slots; visibility depends on cancelled count
+        // Redraw Button
         btnRedraw.setOnClickListener(v -> onClickRedraw(lottoSvc, regSvcLocal, eventId, btnRedraw));
         updateRedrawVisibility(regSvcLocal, eventId, btnRedraw);
 
@@ -336,13 +340,11 @@ public class ManageEventInfoFragment extends Fragment {
         }
         drawCountLayout.setError(null);
 
-        final int drawCount = count;
-
-        // Run the lottery off the main thread
+        // 🔑 Run the lottery OFF the main thread
         io.execute(() -> {
             lottoSvc.runLottery(
                     eventId,
-                    drawCount,
+                    count,
                     result -> {
                         int filled = (result != null && result.getEntrantIds() != null)
                                 ? result.getEntrantIds().size()
@@ -354,9 +356,8 @@ public class ManageEventInfoFragment extends Fragment {
                                     "Selected " + filled + " entrant(s) from the waiting list.",
                                     Toast.LENGTH_SHORT
                             ).show();
-                            // Ask all list fragments to refresh
-                            getParentFragmentManager().setFragmentResult(RESULT_REFRESH, new Bundle());
-                            // Update the tab counts to match new statuses
+                            getParentFragmentManager()
+                                    .setFragmentResult(RESULT_REFRESH, new Bundle());
                             updateTabCounts();
                         });
                     },
@@ -558,74 +559,275 @@ public class ManageEventInfoFragment extends Fragment {
         return (f == null || f.getText() == null) ? "" : f.getText().toString().trim();
     }
 
+    /**
+     * Handle "Redraw Canceled" button.
+     */
+    private void onClickRedraw(@NonNull LotteryResultService lottoSvc,
+                               @NonNull RegistrationHistoryService regSvc,
+                               @NonNull String eventId,
+                               @NonNull MaterialButton btnRedraw) {
+
+        io.execute(() -> {
+            List<RegistrationHistory> regs =
+                    regSvc.getRegistrationHistoriesByEventId(eventId);
+
+            int cancelledCount = 0;
+            if (regs != null) {
+                for (RegistrationHistory r : regs) {
+                    if (r != null &&
+                            r.getEventRegistrationStatus() == constant.EventRegistrationStatus.CANCELLED) {
+                        cancelledCount++;
+                    }
+                }
+            }
+
+            if (cancelledCount <= 0) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    btnRedraw.setVisibility(View.GONE);
+                    Toast.makeText(
+                            getContext(),
+                            "No cancelled entrants to redraw.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                });
+                return;
+            }
+
+            int drawCount = cancelledCount;
+
+            lottoSvc.runLottery(
+                    eventId,
+                    drawCount,
+                    result -> {
+                        int filled = (result != null && result.getEntrantIds() != null)
+                                ? result.getEntrantIds().size()
+                                : 0;
+                        if (!isAdded()) return;
+                        requireActivity().runOnUiThread(() -> {
+                            Toast.makeText(
+                                    getContext(),
+                                    "Refilled " + filled + " slot(s)",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                            getParentFragmentManager().setFragmentResult(RESULT_REFRESH, new Bundle());
+                            updateRedrawVisibility(regSvc, eventId, btnRedraw);
+                            updateTabCounts();
+                        });
+                    },
+                    e -> {
+                        if (!isAdded()) return;
+                        requireActivity().runOnUiThread(() ->
+                                Toast.makeText(
+                                        getContext(),
+                                        e.getMessage() != null ? e.getMessage() : "Refill failed",
+                                        Toast.LENGTH_LONG
+                                ).show()
+                        );
+                    }
+            );
+        });
+    }
+
+    /**
+     * Updates the visibility of the "Redraw Canceled" button.
+     */
+    private void updateRedrawVisibility(@NonNull RegistrationHistoryService regSvc,
+                                        @NonNull String eventId,
+                                        @NonNull MaterialButton btnRedraw) {
+
+        io.execute(() -> {
+            List<RegistrationHistory> regs =
+                    regSvc.getRegistrationHistoriesByEventId(eventId);
+
+            int cancelledCount = 0;
+            if (regs != null) {
+                for (RegistrationHistory r : regs) {
+                    if (r != null &&
+                            r.getEventRegistrationStatus() == constant.EventRegistrationStatus.CANCELLED) {
+                        cancelledCount++;
+                    }
+                }
+            }
+
+            if (!isAdded()) return;
+            final boolean show = cancelledCount > 0;
+            requireActivity().runOnUiThread(() ->
+                    btnRedraw.setVisibility(show ? View.VISIBLE : View.GONE)
+            );
+        });
+    }
+
+    /**
+     * Compute counts for WAITING / SELECTED / CONFIRMED / CANCELLED and update tab titles.
+     */
+    private void updateTabCounts() {
+        if (regSvc == null || tabs == null || eventId == null) {
+            return;
+        }
+
+        io.execute(() -> {
+            List<RegistrationHistory> regs =
+                    regSvc.getRegistrationHistoriesByEventId(eventId);
+
+            int waiting = 0;
+            int selected = 0;
+            int confirmed = 0;
+            int cancelled = 0;
+
+            if (regs != null) {
+                for (RegistrationHistory r : regs) {
+                    if (r == null || r.getEventRegistrationStatus() == null) continue;
+                    switch (r.getEventRegistrationStatus()) {
+                        case WAITLIST:
+                            waiting++;
+                            break;
+                        case SELECTED:
+                            selected++;
+                            break;
+                        case CONFIRMED:
+                            confirmed++;
+                            break;
+                        case CANCELLED:
+                            cancelled++;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            if (!isAdded()) return;
+            final int fWaiting = waiting;
+            final int fSelected = selected;
+            final int fConfirmed = confirmed;
+            final int fCancelled = cancelled;
+
+            requireActivity().runOnUiThread(() -> {
+                setTabLabel(0, TAB_LABELS[0], fWaiting);
+                setTabLabel(1, TAB_LABELS[1], fSelected);
+                setTabLabel(2, TAB_LABELS[2], fConfirmed);
+                setTabLabel(3, TAB_LABELS[3], fCancelled);
+            });
+        });
+    }
+
+    private void setTabLabel(int index, String base, int count) {
+        if (tabs == null) return;
+        TabLayout.Tab tab = tabs.getTabAt(index);
+        if (tab != null) {
+            tab.setText(base + " (" + count + ")");
+        }
+    }
+
+    private static String safe(@Nullable TextInputEditText f) {
+        return (f == null || f.getText() == null) ? "" : f.getText().toString().trim();
+    }
+
+    // --- Map helpers ---
+
     private void loadGeoMarkers(String eventId) {
         if (geoSvc == null || googleMap == null) return;
-        new Thread(() -> {
-            List<GeoLocation> points = geoSvc.getGeoLocationsByEventId(eventId);
-            if (points == null) points = new ArrayList<>();
 
-            // Pre-fetch users off the UI thread to avoid blocking the main thread.
+        io.execute(() -> {
+            List<GeoLocation> points = geoSvc.getGeoLocationsByEventId(eventId);
+            if (points == null || points.isEmpty()) return;
+
+            // Pre-fetch user info off the UI thread so we can show names/emails in clusters.
             List<Pair<GeoLocation, User>> entries = new ArrayList<>();
             for (GeoLocation g : points) {
-                User u = userService.getUserById(g.getUserId());
+                User u = userService != null ? userService.getUserById(g.getUserId()) : null;
                 entries.add(new Pair<>(g, u));
             }
 
-            if (isAdded()) {
-                requireActivity().runOnUiThread(() -> {
-                    googleMap.clear();
-                    markerUsers.clear();
-                    googleMap.setOnMarkerClickListener(marker -> {
-                        marker.showInfoWindow();
-                        return true; // consume the click
-                    });
-
-                    LatLngBounds.Builder bounds = new LatLngBounds.Builder();
-                    for (Pair<GeoLocation, User> entry : entries) {
-                        GeoLocation g = entry.first;
-                        User u = entry.second;
-                        LatLng latLng = new LatLng(g.getLatitude(), g.getLongitude());
-                        Marker marker = googleMap.addMarker(new MarkerOptions().position(latLng));
-                        markerUsers.put(marker.getId(), u);
-                        if (u != null) {
-                            marker.setTitle(u.getName());
-                            marker.setSnippet(u.getEmail()); // or phone/username if preferred
-                        }
-                        bounds.include(latLng);
+            if (!isAdded()) return;
+            requireActivity().runOnUiThread(() -> {
+                googleMap.clear();
+                clusterManager = new ClusterManager<>(requireContext(), googleMap);
+                clusterManager.setRenderer(new DefaultClusterRenderer<EntrantItem>(requireContext(), googleMap, clusterManager) {
+                    @Override
+                    protected void onBeforeClusterItemRendered(EntrantItem item, MarkerOptions markerOptions) {
+                        super.onBeforeClusterItemRendered(item, markerOptions);
+                        markerOptions.draggable(false);
                     }
-                    if (!entries.isEmpty()) {
-                        googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds.build(), 80));
+
+                    @Override
+                    protected void onClusterItemRendered(EntrantItem clusterItem, Marker marker) {
+                        super.onClusterItemRendered(clusterItem, marker);
+                        marker.setDraggable(false);
                     }
                 });
-            }
-        }).start();
+                googleMap.setOnCameraIdleListener(clusterManager);
+                googleMap.setOnMarkerClickListener(clusterManager);
+                googleMap.setOnInfoWindowClickListener(clusterManager);
+                googleMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
+                    @Override public void onMarkerDragStart(Marker marker) {}
+                    @Override public void onMarkerDrag(Marker marker) {
+                        marker.setPosition(marker.getPosition()); // snap back
+                    }
+                    @Override public void onMarkerDragEnd(Marker marker) {
+                        marker.setPosition(marker.getPosition()); // snap back
+                    }
+                });
+
+                LatLngBounds.Builder bounds = new LatLngBounds.Builder();
+                for (Pair<GeoLocation, User> entry : entries) {
+                    GeoLocation g = entry.first;
+                    User u = entry.second;
+                    LatLng latLng = new LatLng(g.getLatitude(), g.getLongitude());
+                    String title = u != null ? u.getName() : "";
+                    String snippet = u != null ? u.getEmail() : "";
+                    clusterManager.addItem(new EntrantItem(latLng, title, snippet));
+                    bounds.include(latLng);
+                }
+                clusterManager.cluster();
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds.build(), 80));
+            });
+        });
+    }
+
+    private static class EntrantItem implements ClusterItem {
+        private final LatLng position;
+        private final String title;
+        private final String snippet;
+
+        EntrantItem(LatLng position, String title, String snippet) {
+            this.position = position;
+            this.title = title;
+            this.snippet = snippet;
+        }
+
+        @Override public LatLng getPosition() { return position; }
+        @Override public String getTitle() { return title; }
+        @Override public String getSnippet() { return snippet; }
+        @Override public Float getZIndex() { return 0f; }
     }
 
 
-    @Override
-    public void onDestroyView() {
-        if (mapView != null) mapView.onDestroy();
-        super.onDestroyView();
-        io.shutdownNow();
-    }
+    // --- Fragment / MapView lifecycle wiring ---
 
     @Override
     public void onResume() {
         super.onResume();
-        if (mapView != null) mapView.onResume();
+        if (mapView != null) {
+            mapView.onResume();
+        }
     }
 
     @Override
     public void onPause() {
-        if (mapView != null) mapView.onPause();
+        if (mapView != null) {
+            mapView.onPause();
+        }
         super.onPause();
     }
 
-
     @Override
-    public void onLowMemory() {
-        super.onLowMemory();
-        if (mapView != null) mapView.onLowMemory();
+    public void onDestroyView() {
+        if (mapView != null) {
+            mapView.onDestroy();
+        }
+        super.onDestroyView();
+        io.shutdownNow();
     }
-
 }
