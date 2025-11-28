@@ -296,6 +296,7 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                     }
 
                     String userId = user.getUserId();
+                    String eventId = event.getEventId();
                     if (userId.equals(event.getOrganizerId())) {
                     if (isAdded()) {
                         requireActivity().runOnUiThread(() -> {

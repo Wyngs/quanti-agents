@@ -34,7 +34,7 @@ public class NotificationRepository {
     }
 
     /**
-     * Find notification by id
+     * Find notification by id (blocking - must be called from background thread)
      * @param notificationId
      * Notification id to locate
      * @return
@@ -54,6 +54,37 @@ public class NotificationRepository {
             Log.e("Firestore", "Error getting notification", e);
             return null;
         }
+    }
+
+    /**
+     * Find notification by id (callback-based - safe to call from main thread)
+     * @param notificationId
+     * Notification id to locate
+     * @param onSuccess
+     * Calls a function on success with the notification (or null if not found)
+     * @param onFailure
+     * Calls a function on failure
+     * @see Notification
+     */
+    public void getNotificationById(int notificationId, 
+                                    OnSuccessListener<Notification> onSuccess, 
+                                    OnFailureListener onFailure) {
+        context.document(String.valueOf(notificationId))
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Notification notification = documentSnapshot.toObject(Notification.class);
+                        Log.d("Firestore", "Notification found: " + notificationId);
+                        onSuccess.onSuccess(notification);
+                    } else {
+                        Log.d("Firestore", "No notification found for ID: " + notificationId);
+                        onSuccess.onSuccess(null);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("Firestore", "Error getting notification", e);
+                    onFailure.onFailure(e);
+                });
     }
 
     /**

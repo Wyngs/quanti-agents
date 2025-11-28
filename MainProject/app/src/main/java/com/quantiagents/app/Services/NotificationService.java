@@ -27,6 +27,12 @@ public class NotificationService {
         return repository.getNotificationById(notificationId);
     }
 
+    public void getNotificationById(int notificationId, 
+                                    OnSuccessListener<Notification> onSuccess, 
+                                    OnFailureListener onFailure) {
+        repository.getNotificationById(notificationId, onSuccess, onFailure);
+    }
+
     public List<Notification> getAllNotifications() {
         return repository.getAllNotifications();
     }
@@ -84,14 +90,20 @@ public class NotificationService {
     }
 
     public void markNotificationAsRead(int notificationId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
-        Notification notification = repository.getNotificationById(notificationId);
-        if (notification == null) {
-            onFailure.onFailure(new IllegalArgumentException("Notification not found"));
-            return;
-        }
-        
-        notification.setHasRead(true);
-        updateNotification(notification, onSuccess, onFailure);
+        repository.getNotificationById(notificationId,
+                notification -> {
+                    if (notification == null) {
+                        onFailure.onFailure(new IllegalArgumentException("Notification not found"));
+                        return;
+                    }
+                    
+                    notification.setHasRead(true);
+                    updateNotification(notification, onSuccess, onFailure);
+                },
+                e -> {
+                    Log.e("App", "Failed to get notification", e);
+                    onFailure.onFailure(e);
+                });
     }
 
     public void deleteNotification(int notificationId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
