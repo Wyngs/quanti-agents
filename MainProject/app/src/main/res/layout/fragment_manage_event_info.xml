@@ -232,3 +232,5 @@
         android:layout_marginTop="8dp"/>
 
 </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>
