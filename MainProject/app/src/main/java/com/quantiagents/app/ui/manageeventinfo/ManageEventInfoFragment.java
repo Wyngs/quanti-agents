@@ -31,14 +31,16 @@ import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.GeoLocationService;
 import com.quantiagents.app.Services.LotteryResultService;
-import com.quantiagents.app.Services.RegistrationHistoryService;
-import com.quantiagents.app.models.Event;
-import com.quantiagents.app.models.GeoLocation;
-import com.quantiagents.app.models.RegistrationHistory;
-
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.User;
+import com.quantiagents.app.models.GeoLocation;
+import com.quantiagents.app.Services.RegistrationHistoryService;
+import com.quantiagents.app.models.Event;
+import com.quantiagents.app.models.RegistrationHistory;
 
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,6 +58,16 @@ import com.google.android.gms.maps.model.MarkerOptions;
 /**
  * Edit + manage screen for a single Event, including top-level fields
  * and entrant lists via tabs.
+ *
+ * <p>
+ * Responsibilities:
+ * <ul>
+ *   <li>Display and edit basic Event details.</li>
+ *   <li>Provide a "Draw lottery" control to promote WAITLIST entrants to SELECTED.</li>
+ *   <li>Provide a "Redraw Canceled" control that refills canceled slots from WAITLIST.</li>
+ *   <li>Host four lists of entrants (WAITLIST, SELECTED, CONFIRMED, CANCELLED).</li>
+ * </ul>
+ * </p>
  */
 public class ManageEventInfoFragment extends Fragment {
 
@@ -106,6 +118,8 @@ public class ManageEventInfoFragment extends Fragment {
 
     /**
      * Factory method to create a new ManageEventInfoFragment.
+     *
+     * @param eventId Firestore document id for the Event to display/edit.
      */
     public static ManageEventInfoFragment newInstance(@NonNull String eventId) {
         Bundle b = new Bundle();
@@ -247,7 +261,7 @@ public class ManageEventInfoFragment extends Fragment {
     }
 
     /**
-     * Handle Save button.
+     * Handle Save button: basic validation, then persist via EventService.
      */
     private void onClickSave(@NonNull EventService evtSvc) {
         if (loadedEvent == null) {
@@ -255,6 +269,7 @@ public class ManageEventInfoFragment extends Fragment {
             return;
         }
 
+        // Simple validation (keep it light for now)
         String name  = safe(nameField);
         String desc  = safe(descriptionField);
         String capS  = safe(capacityField);
@@ -289,6 +304,7 @@ public class ManageEventInfoFragment extends Fragment {
                 aVoid -> {
                     Toast.makeText(getContext(), "Saved", Toast.LENGTH_SHORT).show();
                     getParentFragmentManager().setFragmentResult(RESULT_REFRESH, new Bundle());
+                    // counts might depend on statuses only, but refresh anyway
                     updateTabCounts();
                 },
                 e -> Toast.makeText(getContext(), "Error saving", Toast.LENGTH_SHORT).show()
@@ -296,7 +312,13 @@ public class ManageEventInfoFragment extends Fragment {
     }
 
     /**
-     * Handle the Draw button.
+     * Handle the Draw button for the "No. of Entrants" card.
+     * Uses the existing runLottery behaviour (which also persists a LotteryResult).
+     *
+     * NOTE: We only do validation on the main thread. The actual runLottery()
+     * call is dispatched to the io executor so that the synchronous Firestore
+     * calls in EventService / RegistrationHistoryService do NOT run on the
+     * UI thread.
      */
     private void onClickDraw(@NonNull LotteryResultService lottoSvc,
                              @NonNull String eventId) {
@@ -351,6 +373,190 @@ public class ManageEventInfoFragment extends Fragment {
                     }
             );
         });
+    }
+
+    /**
+     * Handle "Redraw Canceled" button.
+     *
+     * <p>
+     * Logic:
+     * <ol>
+     *   <li>Count how many RegistrationHistory entries have status CANCELLED for this event (K).</li>
+     *   <li>If K == 0, hide the button and show a Toast.</li>
+     *   <li>Otherwise, call runLottery(eventId, K, ...) to draw K entrants from WAITLIST to SELECTED.</li>
+     *   <li>On success, refresh the tabs and re-check visibility.</li>
+     * </ol>
+     * </p>
+     */
+    private void onClickRedraw(@NonNull LotteryResultService lottoSvc,
+                               @NonNull RegistrationHistoryService regSvc,
+                               @NonNull String eventId,
+                               @NonNull Button btnRedraw) {
+
+        io.execute(() -> {
+            // 1. Count CANCELLED registrations
+            List<RegistrationHistory> regs =
+                    regSvc.getRegistrationHistoriesByEventId(eventId);
+
+            int cancelledCount = 0;
+            if (regs != null) {
+                for (RegistrationHistory r : regs) {
+                    if (r != null &&
+                            r.getEventRegistrationStatus() == constant.EventRegistrationStatus.CANCELLED) {
+                        cancelledCount++;
+                    }
+                }
+            }
+
+            if (cancelledCount <= 0) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    btnRedraw.setVisibility(View.GONE);
+                    Toast.makeText(
+                            getContext(),
+                            "No cancelled entrants to redraw.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                });
+                return;
+            }
+
+            int drawCount = cancelledCount;
+
+            // 2. Run lottery for K slots
+            lottoSvc.runLottery(
+                    eventId,
+                    drawCount,
+                    result -> {
+                        int filled = (result != null && result.getEntrantIds() != null)
+                                ? result.getEntrantIds().size()
+                                : 0;
+                        if (!isAdded()) return;
+                        requireActivity().runOnUiThread(() -> {
+                            Toast.makeText(
+                                    getContext(),
+                                    "Refilled " + filled + " slot(s)",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                            // Refresh lists
+                            getParentFragmentManager().setFragmentResult(RESULT_REFRESH, new Bundle());
+                            // Re-check visibility after redraw
+                            updateRedrawVisibility(regSvc, eventId, btnRedraw);
+                            // And update counts
+                            updateTabCounts();
+                        });
+                    },
+                    e -> {
+                        if (!isAdded()) return;
+                        requireActivity().runOnUiThread(() ->
+                                Toast.makeText(
+                                        getContext(),
+                                        e.getMessage() != null ? e.getMessage() : "Refill failed",
+                                        Toast.LENGTH_LONG
+                                ).show()
+                        );
+                    }
+            );
+        });
+    }
+
+    /**
+     * Updates the visibility of the "Redraw Canceled" button based on whether
+     * there is at least one CANCELLED registration for this event.
+     */
+    private void updateRedrawVisibility(@NonNull RegistrationHistoryService regSvc,
+                                        @NonNull String eventId,
+                                        @NonNull Button btnRedraw) {
+
+        io.execute(() -> {
+            List<RegistrationHistory> regs =
+                    regSvc.getRegistrationHistoriesByEventId(eventId);
+
+            int cancelledCount = 0;
+            if (regs != null) {
+                for (RegistrationHistory r : regs) {
+                    if (r != null &&
+                            r.getEventRegistrationStatus() == constant.EventRegistrationStatus.CANCELLED) {
+                        cancelledCount++;
+                    }
+                }
+            }
+
+            if (!isAdded()) return;
+            final boolean show = cancelledCount > 0;
+            requireActivity().runOnUiThread(() ->
+                    btnRedraw.setVisibility(show ? View.VISIBLE : View.GONE)
+            );
+        });
+    }
+
+    /**
+     * Compute counts for WAITING / SELECTED / CONFIRMED / CANCELLED from
+     * RegistrationHistory and update the tab titles: "Waiting (x)", etc.
+     */
+    private void updateTabCounts() {
+        if (regSvc == null || tabs == null || eventId == null) {
+            return;
+        }
+
+        io.execute(() -> {
+            List<RegistrationHistory> regs =
+                    regSvc.getRegistrationHistoriesByEventId(eventId);
+
+            int waiting = 0;
+            int selected = 0;
+            int confirmed = 0;
+            int cancelled = 0;
+
+            if (regs != null) {
+                for (RegistrationHistory r : regs) {
+                    if (r == null || r.getEventRegistrationStatus() == null) continue;
+                    switch (r.getEventRegistrationStatus()) {
+                        case WAITLIST:
+                            waiting++;
+                            break;
+                        case SELECTED:
+                            selected++;
+                            break;
+                        case CONFIRMED:
+                            confirmed++;
+                            break;
+                        case CANCELLED:
+                            cancelled++;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            if (!isAdded()) return;
+            final int fWaiting = waiting;
+            final int fSelected = selected;
+            final int fConfirmed = confirmed;
+            final int fCancelled = cancelled;
+
+            requireActivity().runOnUiThread(() -> {
+                setTabLabel(0, TAB_LABELS[0], fWaiting);
+                setTabLabel(1, TAB_LABELS[1], fSelected);
+                setTabLabel(2, TAB_LABELS[2], fConfirmed);
+                setTabLabel(3, TAB_LABELS[3], fCancelled);
+            });
+        });
+    }
+
+    /** Helper to set "Label (count)" for a given tab index. */
+    private void setTabLabel(int index, String base, int count) {
+        if (tabs == null) return;
+        TabLayout.Tab tab = tabs.getTabAt(index);
+        if (tab != null) {
+            tab.setText(base + " (" + count + ")");
+        }
+    }
+
+    /** Safe text read from a TextInputEditText (trim, fallback to empty). */
+    private static String safe(@Nullable TextInputEditText f) {
+        return (f == null || f.getText() == null) ? "" : f.getText().toString().trim();
     }
 
     /**
