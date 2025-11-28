@@ -1,7 +1,10 @@
 package com.quantiagents.app.ui.myevents;
 
+import android.annotation.SuppressLint;
+import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -11,6 +14,17 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.ContextCompat;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.quantiagents.app.Services.GeoLocationService;
+import com.quantiagents.app.models.GeoLocation;
+
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -19,6 +33,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.textfield.TextInputEditText;
 import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
@@ -29,9 +47,12 @@ import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.RegistrationHistory;
 import com.quantiagents.app.models.User;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -44,17 +65,29 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
     private EventService eventService;
     private RegistrationHistoryService regService;
     private UserService userService;
-    // Executor to run blocking service calls off the main thread
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private GeoLocationService geoLocationService;
+    private FusedLocationProviderClient fusedLocationClient;
+    private ActivityResultLauncher<String[]> locationPermissionLauncher;
+    private Event pendingEvent;
+    private User pendingUser;
+
 
     private SwipeRefreshLayout swipe;
     private ProgressBar progress;
     private RecyclerView list;
     private TextView empty;
     private EditText search;
+    private MaterialButton filterButton;
 
     private final List<Event> allEvents = new ArrayList<>();
     private BrowseEventsAdapter adapter;
+
+    // Filter State
+    private String filterCategory = "";
+    private Date filterDate = null;
+    private boolean filterAvailableOnly = false;
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
     @Nullable
     @Override
@@ -70,11 +103,28 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         regService = app.locator().registrationHistoryService();
         userService = app.locator().userService();
 
+        geoLocationService = app.locator().geoLocationService();
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext());
+        locationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestMultiplePermissions(),
+                result -> {
+                    boolean granted = Boolean.TRUE.equals(result.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false))
+                            || Boolean.TRUE.equals(result.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false));
+                    if (granted) {
+                        continueJoinWithLocation();
+                    } else {
+                        progress.setVisibility(View.GONE);
+                        Toast.makeText(getContext(), "Location required for this event.", Toast.LENGTH_LONG).show();
+                    }
+                });
+
         swipe = v.findViewById(R.id.swipe);
         progress = v.findViewById(R.id.progress);
         list = v.findViewById(R.id.recycler);
         empty = v.findViewById(R.id.text_empty);
         search = v.findViewById(R.id.input_search);
+        filterButton = v.findViewById(R.id.button_filter);
 
         adapter = new BrowseEventsAdapter(new ArrayList<>(), this);
         list.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -84,16 +134,17 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
 
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { filter(s.toString()); }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { filter(); }
             @Override public void afterTextChanged(Editable s) {}
         });
+
+        filterButton.setOnClickListener(view -> showFilterDialog());
 
         loadEvents();
     }
 
     private void loadEvents() {
         progress.setVisibility(View.VISIBLE);
-        // Run synchronous getAllEvents on background thread
         executor.execute(() -> {
             List<Event> fetched = eventService.getAllEvents();
             if (isAdded()) {
@@ -102,20 +153,101 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                     swipe.setRefreshing(false);
                     allEvents.clear();
                     if (fetched != null) allEvents.addAll(fetched);
-                    filter(search.getText().toString());
+                    filter();
                 });
             }
         });
     }
 
-    private void filter(String query) {
+    /**
+     * Shows a BottomSheetDialog to allow the user to configure filters.
+     */
+    private void showFilterDialog() {
+        BottomSheetDialog dialog = new BottomSheetDialog(requireContext());
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_event_filters, null);
+        dialog.setContentView(view);
+
+        TextInputEditText categoryInput = view.findViewById(R.id.filter_input_category);
+        TextInputEditText dateInput = view.findViewById(R.id.filter_input_date);
+        SwitchMaterial availableSwitch = view.findViewById(R.id.filter_switch_available);
+        MaterialButton btnClear = view.findViewById(R.id.filter_btn_clear);
+        MaterialButton btnApply = view.findViewById(R.id.filter_btn_apply);
+
+        // Pre-fill current values
+        categoryInput.setText(filterCategory);
+        availableSwitch.setChecked(filterAvailableOnly);
+        if (filterDate != null) {
+            dateInput.setText(dateFormat.format(filterDate));
+        }
+
+        // Date Picker Logic
+        dateInput.setOnClickListener(v -> {
+            Calendar c = Calendar.getInstance();
+            if (filterDate != null) c.setTime(filterDate);
+            new DatePickerDialog(requireContext(), (dView, year, month, day) -> {
+                c.set(year, month, day);
+                dateInput.setText(dateFormat.format(c.getTime()));
+                // We store the selected date temporarily until Apply is clicked,
+                // but simply updating the text is enough to parse it on Apply.
+            }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
+        });
+
+        // Clear Logic
+        btnClear.setOnClickListener(v -> {
+            filterCategory = "";
+            filterDate = null;
+            filterAvailableOnly = false;
+            filter();
+            dialog.dismiss();
+        });
+
+        // Apply Logic
+        btnApply.setOnClickListener(v -> {
+            filterCategory = categoryInput.getText() != null ? categoryInput.getText().toString().trim() : "";
+            filterAvailableOnly = availableSwitch.isChecked();
+
+            String dateStr = dateInput.getText() != null ? dateInput.getText().toString() : "";
+            if (!TextUtils.isEmpty(dateStr)) {
+                try {
+                    filterDate = dateFormat.parse(dateStr);
+                } catch (Exception e) {
+                    filterDate = null; // Fallback
+                }
+            } else {
+                filterDate = null;
+            }
+
+            filter();
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    /**
+     * Filters the allEvents list based on search query and active filters.
+     */
+    private void filter() {
+        String query = search.getText().toString().toLowerCase().trim();
         List<Event> filtered = new ArrayList<>();
-        String q = query == null ? "" : query.trim().toLowerCase();
 
         for (Event e : allEvents) {
-            // Only show events that match the search
-            String title = e.getTitle() == null ? "" : e.getTitle();
-            if (q.isEmpty() || title.toLowerCase().contains(q)) {
+            // 1. Text Search (Title)
+            boolean matchesSearch = query.isEmpty() ||
+                    (e.getTitle() != null && e.getTitle().toLowerCase().contains(query));
+
+            // 2. Category Filter
+            boolean matchesCategory = filterCategory.isEmpty() ||
+                    (e.getCategory() != null && e.getCategory().toLowerCase().contains(filterCategory.toLowerCase()));
+
+            // 3. Date Filter (Events starting on or after filterDate)
+            boolean matchesDate = filterDate == null ||
+                    (e.getEventStartDate() != null && !e.getEventStartDate().before(filterDate));
+
+            // 4. Availability Filter
+            boolean matchesAvail = !filterAvailableOnly || isAvailable(e);
+
+            if (matchesSearch && matchesCategory && matchesDate && matchesAvail) {
                 filtered.add(e);
             }
         }
@@ -124,11 +256,26 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         empty.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
+    private boolean isAvailable(Event e) {
+        // Must be open
+        if (!isOpen(e)) return false;
+
+        // Must not be full (Waiting list limit check)
+        double limit = e.getWaitingListLimit();
+        // If limit > 0, check current count
+        if (limit > 0) {
+            int currentCount = e.getWaitingList() != null ? e.getWaitingList().size() : 0;
+            if (currentCount >= limit) {
+                return false;
+            }
+        }
+        return true;
+    }
+    @SuppressLint("MissingPermission")
     @Override
     public void onJoinWaitlist(@NonNull Event event) {
         progress.setVisibility(View.VISIBLE);
 
-        // Use callback structure compatible with your existing UserService
         userService.getCurrentUser(
                 user -> {
                     if (user == null) {
@@ -138,7 +285,6 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                     }
 
                     String userId = user.getUserId();
-                    // Fix: Prevent organizer from joining their own event
                     if (userId.equals(event.getOrganizerId())) {
                         if (isAdded()) {
                             requireActivity().runOnUiThread(() -> {
@@ -148,57 +294,73 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                         }
                         return;
                     }
-
                     String eventId = event.getEventId();
+                    if (event.isGeoLocationOn() && !hasLocationPermission()) {
+                        requestLocationThenJoin(event, user);
+                        return;
+                    }
 
-                    // Check existing registration on background thread
-                    executor.execute(() -> {
-                        RegistrationHistory existing = regService.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
 
-                        if (existing != null) {
-                            if (isAdded()) {
-                                requireActivity().runOnUiThread(() -> {
-                                    progress.setVisibility(View.GONE);
-                                    Toast.makeText(getContext(), "Already registered!", Toast.LENGTH_SHORT).show();
-                                });
-                            }
+                    if (!hasLocationPermission()) {
+                        if (event.isGeoLocationOn()) {
+                            requestLocationThenJoin(event, user);
+                            return;
+                        } else {
+                            executor.execute(() -> actuallyJoin(event, user, null));
                             return;
                         }
+                    }
+                    fusedLocationClient.getLastLocation()
+                            .addOnSuccessListener(loc -> {
+                                executor.execute(() -> {
+                                    RegistrationHistory existing = regService.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
 
-                        // Create new registration
-                        RegistrationHistory newReg = new RegistrationHistory(
-                                eventId,
-                                userId,
-                                constant.EventRegistrationStatus.WAITLIST,
-                                new Date()
-                        );
-
-                        // Save using service callback
-                        regService.saveRegistrationHistory(newReg,
-                                aVoid -> {
-                                    // Fix: Sync Event waiting list in Event object
-                                    if (event.getWaitingList() == null) event.setWaitingList(new ArrayList<>());
-                                    if (!event.getWaitingList().contains(userId)) {
-                                        event.getWaitingList().add(userId);
-                                        eventService.updateEvent(event, v -> {}, e -> Log.e("BrowseEvents", "Failed to sync waiting list", e));
-                                    }
-
-                                    if (isAdded()) {
-                                        requireActivity().runOnUiThread(() -> {
+                                    if (existing != null) {
+                                        if (isAdded()) requireActivity().runOnUiThread(() -> {
                                             progress.setVisibility(View.GONE);
-                                            Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(getContext(), "Already registered!", Toast.LENGTH_SHORT).show();
                                         });
+                                        return;
                                     }
-                                },
-                                e -> {
-                                    if (isAdded()) {
-                                        requireActivity().runOnUiThread(() -> {
-                                            progress.setVisibility(View.GONE);
-                                            Toast.makeText(getContext(), "Failed to join", Toast.LENGTH_SHORT).show();
-                                        });
-                                    }
+
+                                    RegistrationHistory newReg = new RegistrationHistory(
+                                            eventId,
+                                            userId,
+                                            constant.EventRegistrationStatus.WAITLIST,
+                                            new Date()
+                                    );
+
+                                    regService.saveRegistrationHistory(newReg,
+                                            aVoid -> {
+                                                if (event.getWaitingList() == null) event.setWaitingList(new ArrayList<>());
+                                                if (!event.getWaitingList().contains(userId)) {
+                                                    event.getWaitingList().add(userId);
+                                                    eventService.updateEvent(event, v -> {}, e -> Log.e("BrowseEvents", "Failed to sync waiting list", e));
+                                                }
+
+                                                // NEW: save geo point if required and we have a location
+                                                if (event.isGeoLocationOn() && loc != null && geoLocationService != null) {
+                                                    GeoLocation geo = new GeoLocation(loc.getLatitude(), loc.getLongitude(), userId, eventId);
+                                                    geoLocationService.saveGeoLocation(geo, id -> {}, err -> {});
+                                                }
+
+                                                if (isAdded()) requireActivity().runOnUiThread(() -> {
+                                                    progress.setVisibility(View.GONE);
+                                                    Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
+                                                });
+                                            },
+                                            e -> {
+                                                if (isAdded()) requireActivity().runOnUiThread(() -> {
+                                                    progress.setVisibility(View.GONE);
+                                                    Toast.makeText(getContext(), "Failed to join", Toast.LENGTH_SHORT).show();
+                                                });
+                                            });
                                 });
-                    });
+                            })
+                            .addOnFailureListener(err -> {
+                                progress.setVisibility(View.GONE);
+                                Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
+                            });
                 },
                 e -> {
                     progress.setVisibility(View.GONE);
@@ -209,10 +371,7 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
 
     @Override
     public void onViewEvent(@NonNull Event event) {
-        // Reuse the existing ViewEventDetailsFragment for viewing details
         try {
-            // We use reflection or direct class reference if available in your scope.
-            // Based on your initial files, ViewEventDetailsFragment exists in com.quantiagents.app.ui
             Class<?> clazz = Class.forName("com.quantiagents.app.ui.ViewEventDetailsFragment");
             java.lang.reflect.Method method = clazz.getMethod("newInstance", String.class);
             Fragment detailsFragment = (Fragment) method.invoke(null, event.getEventId());
@@ -230,6 +389,87 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
     public static boolean isOpen(Event e) {
         return e != null && e.getStatus() == constant.EventStatus.OPEN;
     }
+
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestLocationThenJoin(Event event, User user) {
+        pendingEvent = event;
+        pendingUser = user;
+        locationPermissionLauncher.launch(new String[]{
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+        });
+    }
+    @SuppressLint("MissingPermission")
+    private void continueJoinWithLocation() {
+        if (pendingEvent == null || pendingUser == null) {
+            progress.setVisibility(View.GONE);
+            return;
+        }
+        if (!hasLocationPermission()) {
+            progress.setVisibility(View.GONE);
+            return;
+        }
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(loc -> actuallyJoin(pendingEvent, pendingUser, loc))
+                .addOnFailureListener(e -> {
+                    progress.setVisibility(View.GONE);
+                    Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
+                });
+    }
+
+    private void actuallyJoin(Event event, User user, Location loc) {
+        String userId = user.getUserId();
+        String eventId = event.getEventId();
+
+        executor.execute(() -> {
+            RegistrationHistory existing = regService.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
+            if (existing != null) {
+                if (isAdded()) requireActivity().runOnUiThread(() -> {
+                    progress.setVisibility(View.GONE);
+                    Toast.makeText(getContext(), "Already registered!", Toast.LENGTH_SHORT).show();
+                });
+                return;
+            }
+
+            RegistrationHistory newReg = new RegistrationHistory(
+                    eventId,
+                    userId,
+                    constant.EventRegistrationStatus.WAITLIST,
+                    new Date()
+            );
+
+            regService.saveRegistrationHistory(newReg,
+                    aVoid -> {
+                        if (event.getWaitingList() == null) event.setWaitingList(new ArrayList<>());
+                        if (!event.getWaitingList().contains(userId)) {
+                            event.getWaitingList().add(userId);
+                            eventService.updateEvent(event, v -> {}, e -> Log.e("BrowseEvents", "Failed to sync waiting list", e));
+                        }
+
+                        if (event.isGeoLocationOn() && loc != null && geoLocationService != null) {
+                            GeoLocation geo = new GeoLocation(loc.getLatitude(), loc.getLongitude(), userId, eventId);
+                            geoLocationService.saveGeoLocation(geo, id -> {}, err -> {});
+                        }
+
+                        if (isAdded()) requireActivity().runOnUiThread(() -> {
+                            progress.setVisibility(View.GONE);
+                            Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
+                            loadEvents();
+                        });
+                    },
+                    e -> {
+                        if (isAdded()) requireActivity().runOnUiThread(() -> {
+                            progress.setVisibility(View.GONE);
+                            Toast.makeText(getContext(), "Failed to join", Toast.LENGTH_SHORT).show();
+                        });
+                    });
+        });
+    }
+
 
     @Override
     public void onDestroy() {

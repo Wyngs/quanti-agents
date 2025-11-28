@@ -220,12 +220,15 @@
             app:tabMode="scrollable"
             app:tabGravity="fill" />
 
-        <androidx.viewpager2.widget.ViewPager2
-            android:id="@+id/pager"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginTop="8dp"
-            android:layout_weight="1" />
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/pager"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+    <com.google.android.gms.maps.MapView
+        android:id="@+id/map_join_locations"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:layout_marginTop="8dp"/>
 
-    </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+</LinearLayout>
