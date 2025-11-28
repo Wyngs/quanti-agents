@@ -83,6 +83,8 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
     private final List<Event> allEvents = new ArrayList<>();
     private BrowseEventsAdapter adapter;
 
+    private static Date lastView;
+
     // Filter State
     private String filterCategory = "";
     private Date filterDate = null;
@@ -102,6 +104,11 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         eventService = app.locator().eventService();
         regService = app.locator().registrationHistoryService();
         userService = app.locator().userService();
+
+        userService.getCurrentUser(user -> {
+            lastView = user.getLastViewedBrowse();
+            user.setLastViewedBrowse(new Date());
+            }, error -> {String lastView = null;});
 
         geoLocationService = app.locator().geoLocationService();
 
@@ -388,6 +395,12 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
 
     public static boolean isOpen(Event e) {
         return e != null && e.getStatus() == constant.EventStatus.OPEN;
+    }
+
+    public static boolean isNew(Event e) {
+        if (lastView!=null)
+            return e.getEventStartDate().after(lastView);
+        return false;
     }
 
     private boolean hasLocationPermission() {
