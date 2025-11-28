@@ -172,6 +172,13 @@
 
 
     <string name="manage_events_empty_default">No organized events yet.</string>
+    <string name="notification_center_title">Notifications</string>
+    <string name="notification_center_subtitle">Stay updated on your event registrations and lottery results</string>
+    <string name="notification_center_empty_title">No notifications yet</string>
+    <string name="notification_center_empty_message">You\'ll receive notifications about lottery draws, event updates, and more.</string>
+    <string name="notification_mark_as_read">Mark as read</string>
+    <string name="notification_new_count">%1$d New</string>
+
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
 
