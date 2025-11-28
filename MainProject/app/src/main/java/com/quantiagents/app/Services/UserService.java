@@ -84,7 +84,7 @@ public class UserService {
                            OnSuccessListener<User> onSuccess,
                            OnFailureListener onFailure) {
 
-        repository.usernameAndEmailExists(username, email,
+        repository.checkProfileUnique(username, email,
                 exists -> {
                     if (exists.get(0)) {
                         onFailure.onFailure(new Exception("Username Taken"));

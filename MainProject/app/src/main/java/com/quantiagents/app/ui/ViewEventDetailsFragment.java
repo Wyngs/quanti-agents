@@ -13,8 +13,13 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.graphics.Bitmap;
 
 import androidx.annotation.NonNull;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.journeyapps.barcodescanner.BarcodeEncoder;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
@@ -453,14 +458,43 @@ public class ViewEventDetailsFragment extends Fragment {
         }
 
         if (!TextUtils.isEmpty(qrCodeValue)) {
-            textQrValue.setVisibility(View.VISIBLE);
-            textQrValue.setText(qrCodeValue);
+            // Generate and display QR code bitmap
+            generateAndDisplayQRCode(qrCodeValue);
+            textQrValue.setVisibility(View.GONE); // Hide text, show bitmap instead
         } else {
+            // No QR code available
+            imageQrCode.setVisibility(View.GONE);
             textQrValue.setVisibility(View.VISIBLE);
             textQrValue.setText(R.string.view_event_qr_not_available);
         }
+    }
 
-        imageQrCode.setVisibility(View.GONE); // Placeholder: no QR bitmap generation yet.
+    private void generateAndDisplayQRCode(String qrValue) {
+        try {
+            BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
+            // Generate QR code bitmap with size 500x500
+            Bitmap bitmap = barcodeEncoder.encodeBitmap(qrValue, BarcodeFormat.QR_CODE, 500, 500);
+            
+            if (bitmap != null && imageQrCode != null) {
+                imageQrCode.setImageBitmap(bitmap);
+                imageQrCode.setVisibility(View.VISIBLE);
+            } else {
+                // Fallback to text if bitmap generation fails
+                imageQrCode.setVisibility(View.GONE);
+                if (textQrValue != null) {
+                    textQrValue.setVisibility(View.VISIBLE);
+                    textQrValue.setText(qrValue);
+                }
+            }
+        } catch (WriterException e) {
+            Log.e("ViewEventDetails", "Failed to generate QR code", e);
+            // Fallback to text if generation fails
+            imageQrCode.setVisibility(View.GONE);
+            if (textQrValue != null) {
+                textQrValue.setVisibility(View.VISIBLE);
+                textQrValue.setText(qrValue);
+            }
+        }
     }
     @SuppressLint("MissingPermission")
     private void joinWaitingList() {

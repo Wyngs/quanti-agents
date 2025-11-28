@@ -4,6 +4,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -12,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.quantiagents.app.R;
 import com.quantiagents.app.models.Event;
 
+import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,6 +64,7 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
         private final TextView textClosed;
         private final Button join;
         private final Button view;
+        private final FrameLayout newFlag;
 
         EventVH(@NonNull View itemView) {
             super(itemView);
@@ -70,6 +73,7 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
             textClosed = itemView.findViewById(R.id.text_closed);
             join = itemView.findViewById(R.id.button_join);
             view = itemView.findViewById(R.id.btn_view_event);
+            newFlag = itemView.findViewById(R.id.frame_new_flag);
         }
 
         void bind(final Event e, final OnEventClick cb) {
@@ -85,6 +89,9 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
             boolean open = BrowseEventsFragment.isOpen(e);
             textClosed.setVisibility(open ? View.GONE : View.VISIBLE);
             join.setVisibility(open ? View.VISIBLE : View.GONE);
+
+            boolean isNew = BrowseEventsFragment.isNew(e);
+            newFlag.setVisibility(isNew ? View.VISIBLE : View.GONE);
 
             join.setOnClickListener(v -> cb.onJoinWaitlist(e));
             view.setOnClickListener(v -> cb.onViewEvent(e));
