@@ -21,6 +21,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -33,17 +34,33 @@ public class EventFlowInstrumentedTest {
     private ServiceLocator locator;
     private EventService eventService;
 
+    // Now tracking IDs created by this test instance only
+    private List<String> createdEventIds = new ArrayList<>();
+
     @Before
     public void setUp() {
         context = ApplicationProvider.getApplicationContext();
         locator = new ServiceLocator(context);
         eventService = locator.eventService();
-        wipeEvents();
+        // REMOVED: wipeEvents();  as was deleting the whole DB
     }
 
     @After
     public void tearDown() {
-        wipeEvents();
+        // FIXED - only deleting events created in this test run
+        for (String id : createdEventIds) {
+            CountDownLatch latch = new CountDownLatch(1);
+            eventService.deleteEvent(id,
+                    aVoid -> latch.countDown(),
+                    e -> latch.countDown()
+            );
+            try {
+                latch.await(2, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        createdEventIds.clear();
     }
 
     @Test
@@ -192,17 +209,11 @@ public class EventFlowInstrumentedTest {
         awaitLatch(latch);
         if (idRef.get() != null) {
             event.setEventId(idRef.get());
+            createdEventIds.add(idRef.get());
             return event;
         }
         fail("Failed to create event sync");
         return null;
-    }
-
-    private void wipeEvents() {
-        List<Event> events = eventService.getAllEvents();
-        for (Event e : events) {
-            eventService.deleteEvent(e.getEventId());
-        }
     }
 
     private void awaitLatch(CountDownLatch latch) {
