@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Quanti-agents: The Lottery App</string>
+    <string name="app_name">Event Lottery</string>
     <string name="splash_title">Welcome to</string>
     <string name="splash_title2">EqualEntry!</string>
     <string name="splash_subtitle">Tap to begin sign-in process.</string>

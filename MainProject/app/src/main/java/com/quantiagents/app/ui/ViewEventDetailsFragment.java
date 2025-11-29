@@ -91,7 +91,7 @@ public class ViewEventDetailsFragment extends Fragment {
     private ImageService imageService;
 
     // Views
-    private MaterialButton buttonBack;
+    private View buttonBack;
     private MaterialButton buttonErrorBack;
     private MaterialButton buttonToggleQr;
     private MaterialButton buttonJoin;
@@ -200,7 +200,11 @@ public class ViewEventDetailsFragment extends Fragment {
     }
 
     private void bindViews(@NonNull View view) {
-        buttonBack = view.findViewById(R.id.button_back);
+        View headerView = view.findViewById(R.id.header_view);
+        if (headerView != null) {
+            buttonBack = headerView.findViewById(R.id.header_back_button);
+        }
+        // Note: buttonBack may be null if header is not found, but setupClickListeners handles null check
         buttonErrorBack = view.findViewById(R.id.button_error_back);
         buttonToggleQr = view.findViewById(R.id.button_toggle_qr);
         buttonJoin = view.findViewById(R.id.button_join_waitlist);
@@ -229,7 +233,9 @@ public class ViewEventDetailsFragment extends Fragment {
     }
 
     private void setupClickListeners() {
-        buttonBack.setOnClickListener(v -> handleBackNavigation());
+        if (buttonBack != null) {
+            buttonBack.setOnClickListener(v -> handleBackNavigation());
+        }
         buttonErrorBack.setOnClickListener(v -> handleBackNavigation());
         buttonToggleQr.setOnClickListener(v -> {
             showQr = !showQr;

@@ -26,6 +26,18 @@
         <item name="android:textColor">@color/colorOnSurface</item>
     </style>
 
+    <!-- Red button for destructive actions (cancel, delete) -->
+    <style name="Widget.QuantiAgents.Button.Red" parent="Widget.QuantiAgents.Button">
+        <item name="backgroundTint">@color/buttonRed</item>
+        <item name="android:textColor">@color/buttonTextWhite</item>
+    </style>
+
+    <!-- Green button for success actions (view, register, confirm) -->
+    <style name="Widget.QuantiAgents.Button.Green" parent="Widget.QuantiAgents.Button">
+        <item name="backgroundTint">@color/buttonGreen</item>
+        <item name="android:textColor">@color/buttonTextWhite</item>
+    </style>
+
     <!-- Outlined TextInputLayout -->
     <style name="Widget.QuantiAgents.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.FilledBox">
         <item name="boxBackgroundMode">filled</item>
