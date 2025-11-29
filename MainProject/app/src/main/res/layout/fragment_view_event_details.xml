@@ -14,7 +14,7 @@
         android:gravity="center_horizontal"
         android:orientation="vertical">
 
-        <!-- Header with back button -->
+<!--        &lt;!&ndash; Header with back button &ndash;&gt;-->
         <include
             android:id="@+id/header_view"
             layout="@layout/toolbar_header"

@@ -48,9 +48,20 @@ public class AdminBrowseEventsFragment extends Fragment {
         recyclerView = view.findViewById(R.id.recycler);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        adapter = new AdminEventAdapter(event -> {
-            viewModel.deleteEvent(event);
-        });
+        adapter = new AdminEventAdapter(
+                event -> {
+                    viewModel.deleteEvent(event);
+                },
+                event -> {
+                    // Navigate to event details
+                    Fragment detailsFragment = com.quantiagents.app.ui.ViewEventDetailsFragment.newInstance(event.getEventId());
+                    requireActivity().getSupportFragmentManager()
+                            .beginTransaction()
+                            .replace(R.id.content_container, detailsFragment)
+                            .addToBackStack(null)
+                            .commit();
+                }
+        );
         recyclerView.setAdapter(adapter);
 
         // Search setup
