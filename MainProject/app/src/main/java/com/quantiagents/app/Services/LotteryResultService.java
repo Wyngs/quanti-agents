@@ -12,7 +12,9 @@ import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.LotteryResultRepository;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.LotteryResult;
+import com.quantiagents.app.models.Notification;
 import com.quantiagents.app.models.RegistrationHistory;
+import com.quantiagents.app.models.User;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,12 +31,16 @@ public class LotteryResultService {
     private final LotteryResultRepository repository;
     private final RegistrationHistoryService registrationHistoryService;
     private final EventService eventService;
+    private final NotificationService notificationService;
+    private final UserService userService;
 
     public LotteryResultService(Context context) {
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
         this.repository = new LotteryResultRepository(fireBaseRepository);
         this.registrationHistoryService = new RegistrationHistoryService(context);
         this.eventService = new EventService(context);
+        this.notificationService = new NotificationService(context);
+        this.userService = new UserService(context);
     }
 
     public LotteryResult getLotteryResultByTimestampAndEventId(Date timestamp, String eventId) {
@@ -195,6 +201,8 @@ public class LotteryResultService {
                             result,
                             v -> {
                                 Log.d("App", "Lottery completed for event: " + eventId);
+                                // Send notifications to all winners
+                                sendLotteryWinNotifications(event, winnerIds);
                                 onSuccess.onSuccess(result);
                             },
                             onFailure
@@ -249,5 +257,45 @@ public class LotteryResultService {
 
         // Reuse the runLottery logic to draw 'openSlots' new people
         runLottery(eventId, openSlots, onSuccess, onFailure);
+    }
+
+    /**
+     * Sends lottery win notifications to all winners.
+     */
+    private void sendLotteryWinNotifications(Event event, List<String> winnerIds) {
+        if (event == null || winnerIds == null || winnerIds.isEmpty()) return;
+
+        String eventId = event.getEventId();
+        String organizerId = event.getOrganizerId();
+        String eventName = event.getTitle() != null ? event.getTitle() : "Event";
+
+        if (eventId == null || organizerId == null) return;
+
+        int eventIdInt = Math.abs(eventId.hashCode());
+        int organizerIdInt = Math.abs(organizerId.hashCode());
+
+        for (String winnerId : winnerIds) {
+            if (winnerId == null || winnerId.trim().isEmpty()) continue;
+
+            int winnerIdInt = Math.abs(winnerId.hashCode());
+
+            // Notification for the winner (GOOD type)
+            String status = "User Won Lottery";
+            String details = "Congratulations you have won the lottery for Event : " + eventName + ". Please accept or decline the invitation.";
+            Notification winnerNotification = new Notification(
+                    0, // Auto-generate ID
+                    constant.NotificationType.GOOD,
+                    winnerIdInt,
+                    organizerIdInt, // senderId = eventOrganizerId
+                    eventIdInt,
+                    status,
+                    details
+            );
+
+            notificationService.saveNotification(winnerNotification,
+                    aVoid -> Log.d("Lottery", "Notification sent to winner: " + winnerId),
+                    e -> Log.e("Lottery", "Failed to send notification to winner: " + winnerId, e)
+            );
+        }
     }
 }

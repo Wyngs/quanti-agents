@@ -259,5 +259,6 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-    </LinearLayout>
-</ScrollView>
+</LinearLayout>
+
+</androidx.core.widget.NestedScrollView>
