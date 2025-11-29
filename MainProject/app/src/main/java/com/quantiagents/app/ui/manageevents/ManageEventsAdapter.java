@@ -21,10 +21,13 @@ import java.util.List;
 public class ManageEventsAdapter extends RecyclerView.Adapter<ManageEventsAdapter.ViewHolder> {
 
     /**
-     * Listener used to forward "Manage Event Info" clicks.
+     * Listener used to forward row actions.
      */
     public interface OnManageEventInfoClickListener {
         void onManageEventInfoClicked(@NonNull Event event);
+
+        // New callback for "Show QR"
+        void onShowQrClicked(@NonNull Event event);
     }
 
     private final List<Event> data = new ArrayList<>();
@@ -40,6 +43,7 @@ public class ManageEventsAdapter extends RecyclerView.Adapter<ManageEventsAdapte
         final TextView waitingLine;
         final TextView capacityLine;
         final Button manageInfoButton;
+        final Button showQrButton;   // new
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -48,6 +52,7 @@ public class ManageEventsAdapter extends RecyclerView.Adapter<ManageEventsAdapte
             waitingLine = itemView.findViewById(R.id.text_waiting_list);
             capacityLine = itemView.findViewById(R.id.text_capacity);
             manageInfoButton = itemView.findViewById(R.id.button_manage_event_info);
+            showQrButton = itemView.findViewById(R.id.button_show_qr);
         }
     }
 
@@ -78,6 +83,12 @@ public class ManageEventsAdapter extends RecyclerView.Adapter<ManageEventsAdapte
         holder.manageInfoButton.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onManageEventInfoClicked(event);
+            }
+        });
+
+        holder.showQrButton.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onShowQrClicked(event);
             }
         });
     }
