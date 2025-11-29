@@ -1,9 +1,12 @@
 package com.quantiagents.app.ui.admin;
 
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -21,6 +24,7 @@ public class AdminBrowseProfilesFragment extends Fragment {
     private AdminEventsViewModel viewModel;
     private RecyclerView recyclerView;
     private AdminProfileAdapter adapter;
+    private EditText searchInput;
 
     public static AdminBrowseProfilesFragment newInstance() {
         return new AdminBrowseProfilesFragment();
@@ -45,6 +49,23 @@ public class AdminBrowseProfilesFragment extends Fragment {
             viewModel.deleteProfile(profile);
         });
         recyclerView.setAdapter(adapter);
+
+        searchInput = view.findViewById(R.id.input_search);
+        if (searchInput != null) {
+            searchInput.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    // Call the search method in ViewModel
+                    viewModel.searchProfiles(s.toString());
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {}
+            });
+        }
 
         viewModel.getProfiles().observe(getViewLifecycleOwner(), profiles -> {
             adapter.submitList(profiles);
