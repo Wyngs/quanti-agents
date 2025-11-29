@@ -15,9 +15,11 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.appcompat.app.AlertDialog;
 
 import com.quantiagents.app.R;
 import com.quantiagents.app.ui.admin.viewmodel.AdminEventsViewModel;
+import com.quantiagents.app.models.UserSummary;
 
 public class AdminBrowseProfilesFragment extends Fragment {
 
@@ -45,9 +47,14 @@ public class AdminBrowseProfilesFragment extends Fragment {
         recyclerView = view.findViewById(R.id.admin_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        adapter = new AdminProfileAdapter(profile -> {
-            viewModel.deleteProfile(profile);
-        });
+        adapter = new AdminProfileAdapter(
+                profile -> {
+                    viewModel.deleteProfile(profile);
+                },
+                profile -> {
+                    showProfileDetails(profile);
+                }
+        );
         recyclerView.setAdapter(adapter);
 
         searchInput = view.findViewById(R.id.input_search);
@@ -58,7 +65,7 @@ public class AdminBrowseProfilesFragment extends Fragment {
 
                 @Override
                 public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    // Call the search method in ViewModel
+
                     viewModel.searchProfiles(s.toString());
                 }
 
@@ -76,5 +83,18 @@ public class AdminBrowseProfilesFragment extends Fragment {
         });
 
         viewModel.loadProfiles();
+    }
+
+    // helper method to show profile details
+    private void showProfileDetails(UserSummary profile) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Profile Details")
+                .setMessage("Name: " + profile.getName() + "\n" +
+                        "Email: " + profile.getEmail() + "\n" +
+                        "Username: " + profile.getUsername() + "\n" +
+                        "User ID: " + profile.getUserId())
+                .setPositiveButton("Close", null)
+                .setNegativeButton("Delete", (dialog, which) -> viewModel.deleteProfile(profile))
+                .show();
     }
 }

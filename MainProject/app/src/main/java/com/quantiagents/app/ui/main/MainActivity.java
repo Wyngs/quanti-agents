@@ -12,12 +12,15 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.core.ExperimentalGetImage;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.badge.ExperimentalBadgeUtils;
 import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
@@ -29,6 +32,7 @@ import com.quantiagents.app.ui.NotificationCenterFragment;
 import com.quantiagents.app.ui.ScanQRCode.ScanQRCodeFragment;
 import com.quantiagents.app.ui.admin.AdminBrowseEventsFragment;
 import com.quantiagents.app.ui.admin.AdminBrowseImagesFragment;
+import com.quantiagents.app.ui.admin.AdminBrowseNotificationsFragment;
 import com.quantiagents.app.ui.admin.AdminBrowseProfilesFragment;
 import com.quantiagents.app.ui.auth.LoginActivity;
 import com.quantiagents.app.ui.manageevents.ManageEventsFragment;
@@ -37,6 +41,7 @@ import com.quantiagents.app.ui.myevents.MyEventFragment;
 import com.quantiagents.app.ui.profile.ProfileFragment;
 import com.quantiagents.app.ui.profile.SettingsFragment;
 
+@OptIn(markerClass = {ExperimentalGetImage.class, ExperimentalBadgeUtils.class})
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
     private DrawerLayout drawerLayout;
@@ -62,29 +67,41 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         navigationView.setNavigationItemSelectedListener(this);
 
-        // Use async getCurrentUser to avoid blocking the main thread
-        userService.getCurrentUser(
-                user -> {
-                    if (user == null) {
+        // 1.Checking if LoginService already has the user in memory (This happens right after LoginActivity)
+        User cachedUser = loginService.getActiveUser();
+
+        if (cachedUser != null) {
+            // If we have a user in memory, use it immediately
+            // prevents fetching the old admin user from the database based on Device ID
+            onUserLoaded(cachedUser, savedInstanceState);
+        } else {
+            // 2.If memory is empty (e.g., App Restart), fetch from DB using Device ID
+            userService.getCurrentUser(
+                    user -> {
+                        if (user == null) {
+                            startActivity(new Intent(this, LoginActivity.class));
+                            finish();
+                            return;
+                        }
+                        onUserLoaded(user, savedInstanceState);
+                    },
+                    e -> {
                         startActivity(new Intent(this, LoginActivity.class));
                         finish();
-                        return;
                     }
+            );
+        }
+    }
 
-                    bindHeader(user);
-                    setupAdminMenu(user);
+    // helper method to setup UI once user is found
+    private void onUserLoaded(@NonNull User user, Bundle savedInstanceState) {
+        bindHeader(user);
+        setupAdminMenu(user);
 
-                    if (savedInstanceState == null) {
-                        navigationView.setCheckedItem(activeItemId);
-                        showFragment(ProfileFragment.newInstance());
-                    }
-                },
-                e -> {
-                    // On error, redirect to login
-                    startActivity(new Intent(this, LoginActivity.class));
-                    finish();
-                }
-        );
+        if (savedInstanceState == null) {
+            navigationView.setCheckedItem(activeItemId);
+            showFragment(ProfileFragment.newInstance());
+        }
     }
 
     private void bindHeader(@NonNull User user) {
@@ -107,16 +124,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void setupAdminMenu(@NonNull User user) {
         Menu menu = navigationView.getMenu();
-        if (user.getRole() == constant.UserRole.ADMIN) {
+
+        // Checking if user is admin
+        boolean isAdmin = (user.getRole() == constant.UserRole.ADMIN);
+
+        if (isAdmin) {
             menu.setGroupVisible(R.id.admin_group, true);
+            // hide entrant features (Browse, My Events, Create, etc.)
+            menu.setGroupVisible(R.id.group_entrant_features, false);
         } else {
+            // hide admin features
             menu.setGroupVisible(R.id.admin_group, false);
+            // show entrant features
+            menu.setGroupVisible(R.id.group_entrant_features, true);
         }
     }
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
+
         if (id == R.id.navigation_profile) {
             showFragment(ProfileFragment.newInstance());
             activeItemId = id;
@@ -149,7 +176,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             showFragment(AdminBrowseImagesFragment.newInstance());
             activeItemId = id;
             navigationView.setCheckedItem(id);
-        } else if (id == R.id.navigation_notifications) {
+        }
+        else if (id == R.id.navigation_admin_notifications) {
+            showFragment(AdminBrowseNotificationsFragment.newInstance());
+            activeItemId = id;
+            navigationView.setCheckedItem(id);
+        }
+        // ---------------------------------
+        else if (id == R.id.navigation_notifications) {
             showFragment(NotificationCenterFragment.newInstance());
             activeItemId = id;
             navigationView.setCheckedItem(id);

@@ -19,14 +19,19 @@ import java.util.Objects;
 public class AdminEventAdapter extends ListAdapter<Event, AdminEventAdapter.EventViewHolder> {
 
     private final OnEventDeleteListener deleteListener;
+    private final OnItemClickListener itemClickListener;
 
     public interface OnEventDeleteListener {
         void onDelete(Event event);
     }
+    public interface OnItemClickListener {
+        void onItemClick(Event event);
+    }
 
-    public AdminEventAdapter(OnEventDeleteListener deleteListener) {
+    public AdminEventAdapter(OnEventDeleteListener deleteListener, OnItemClickListener itemClickListener) { // ADDED: Added second parameter
         super(new EventDiffCallback());
         this.deleteListener = deleteListener;
+        this.itemClickListener = itemClickListener;
     }
 
     @NonNull
@@ -40,7 +45,7 @@ public class AdminEventAdapter extends ListAdapter<Event, AdminEventAdapter.Even
     @Override
     public void onBindViewHolder(@NonNull EventViewHolder holder, int position) {
         Event event = getItem(position);
-        holder.bind(event, deleteListener);
+        holder.bind(event, deleteListener, itemClickListener);
     }
 
     static class EventViewHolder extends RecyclerView.ViewHolder {
@@ -55,10 +60,11 @@ public class AdminEventAdapter extends ListAdapter<Event, AdminEventAdapter.Even
             deleteButton = itemView.findViewById(R.id.item_delete_button);
         }
 
-        void bind(Event event, OnEventDeleteListener deleteListener) {
+        void bind(Event event, OnEventDeleteListener deleteListener, OnItemClickListener itemClickListener) {
             titleView.setText(event.getTitle());
             idView.setText(event.getEventId());
             deleteButton.setOnClickListener(v -> deleteListener.onDelete(event));
+            itemView.setOnClickListener(v -> itemClickListener.onItemClick(event));
         }
     }
 
