@@ -17,11 +17,17 @@ public class Notification {
     private int recipientId;
     private int senderId;
     private int affiliatedEventId;
+    private String status;
+    private String details;
     private Date timestamp;
     private boolean hasRead;
 
-    public Notification(){}
-    public Notification(int notificationId, constant.NotificationType type, int recipientId, int senderId, int affiliatedEventId  ) {
+    public Notification(){
+        this.status = "";
+        this.details = "";
+    }
+    
+    public Notification(int notificationId, constant.NotificationType type, int recipientId, int senderId, int affiliatedEventId, String status , String details) {
         this.notificationId = notificationId;
         this.type = type;
         this.recipientId = recipientId;
@@ -29,8 +35,10 @@ public class Notification {
         this.affiliatedEventId = affiliatedEventId;
         this.timestamp = new Date();
         this.hasRead = false;
+        this.status = status != null ? status : "";
+        this.details = details != null ? details : "";
     }
-    public Notification(int notificationId, constant.NotificationType type, int recipientId, int senderId, int affiliatedEventId, Date timestamp, boolean hasRead) {
+    public Notification(int notificationId, constant.NotificationType type, int recipientId, int senderId, int affiliatedEventId, String status , String details, Date timestamp, boolean hasRead) {
         this.notificationId = notificationId;
         this.type = type;
         this.recipientId = recipientId;
@@ -38,6 +46,8 @@ public class Notification {
         this.affiliatedEventId = affiliatedEventId;
         this.timestamp = timestamp;
         this.hasRead = hasRead;
+        this.status = status != null ? status : "";
+        this.details = details != null ? details : "";
     }
 
     public int getNotificationId() {
@@ -94,5 +104,21 @@ public class Notification {
 
     public void setHasRead(boolean hasRead) {
         this.hasRead = hasRead;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status != null ? status : "";
+    }
+
+    public String getDetails() {
+        return details;
+    }
+
+    public void setDetails(String details) {
+        this.details = details != null ? details : "";
     }
 }

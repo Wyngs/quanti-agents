@@ -67,7 +67,7 @@ public class AuxiliaryServicesInstrumentedTest {
         NotificationService service = locator.notificationService();
         int recipientId = 9999;
 
-        Notification note = new Notification(0, constant.NotificationType.GOOD, recipientId, 1, 100);
+        Notification note = new Notification(0, constant.NotificationType.GOOD, recipientId, 1, 100, "", "");
         saveNotificationSync(service, note);
 
         List<Notification> unread = service.getUnreadNotificationsByRecipientId(recipientId);

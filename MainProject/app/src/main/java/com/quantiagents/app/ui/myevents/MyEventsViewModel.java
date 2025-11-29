@@ -12,9 +12,11 @@ import androidx.lifecycle.MutableLiveData;
 import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.Services.EventService;
+import com.quantiagents.app.Services.NotificationService;
 import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
+import com.quantiagents.app.models.Notification;
 import com.quantiagents.app.models.RegistrationHistory;
 import com.quantiagents.app.models.User;
 
@@ -32,6 +34,7 @@ public class MyEventsViewModel extends AndroidViewModel {
     private final UserService userService;
     private final RegistrationHistoryService regService;
     private final EventService eventService;
+    private final NotificationService notificationService;
     private final ExecutorService executor;
 
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
@@ -48,6 +51,7 @@ public class MyEventsViewModel extends AndroidViewModel {
         this.userService = app.locator().userService();
         this.regService = app.locator().registrationHistoryService();
         this.eventService = app.locator().eventService();
+        this.notificationService = new NotificationService(application);
         this.executor = Executors.newSingleThreadExecutor();
     }
 
@@ -198,8 +202,26 @@ public class MyEventsViewModel extends AndroidViewModel {
     public void updateStatus(RegistrationHistory history, constant.EventRegistrationStatus newStatus, Runnable onSuccess) {
         isLoading.setValue(true);
         history.setEventRegistrationStatus(newStatus);
+        
+        // Get event and user info before updating to send notifications
+        final String eventId = history.getEventId();
+        final String userId = history.getUserId();
+        final Event event = (eventId != null) ? eventService.getEventById(eventId) : null;
+        final User user = (userId != null) ? userService.getUserById(userId) : null;
+        final constant.EventRegistrationStatus finalStatus = newStatus;
+        
         regService.updateRegistrationHistory(history,
                 aVoid -> {
+                    // Send notifications based on status change
+                    if (event != null && user != null) {
+                        if (finalStatus == constant.EventRegistrationStatus.CONFIRMED) {
+                            sendAcceptNotification(event, user);
+                        } else if (finalStatus == constant.EventRegistrationStatus.CANCELLED) {
+                            // Only send decline notification if it was previously SELECTED
+                            // (not if it was already CANCELLED)
+                            sendDeclineNotification(event, user);
+                        }
+                    }
                     loadData();
                     if (onSuccess != null) onSuccess.run();
                 },
@@ -207,6 +229,78 @@ public class MyEventsViewModel extends AndroidViewModel {
                     isLoading.postValue(false);
                     errorMessage.postValue("Failed to update status");
                 }
+        );
+    }
+
+    /**
+     * Sends notification to organizer when user accepts lottery win.
+     */
+    private void sendAcceptNotification(Event event, User user) {
+        if (event == null || user == null) return;
+
+        String eventId = event.getEventId();
+        String organizerId = event.getOrganizerId();
+        String eventName = event.getTitle() != null ? event.getTitle() : "Event";
+        String userName = user.getName() != null && !user.getName().trim().isEmpty() 
+                ? user.getName().trim() 
+                : (user.getUsername() != null && !user.getUsername().trim().isEmpty() 
+                    ? user.getUsername().trim() 
+                    : "User");
+
+        if (eventId == null || organizerId == null) return;
+
+        int eventIdInt = Math.abs(eventId.hashCode());
+        int organizerIdInt = Math.abs(organizerId.hashCode());
+
+        Notification notification = new Notification(
+                0, // Auto-generate ID
+                constant.NotificationType.GOOD,
+                organizerIdInt,
+                -1, // senderId = -1 means system Generated
+                eventIdInt,
+                "User Accepted",
+                "User " + userName + " has accepted lottery invite for your Event " + eventName
+        );
+
+        notificationService.saveNotification(notification,
+                aVoid -> Log.d("MyEventsVM", "Accept notification sent to organizer"),
+                e -> Log.e("MyEventsVM", "Failed to send accept notification", e)
+        );
+    }
+
+    /**
+     * Sends notification to organizer when user declines lottery win.
+     */
+    private void sendDeclineNotification(Event event, User user) {
+        if (event == null || user == null) return;
+
+        String eventId = event.getEventId();
+        String organizerId = event.getOrganizerId();
+        String eventName = event.getTitle() != null ? event.getTitle() : "Event";
+        String userName = user.getName() != null && !user.getName().trim().isEmpty() 
+                ? user.getName().trim() 
+                : (user.getUsername() != null && !user.getUsername().trim().isEmpty() 
+                    ? user.getUsername().trim() 
+                    : "User");
+
+        if (eventId == null || organizerId == null) return;
+
+        int eventIdInt = Math.abs(eventId.hashCode());
+        int organizerIdInt = Math.abs(organizerId.hashCode());
+
+        Notification notification = new Notification(
+                0, // Auto-generate ID
+                constant.NotificationType.BAD,
+                organizerIdInt,
+                -1, // senderId = -1 means system Generated
+                eventIdInt,
+                "User Declined",
+                "User " + userName + " has declined lottery invite for your Event " + eventName
+        );
+
+        notificationService.saveNotification(notification,
+                aVoid -> Log.d("MyEventsVM", "Decline notification sent to organizer"),
+                e -> Log.e("MyEventsVM", "Failed to send decline notification", e)
         );
     }
 

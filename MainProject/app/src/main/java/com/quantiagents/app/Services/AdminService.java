@@ -9,13 +9,18 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.quantiagents.app.Repository.AdminLogRepository;
 import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.UserRepository;
+import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.models.AdminActionLog;
 import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
+import com.quantiagents.app.models.Notification;
 import com.quantiagents.app.models.User;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class AdminService {
 
@@ -25,6 +30,8 @@ public class AdminService {
     private final UserService userService;       // Kept for local profile cleanup
     private final AdminLogRepository logRepository;
     private final DeviceIdManager deviceIdManager;
+    private final NotificationService notificationService;
+    private final RegistrationHistoryService registrationHistoryService;
 
     public AdminService(Context context) {
         ServiceLocator locator = new ServiceLocator(context);
@@ -36,6 +43,8 @@ public class AdminService {
         this.userRepository = new UserRepository(fbRepo); // Needed for deleteUserById(String)
         this.logRepository = new AdminLogRepository(context);
         this.deviceIdManager = new DeviceIdManager(context);
+        this.notificationService = new NotificationService(context);
+        this.registrationHistoryService = new RegistrationHistoryService(context);
     }
 
     // --- Events ---
@@ -61,16 +70,30 @@ public class AdminService {
             return;
         }
 
-        // 1. Attempt to delete images (best effort)
-        imageService.deleteImagesByEventId(eventId);
+        // Move synchronous operations to background thread
+        new Thread(() -> {
+            try {
+                // Get event before deleting to send notifications
+                Event event = eventService.getEventById(eventId);
+                if (event != null) {
+                    // Send notifications before deleting
+                    sendEventDeletedByAdminNotifications(event);
+                }
 
-        // 2. Delete event
-        eventService.deleteEvent(eventId,
-                aVoid -> {
-                    logAction(AdminActionLog.KIND_EVENT, eventId, note);
-                    onSuccess.onSuccess(aVoid);
-                },
-                onFailure);
+                // 1. Attempt to delete images (best effort)
+                imageService.deleteImagesByEventId(eventId);
+
+                // 2. Delete event (async call, but we're already on background thread)
+                eventService.deleteEvent(eventId,
+                        aVoid -> {
+                            logAction(AdminActionLog.KIND_EVENT, eventId, note);
+                            onSuccess.onSuccess(aVoid);
+                        },
+                        onFailure);
+            } catch (Exception e) {
+                onFailure.onFailure(e);
+            }
+        }).start();
     }
 
     // --- Profiles ---
@@ -144,12 +167,29 @@ public class AdminService {
             return;
         }
 
-        imageService.deleteImage(imageId,
-                aVoid -> {
-                    logAction(AdminActionLog.KIND_IMAGE, imageId, note);
-                    onSuccess.onSuccess(aVoid);
-                },
-                onFailure);
+        // Move synchronous operations to background thread
+        new Thread(() -> {
+            try {
+                // Get image to check if it's an event poster
+                Image image = imageService.getImageById(imageId);
+                if (image != null && image.getEventId() != null && !image.getEventId().trim().isEmpty()) {
+                    // This is an event poster, send notification to organizer
+                    Event event = eventService.getEventById(image.getEventId());
+                    if (event != null) {
+                        sendImageRemovedNotification(event);
+                    }
+                }
+
+                imageService.deleteImage(imageId,
+                        aVoid -> {
+                            logAction(AdminActionLog.KIND_IMAGE, imageId, note);
+                            onSuccess.onSuccess(aVoid);
+                        },
+                        onFailure);
+            } catch (Exception e) {
+                onFailure.onFailure(e);
+            }
+        }).start();
     }
 
 
@@ -170,5 +210,118 @@ public class AdminService {
             ));
         }
         return removed;
+    }
+
+    /**
+     * Sends notifications when an event is deleted by admin.
+     * Notifies all users in waiting list, selected list, and confirmed list, plus the organizer.
+     */
+    private void sendEventDeletedByAdminNotifications(Event event) {
+        if (event == null) return;
+
+        String eventId = event.getEventId();
+        String organizerId = event.getOrganizerId();
+        String eventName = event.getTitle() != null ? event.getTitle() : "Event";
+
+        if (eventId == null) return;
+
+        int eventIdInt = Math.abs(eventId.hashCode());
+        
+        // Get admin ID (current user)
+        User adminUser = userService.getCurrentUser();
+        int adminIdInt = -1; // Default to -1 if admin not found
+        if (adminUser != null && adminUser.getUserId() != null) {
+            adminIdInt = Math.abs(adminUser.getUserId().hashCode());
+        }
+
+        // Collect all affected user IDs
+        Set<String> affectedUserIds = new HashSet<>();
+        if (event.getWaitingList() != null) {
+            affectedUserIds.addAll(event.getWaitingList());
+        }
+        if (event.getSelectedList() != null) {
+            affectedUserIds.addAll(event.getSelectedList());
+        }
+        if (event.getConfirmedList() != null) {
+            affectedUserIds.addAll(event.getConfirmedList());
+        }
+
+        // Send notification to all affected users
+        for (String userId : affectedUserIds) {
+            if (userId == null || userId.trim().isEmpty()) continue;
+            int userIdInt = Math.abs(userId.hashCode());
+
+            Notification notification = new Notification(
+                    0, // Auto-generate ID
+                    constant.NotificationType.BAD,
+                    userIdInt,
+                    adminIdInt, // senderId = AdminId
+                    eventIdInt,
+                    "Event Canceled",
+                    "Due to unforeseen reasons, Event: " + eventName + " has been canceled by the Administrator. Please find another one."
+            );
+
+            notificationService.saveNotification(notification,
+                    aVoid -> {},
+                    e -> {}
+            );
+        }
+
+        // Send notification to organizer
+        if (organizerId != null && !organizerId.trim().isEmpty()) {
+            int organizerIdInt = Math.abs(organizerId.hashCode());
+            Notification organizerNotification = new Notification(
+                    0, // Auto-generate ID
+                    constant.NotificationType.BAD,
+                    organizerIdInt,
+                    adminIdInt, // senderId = AdminId
+                    eventIdInt,
+                    "Event Canceled",
+                    "Due to community guideline violations, Event: " + eventName + " has been canceled by the Administrator."
+            );
+
+            notificationService.saveNotification(organizerNotification,
+                    aVoid -> {},
+                    e -> {}
+            );
+        }
+    }
+
+    /**
+     * Sends notification to organizer when admin removes poster/image from event.
+     */
+    private void sendImageRemovedNotification(Event event) {
+        if (event == null) return;
+
+        String eventId = event.getEventId();
+        String organizerId = event.getOrganizerId();
+        String eventName = event.getTitle() != null ? event.getTitle() : "Event";
+
+        if (eventId == null || organizerId == null) return;
+
+        int eventIdInt = Math.abs(eventId.hashCode());
+        int organizerIdInt = Math.abs(organizerId.hashCode());
+
+        // Get admin ID (current user)
+        User adminUser = userService.getCurrentUser();
+        int adminIdInt = -1; // Default to -1 if admin not found
+        if (adminUser != null && adminUser.getUserId() != null) {
+            adminIdInt = Math.abs(adminUser.getUserId().hashCode());
+        }
+
+        Notification notification = new Notification(
+                0, // Auto-generate ID
+                constant.NotificationType.BAD,
+                organizerIdInt,
+                adminIdInt, // senderId = AdminId
+                eventIdInt,
+                "Image removed",
+                "Due to community guideline violations, The poster for Event: " + eventName + " has been removed by the Administrator."
+        );
+
+        notificationService.saveNotification(notification,
+                aVoid -> {},
+                e -> {}
+        );
     }
 }
