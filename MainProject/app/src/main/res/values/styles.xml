@@ -35,6 +35,8 @@
     <!-- Green button for success actions (view, register, confirm) -->
     <style name="Widget.QuantiAgents.Button.Green" parent="Widget.QuantiAgents.Button">
         <item name="backgroundTint">@color/buttonGreen</item>
+    </style>
+
     <!-- Black button -->
     <style name="Widget.QuantiAgents.Button.Black" parent="Widget.QuantiAgents.Button">
         <item name="backgroundTint">@color/buttonBoxBlack</item>
