@@ -19,27 +19,33 @@
             android:theme="@style/ThemeOverlay.Material3.Light"
             android:title="@string/app_name"
             android:titleTextColor="@color/colorPrimary"
-            app:titleCentered="false" />
+            app:titleCentered="false">
 
-        <ImageButton
-            android:id="@+id/toolbar_menu_button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_gravity="end"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Menu"
-            android:src="@drawable/ic_menu"
-            app:tint="@color/colorPrimary" />
+            <ImageButton
+                android:id="@+id/toolbar_menu_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="end"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Menu"
+                android:src="@drawable/ic_menu"
+                app:tint="@color/colorPrimary" />
+        </com.google.android.material.appbar.MaterialToolbar>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/borderColor"
+            android:layout_marginTop="56dp"/>
+
 
         <FrameLayout
             android:id="@+id/content_container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginHorizontal="24dp"
-            android:layout_marginBottom="24dp"
-            android:layout_marginTop="64dp"
+            android:layout_marginTop="58dp"
             android:background="@drawable/bg_app_surface"
-            android:padding="16dp" />
+            android:padding="0dp" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

@@ -21,13 +21,16 @@
 
     <!-- Splash screen and logo color -->
     <color name="splashColor">#4F39F6</color>
+    <color name="backgroundLightGrey">#F9FAFB</color>
 
     <!-- Field Colors -->
     <color name="fieldLight">#EFF5FF</color>
     <color name="hintColor">#BCC4D2</color>
+    <color name="borderColor">#E2E2E2</color>
 
     <!-- Button / Action -->
     <color name="buttonBlack">#212121</color>
+    <color name="buttonBoxBlack">#2C2C2C</color>
     <color name="buttonBoxBlue">#E0E7FF</color>
     <color name="buttonBoxGrey">#DFDFDF</color>
     <color name="buttonTextBlue">#332E86</color>

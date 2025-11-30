@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Quanti-agents: The Lottery App</string>
+    <string name="app_name">EqualEntry</string>
     <string name="splash_title">Welcome to</string>
     <string name="splash_title2">EqualEntry!</string>
     <string name="splash_subtitle">Tap to begin sign-in process.</string>
@@ -33,7 +33,9 @@
     <string name="error_login_invalid">That combo didn\'t work</string>
     <string name="message_password_hint">Still using device sign-in. Reach out to support to reset.</string>
     <string name="error_profile_missing">Profile not found</string>
-    <string name="profile_title">My profile</string>
+    <string name="profile_title">Profile Settings</string>
+    <string name="profile_subtitle">Manage your account information here</string>
+    <string name="profile_info_header">Personal Information</string>
     <string name="profile_contact_header">Contact</string>
     <string name="profile_phone_placeholder">Phone not added</string>
     <string name="profile_device_header">Device</string>
