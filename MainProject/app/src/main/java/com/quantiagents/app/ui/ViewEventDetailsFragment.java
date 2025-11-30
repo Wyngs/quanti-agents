@@ -862,34 +862,49 @@ public class ViewEventDetailsFragment extends Fragment {
         int userIdInt = Math.abs(userId.hashCode());
         int organizerIdInt = Math.abs(organizerId.hashCode());
 
-        // Notification for the organizer (REMINDER type)
-        Notification organizerNotification = new Notification(
-                0, // Auto-generate ID
-                constant.NotificationType.REMINDER,
-                organizerIdInt,
-                0, // senderId (system)
-                eventIdInt
-        );
+        String eventName = event.getTitle() != null ? event.getTitle() : "Event";
+        String userName = user.getName() != null && !user.getName().trim().isEmpty() 
+                ? user.getName().trim() 
+                : (user.getUsername() != null && !user.getUsername().trim().isEmpty() 
+                    ? user.getUsername().trim() 
+                    : "User");
 
-        // Notification for the user (GOOD type - confirmation)
+        // Notification for the user (GOOD type)
+        String userStatus = "User Waitlist Signup";
+        String userDetails = "Thanks for signing up for the waitlist for Event : " + eventName + ". We will keep you updated.";
         Notification userNotification = new Notification(
                 0, // Auto-generate ID
                 constant.NotificationType.GOOD,
                 userIdInt,
-                0, // senderId (system)
-                eventIdInt
+                organizerIdInt, // senderId = eventOrganizerId
+                eventIdInt,
+                userStatus,
+                userDetails
         );
 
-        // Save organizer notification
-        notificationService.saveNotification(organizerNotification,
-                aVoid -> Log.d("ViewEvent", "Notification sent to organizer"),
-                e -> Log.e("ViewEvent", "Failed to send notification to organizer", e)
+        // Notification for the organizer (GOOD type, senderId = -1 for system generated)
+        String organizerStatus = "User Waitlist Signup";
+        String organizerDetails = "User " + userName + " has signed up for the waitlist for your Event " + eventName;
+        Notification organizerNotification = new Notification(
+                0, // Auto-generate ID
+                constant.NotificationType.GOOD,
+                organizerIdInt,
+                -1, // senderId = -1 means system Generated
+                eventIdInt,
+                organizerStatus,
+                organizerDetails
         );
 
         // Save user notification
         notificationService.saveNotification(userNotification,
                 aVoid -> Log.d("ViewEvent", "Notification sent to user"),
                 e -> Log.e("ViewEvent", "Failed to send notification to user", e)
+        );
+
+        // Save organizer notification
+        notificationService.saveNotification(organizerNotification,
+                aVoid -> Log.d("ViewEvent", "Notification sent to organizer"),
+                e -> Log.e("ViewEvent", "Failed to send notification to organizer", e)
         );
     }
 }

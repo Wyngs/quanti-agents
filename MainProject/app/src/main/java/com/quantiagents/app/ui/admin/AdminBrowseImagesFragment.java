@@ -1,15 +1,17 @@
 package com.quantiagents.app.ui.admin;
 
 import android.os.Bundle;
+import android.text.Editable; // ADDED: Import for search
+import android.text.TextWatcher; // ADDED: Import for search listener
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText; // ADDED: Import for EditText
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -57,20 +59,20 @@ public class AdminBrowseImagesFragment extends Fragment {
         });
         recyclerView.setAdapter(adapter);
 
-        SearchView searchView = view.findViewById(R.id.admin_search_view);
-        if (searchView != null) {
-            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+        EditText searchInput = view.findViewById(R.id.input_search); // Changed to EditText and updated ID to match XML
+        if (searchInput != null) {
+            searchInput.setHint("Search Images..."); // Set dynamic hint for images
+            searchInput.addTextChangedListener(new TextWatcher() { // Changed listener to TextWatcher for EditText
                 @Override
-                public boolean onQueryTextSubmit(String query) {
-                    viewModel.searchImages(query);
-                    return true;
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    viewModel.searchImages(s.toString());
                 }
 
                 @Override
-                public boolean onQueryTextChange(String newText) {
-                    viewModel.searchImages(newText);
-                    return true;
-                }
+                public void afterTextChanged(Editable s) {}
             });
         }
 

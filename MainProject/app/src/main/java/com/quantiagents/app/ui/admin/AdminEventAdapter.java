@@ -29,6 +29,9 @@ public class AdminEventAdapter extends ListAdapter<Event, AdminEventAdapter.Even
     public interface OnEventDeleteListener {
         void onDelete(Event event);
     }
+    public interface OnItemClickListener {
+        void onItemClick(Event event);
+    }
 
     public interface OnEventViewListener {
         void onViewEvent(Event event);

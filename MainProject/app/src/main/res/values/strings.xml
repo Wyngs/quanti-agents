@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Event Lottery</string>
+    <string name="app_name">EqualEntry</string>
     <string name="splash_title">Welcome to</string>
     <string name="splash_title2">EqualEntry!</string>
     <string name="splash_subtitle">Tap to begin sign-in process.</string>
@@ -33,7 +33,9 @@
     <string name="error_login_invalid">That combo didn\'t work</string>
     <string name="message_password_hint">Still using device sign-in. Reach out to support to reset.</string>
     <string name="error_profile_missing">Profile not found</string>
-    <string name="profile_title">My profile</string>
+    <string name="profile_title">Profile Settings</string>
+    <string name="profile_subtitle">Manage your account information here</string>
+    <string name="profile_info_header">Personal Information</string>
     <string name="profile_contact_header">Contact</string>
     <string name="profile_phone_placeholder">Phone not added</string>
     <string name="profile_device_header">Device</string>
@@ -149,6 +151,7 @@
     <string name="join_waitlist">Join waitlist</string>
     <string name="view_event">View</string>
     <!-- Manage Event Info -->
+    <string name="manage_events_manage_info">Manage Event Info</string>
     <string name="manage_event_info_back">Back</string>
     <string name="manage_event_info_redraw_canceled">Redraw Canceled</string>
     <string name="manage_event_info_name">Event name</string>
@@ -198,4 +201,24 @@
     <string name="scan_qr_quick_access_scan_button">Scan</string>
     <string name="scan_qr_permission_required">Camera permission is required to scan QR codes</string>
     <string name="scan_qr_camera_error">Failed to start camera. Please try again.</string>
+
+    <!-- Buttons -->
+    <string name="notify_all">Notify all</string>
+    <string name="export_to_csv">Export to CSV</string>
+
+    <!-- Toasts / messages -->
+    <string name="notify_all_success">Notifications sent to all entrants in this list.</string>
+    <string name="notify_all_empty">There are no entrants in this list.</string>
+    <string name="notify_all_event_missing">Event info not available.</string>
+
+    <string name="export_csv_success">CSV exported for this list.</string>
+    <string name="export_csv_error">Failed to export CSV.</string>
+    <string name="manage_event_cancel_user">Cancel this entrant</string>
+    <string name="manage_events_show_qr">Show QR</string>
+    <string name="manage_events_qr_not_found">QR code is not available for this event.</string>
+    <string name="manage_events_qr_error">Could not load QR code.</string>
+    <string name="manage_events_qr_dialog_title">Event QR</string>
+    <string name="manage_events_qr_dialog_title_with_name">QR for %1$s</string>
+
+
 </resources>

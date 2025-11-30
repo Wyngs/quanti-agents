@@ -15,9 +15,11 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.appcompat.app.AlertDialog;
 
 import com.quantiagents.app.R;
 import com.quantiagents.app.ui.admin.viewmodel.AdminEventsViewModel;
+import com.quantiagents.app.models.Event;
 
 import java.util.ArrayList;
 
@@ -28,10 +30,10 @@ public class AdminBrowseEventsFragment extends Fragment {
     private AdminEventAdapter adapter;
     private EditText searchInput;
 
-    // Added the missing newInstance method
     public static AdminBrowseEventsFragment newInstance() {
         return new AdminBrowseEventsFragment();
     }
+
 
     @Nullable
     @Override
@@ -92,5 +94,18 @@ public class AdminBrowseEventsFragment extends Fragment {
 
         // Load Data
         viewModel.loadEvents();
+    }
+
+    // helper method to show event details
+    private void showEventDetails(Event event) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Event Details")
+                .setMessage("Title: " + event.getTitle() + "\n" +
+                        "ID: " + event.getEventId() + "\n" +
+                        "Description: " + (event.getDescription() != null ? event.getDescription() : "N/A") + "\n" +
+                        "Organizer ID: " + event.getOrganizerId())
+                .setPositiveButton("Close", null)
+                .setNegativeButton("Delete", (dialog, which) -> viewModel.deleteEvent(event))
+                .show();
     }
 }
