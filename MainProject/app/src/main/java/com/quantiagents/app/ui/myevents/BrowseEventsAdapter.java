@@ -3,17 +3,22 @@ package com.quantiagents.app.ui.myevents;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
 import com.quantiagents.app.R;
 import com.quantiagents.app.models.Event;
 
+import java.text.BreakIterator;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /** Adapter for BrowseEvents list. */
 public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapter.EventVH> {
@@ -25,11 +30,13 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
 
     private final List<Event> data;
     private final OnEventClick cb;
+    private final DateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
     public BrowseEventsAdapter(List<Event> initial, OnEventClick cb) {
         this.data = initial == null ? new ArrayList<>() : new ArrayList<>(initial);
         this.cb = cb;
     }
+
     public void setData(List<Event> newEvents) {
         data.clear();
         data.addAll(newEvents);
@@ -44,13 +51,22 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
     @NonNull
     @Override
     public EventVH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_browse_event, parent, false);
+        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.fragment_single_event, parent, false);
+        // Ensure correct layout params for RecyclerView
+        if (v.getLayoutParams() == null) {
+            v.setLayoutParams(new RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+        } else {
+            v.getLayoutParams().width = ViewGroup.LayoutParams.MATCH_PARENT;
+            v.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        }
         return new EventVH(v);
     }
 
     @Override
     public void onBindViewHolder(@NonNull EventVH h, int pos) {
-        h.bind(data.get(pos), cb);
+        h.bind(data.get(pos), cb, dateFmt);
     }
 
     @Override
@@ -58,39 +74,101 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
 
     static final class EventVH extends RecyclerView.ViewHolder {
         private final TextView title;
-        private final TextView subtitle;
-        private final TextView textClosed;
-        private final Button join;
-        private final Button view;
+        private final TextView description;
+        private final TextView statusChip;
+        private final TextView textDate;
+        private final TextView textRegStatus;
+        private final TextView textPrice;
+        private final TextView textCapacity;
+        private final TextView textOrganizer;
+        private final MaterialButton primaryAction;
+        private final MaterialButton secondaryAction;
+        private final MaterialButton viewEventAction;
+        private final ProgressBar progress;
 
         EventVH(@NonNull View itemView) {
             super(itemView);
-            title = itemView.findViewById(R.id.text_title);
-            subtitle = itemView.findViewById(R.id.text_subtitle);
-            textClosed = itemView.findViewById(R.id.text_closed);
-            join = itemView.findViewById(R.id.button_join);
-            view = itemView.findViewById(R.id.btn_view_event);
+            title = itemView.findViewById(R.id.single_title);
+            description = itemView.findViewById(R.id.single_description);
+            statusChip = itemView.findViewById(R.id.single_status_chip);
+            textDate = itemView.findViewById(R.id.single_text_date);
+            textRegStatus = itemView.findViewById(R.id.single_text_reg_status);
+            textPrice = itemView.findViewById(R.id.single_text_price);
+            textCapacity = itemView.findViewById(R.id.single_text_capacity);
+            textOrganizer = itemView.findViewById(R.id.single_text_organizer);
+            primaryAction = itemView.findViewById(R.id.single_action_primary);
+            secondaryAction = itemView.findViewById(R.id.single_action_secondary);
+            viewEventAction = itemView.findViewById(R.id.single_action_view);
+            progress = itemView.findViewById(R.id.single_progress);
         }
 
-        void bind(final Event e, final OnEventClick cb) {
-            title.setText(nullSafe(e.getTitle()));
-            // fallback empty
+        void bind(final Event e, final OnEventClick cb, DateFormat dateFmt) {
+            if (e == null) {
+                return;
+            }
+
+            if (progress != null) {
+                progress.setVisibility(View.GONE);
+            }
+
+            // Basic info
+            title.setText(nullSafe(e.getTitle(), "Untitled event"));
+
             String desc = "";
             try {
                 Object d = Event.class.getMethod("getDescription").invoke(e);
                 if (d instanceof String) desc = (String) d;
             } catch (Exception ignore) {}
-            subtitle.setText(desc);
+            description.setText(nullSafe(desc, "No description provided."));
+
+            // Details
+            String dateStr = e.getEventStartDate() != null ? dateFmt.format(e.getEventStartDate()) : "--";
+            textDate.setText(dateStr);
 
             boolean open = BrowseEventsFragment.isOpen(e);
-            textClosed.setVisibility(open ? View.GONE : View.VISIBLE);
-            join.setVisibility(open ? View.VISIBLE : View.GONE);
+            textRegStatus.setText(open ? "Registration Open" : "Registration Closed");
 
-            join.setOnClickListener(v -> cb.onJoinWaitlist(e));
-            view.setOnClickListener(v -> cb.onViewEvent(e));
+            Double cost = e.getCost();
+            String priceLabel = (cost == null || cost == 0) ? "Free"
+                    : String.format(Locale.US, "$%.2f", cost);
+            textPrice.setText(priceLabel);
+
+            double capacity = e.getEventCapacity();
+            if (capacity > 0) {
+                textCapacity.setText(String.format(Locale.US, "%.0f capacity", capacity));
+            } else {
+                textCapacity.setText("Capacity not set");
+            }
+
+            textOrganizer.setText("Organizer: Unknown");
+
+            // Status chip (simple open/closed/new)
+            if (BrowseEventsFragment.isNew(e)) {
+                statusChip.setText("New");
+            } else {
+                statusChip.setText(open ? "Open" : "Closed");
+            }
+
+            // Actions
+            secondaryAction.setVisibility(View.GONE);
+
+            if (open) {
+                primaryAction.setVisibility(View.VISIBLE);
+                primaryAction.setText("Join waiting list");
+                primaryAction.setOnClickListener(v -> cb.onJoinWaitlist(e));
+            } else {
+                primaryAction.setVisibility(View.GONE);
+            }
+
+            viewEventAction.setVisibility(View.VISIBLE);
+            viewEventAction.setText(R.string.view_event);
+            viewEventAction.setOnClickListener(v -> cb.onViewEvent(e));
+
             itemView.setOnClickListener(v -> cb.onViewEvent(e));
         }
 
-        private static String nullSafe(String s) { return s == null ? "" : s; }
+        private static String nullSafe(String s, String fallback) {
+            return s == null || s.isEmpty() ? fallback : s;
+        }
     }
 }

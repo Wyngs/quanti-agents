@@ -3,7 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:background="@color/backgroundLightGrey">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -12,28 +13,46 @@
         android:padding="8dp">
 
         <TextView
-            android:id="@+id/text_profile_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginHorizontal="16dp"
             android:text="@string/profile_title"
             android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
             android:textColor="@color/colorOnSurface"
             android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="10dp"
+            android:text="@string/profile_subtitle"/>
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="16dp"
-            app:strokeColor="@color/colorPrimary"
-            app:strokeWidth="2dp">
+            app:strokeColor="@color/borderColor"
+            app:cardCornerRadius="18dp"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="24dp">
+
+                <!--TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                    android:text="@string/profile_info_header"
+                    android:textColor="@color/colorOnSurfaceVariant"
+                    android:textStyle="bold">
+
+                </TextView-->
 
                 <TextView
                     android:id="@+id/text_profile_name"
@@ -114,7 +133,8 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="24dp"
-            android:text="@string/profile_edit_action" />
+            android:text="@string/profile_edit_action"
+            style="@style/Widget.QuantiAgents.Button.Black"/>
 
     </LinearLayout>
 

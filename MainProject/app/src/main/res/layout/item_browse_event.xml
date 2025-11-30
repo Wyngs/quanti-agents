@@ -14,14 +14,45 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/text_title"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@android:style/TextAppearance.Material.Medium"
-            android:textStyle="bold"
-            android:maxLines="2"
-            android:ellipsize="end"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/text_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAppearance="@android:style/TextAppearance.Material.Medium"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end"/>
+
+            <FrameLayout
+                android:id="@+id/frame_new_flag"
+                android:layout_width="80dp"
+                android:layout_height="40dp">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/ic_new_flag"
+                    android:rotation="180" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="    NEW"
+                    android:textColor="@android:color/white"
+                    android:textSize="18sp"
+                    android:textStyle="italic"/>
+
+            </FrameLayout>
+
+        </LinearLayout>
 
         <TextView
             android:id="@+id/text_subtitle"
@@ -49,18 +80,22 @@
             android:gravity="end"
             android:layout_marginTop="10dp">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_join"
+                style="@style/Widget.QuantiAgents.Button.Red"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/join_waitlist"
-                android:layout_marginEnd="8dp"/>
+                android:layout_marginEnd="8dp"
+                android:textSize="14sp"/>
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_view_event"
+                style="@style/Widget.QuantiAgents.Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/view_event"/>
+                android:text="@string/view_event"
+                android:textSize="14sp"/>
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

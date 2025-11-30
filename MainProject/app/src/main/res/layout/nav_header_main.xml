@@ -4,10 +4,13 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:paddingTop="24dp"
+    android:paddingHorizontal="10dp"
     android:background="@android:color/white">
 
     <LinearLayout
+        android:paddingTop="10dp"
+        android:paddingHorizontal="10dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
@@ -21,7 +24,7 @@
 
         <TextView
             android:id="@+id/text_header_title"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_weight="1"
@@ -37,20 +40,21 @@
             android:contentDescription="@string/nav_close"
             android:padding="2dp"
             android:src="@drawable/ic_close"
-            android:tint="@color/colorOnSurfaceVariant" />
+            app:tint="@color/colorOnSurfaceVariant" />
     </LinearLayout>
 
     <com.google.android.material.card.MaterialCardView
         style="@style/Widget.QuantiAgents.Card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="10dp"
         app:cardBackgroundColor="@color/colorSurfaceVariant">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
+            android:background="@color/fieldLight"
             android:padding="16dp">
 
             <TextView
@@ -59,7 +63,8 @@
                 android:layout_height="wrap_content"
                 android:text="@string/nav_logged_in_as"
                 android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                android:textColor="@color/colorOnSurfaceVariant" />
+                android:textColor="@color/colorOnSurfaceVariant"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/text_logged_in_name"

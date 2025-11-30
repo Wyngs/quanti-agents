@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <group android:checkableBehavior="single">
+    <group
+        android:id="@+id/group_entrant_features"
+        android:checkableBehavior="single">
+
         <item
             android:id="@+id/navigation_browse_events"
             android:title="@string/nav_item_browse" />
@@ -20,16 +23,13 @@
         <item
             android:id="@+id/navigation_notifications"
             android:title="@string/nav_item_notifications" />
-        <item
-            android:id="@+id/navigation_profile"
-            android:title="@string/nav_item_profile" />
-        <item
-            android:id="@+id/navigation_settings"
-            android:title="@string/nav_item_settings" />
-
     </group>
 
-    <group android:id="@+id/admin_group" android:checkableBehavior="single">
+    <group
+        android:id="@+id/admin_group"
+        android:checkableBehavior="single"
+        android:visible="false">
+
         <item
             android:id="@+id/navigation_admin_events"
             android:icon="@android:drawable/ic_menu_manage"
@@ -42,10 +42,22 @@
             android:id="@+id/navigation_admin_images"
             android:icon="@android:drawable/ic_menu_gallery"
             android:title="Manage Images" />
+        <item
+            android:id="@+id/navigation_admin_notifications"
+            android:icon="@android:drawable/ic_menu_info_details"
+            android:title="Review Notification Logs" />
     </group>
 
-    <item
-        android:id="@+id/navigation_logout"
-        android:title="@string/nav_item_logout" />
+    <group android:id="@+id/group_common">
+        <item
+            android:id="@+id/navigation_profile"
+            android:title="@string/nav_item_profile" />
+        <item
+            android:id="@+id/navigation_settings"
+            android:title="@string/nav_item_settings" />
+        <item
+            android:id="@+id/navigation_logout"
+            android:title="@string/nav_item_logout" />
+    </group>
 
 </menu>

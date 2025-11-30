@@ -1,6 +1,7 @@
 package com.quantiagents.app.ui.manageevents;
 
-import android.content.Intent;
+import android.app.AlertDialog;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,13 +16,21 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.journeyapps.barcodescanner.BarcodeEncoder;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
+import com.quantiagents.app.Services.QRCodeService;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
+import com.quantiagents.app.models.QRCode;
 import com.quantiagents.app.models.User;
 import com.quantiagents.app.ui.manageeventinfo.ManageEventInfoHostActivity;
+
+import android.content.Intent;
+import android.widget.ImageView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +53,7 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
 
     private EventService eventService;
     private UserService userService;
+    private QRCodeService qrCodeService;   // new
 
     public static ManageEventsFragment newInstance() {
         return new ManageEventsFragment();
@@ -69,6 +79,7 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
         App app = (App) requireActivity().getApplication();
         eventService = app.locator().eventService();
         userService = app.locator().userService();
+        qrCodeService = app.locator().qrCodeService();   // new
 
         totalEventsValue = view.findViewById(R.id.text_total_events_value);
         progressBar = view.findViewById(R.id.progress_manage_events);
@@ -171,5 +182,83 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
         Intent intent = new Intent(requireContext(), ManageEventInfoHostActivity.class);
         intent.putExtra(ManageEventInfoHostActivity.EXTRA_EVENT_ID, event.getEventId());
         startActivity(intent);
+    }
+
+    /**
+     * Callback from adapter when "Show QR" is pressed.
+     */
+    @Override
+    public void onShowQrClicked(@NonNull Event event) {
+        if (qrCodeService == null) {
+            Toast.makeText(requireContext(), R.string.manage_events_qr_error, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String eventId = event.getEventId();
+        if (eventId == null || eventId.trim().isEmpty()) {
+            Toast.makeText(requireContext(), R.string.manage_events_qr_error, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Load QR off the main thread
+        new Thread(() -> {
+            List<QRCode> codes;
+            try {
+                codes = qrCodeService.getQRCodesByEventId(eventId);
+            } catch (Exception e) {
+                codes = null;
+            }
+
+            if (!isAdded()) return;
+
+            String qrValue = null;
+            if (codes != null && !codes.isEmpty()) {
+                qrValue = codes.get(0).getQrCodeValue();
+            }
+
+            final String finalQrValue = qrValue;
+            requireActivity().runOnUiThread(() -> {
+                if (finalQrValue == null || finalQrValue.trim().isEmpty()) {
+                    Toast.makeText(requireContext(),
+                            R.string.manage_events_qr_not_found,
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    showQrDialog(finalQrValue, event.getTitle());
+                }
+            });
+        }).start();
+    }
+
+    private void showQrDialog(@NonNull String qrValue, @Nullable String eventTitle) {
+        if (!isAdded()) return;
+
+        ImageView imageView = new ImageView(requireContext());
+        int size = (int) (300 * getResources().getDisplayMetrics().density / 3); // ~300dp
+        imageView.setLayoutParams(new ViewGroup.LayoutParams(size, size));
+
+        Bitmap bitmap = generateQrBitmap(qrValue, size);
+        if (bitmap != null) {
+            imageView.setImageBitmap(bitmap);
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
+                .setView(imageView)
+                .setPositiveButton(android.R.string.ok, null);
+
+        String title = eventTitle == null || eventTitle.trim().isEmpty()
+                ? getString(R.string.manage_events_qr_dialog_title)
+                : getString(R.string.manage_events_qr_dialog_title_with_name, eventTitle);
+        builder.setTitle(title);
+
+        builder.show();
+    }
+
+    @Nullable
+    private Bitmap generateQrBitmap(@NonNull String value, int sizePx) {
+        try {
+            BarcodeEncoder encoder = new BarcodeEncoder();
+            return encoder.encodeBitmap(value, BarcodeFormat.QR_CODE, sizePx, sizePx);
+        } catch (WriterException e) {
+            return null;
+        }
     }
 }

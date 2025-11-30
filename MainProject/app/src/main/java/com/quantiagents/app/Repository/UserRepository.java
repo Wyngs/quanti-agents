@@ -254,7 +254,7 @@ public class UserRepository {
      * @param onFailure
      * Calls a function on failure
      */
-    public void usernameAndEmailExists(String username, String email,
+    public void checkProfileUnique(String username, String email,
                                        OnSuccessListener<List<Boolean>> onSuccess,
                                        OnFailureListener onFailure) {
 

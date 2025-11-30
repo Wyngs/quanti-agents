@@ -13,8 +13,13 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.graphics.Bitmap;
 
 import androidx.annotation.NonNull;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.journeyapps.barcodescanner.BarcodeEncoder;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
@@ -27,6 +32,7 @@ import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.GeoLocationService;
 import com.quantiagents.app.Services.ImageService;
+import com.quantiagents.app.Services.NotificationService;
 import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.Services.QRCodeService;
@@ -34,6 +40,7 @@ import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.GeoLocation;
 import com.quantiagents.app.models.Image;
+import com.quantiagents.app.models.Notification;
 import com.quantiagents.app.models.QRCode;
 import com.quantiagents.app.models.RegistrationHistory;
 import com.quantiagents.app.models.User;
@@ -78,12 +85,13 @@ public class ViewEventDetailsFragment extends Fragment {
     private EventService eventService;
     private UserService userService;
     private RegistrationHistoryService registrationHistoryService;
+    private NotificationService notificationService;
     private QRCodeService qrCodeService;
     private GeoLocationService geoLocationService;
     private ImageService imageService;
 
     // Views
-    private MaterialButton buttonBack;
+    private View buttonBack;
     private MaterialButton buttonErrorBack;
     private MaterialButton buttonToggleQr;
     private MaterialButton buttonJoin;
@@ -131,6 +139,7 @@ public class ViewEventDetailsFragment extends Fragment {
      * Factory method for creating a ViewEventDetailsFragment.
      *
      * @param eventId Firestore identifier of the event to display.
+     * @return A new instance of fragment ViewEventDetailsFragment.
      */
     public static ViewEventDetailsFragment newInstance(@NonNull String eventId) {
         Bundle args = new Bundle();
@@ -163,9 +172,11 @@ public class ViewEventDetailsFragment extends Fragment {
         eventService = locator.eventService();
         userService = locator.userService();
         registrationHistoryService = locator.registrationHistoryService();
+        notificationService = locator.notificationService();
         qrCodeService = locator.qrCodeService();
         geoLocationService = locator.geoLocationService();
         imageService = locator.imageService();
+        notificationService = locator.notificationService();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext());
         locationPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestMultiplePermissions(),
@@ -189,7 +200,11 @@ public class ViewEventDetailsFragment extends Fragment {
     }
 
     private void bindViews(@NonNull View view) {
-        buttonBack = view.findViewById(R.id.button_back);
+        View headerView = view.findViewById(R.id.header_view);
+        if (headerView != null) {
+            buttonBack = headerView.findViewById(R.id.header_back_button);
+        }
+        // Note: buttonBack may be null if header is not found, but setupClickListeners handles null check
         buttonErrorBack = view.findViewById(R.id.button_error_back);
         buttonToggleQr = view.findViewById(R.id.button_toggle_qr);
         buttonJoin = view.findViewById(R.id.button_join_waitlist);
@@ -218,7 +233,9 @@ public class ViewEventDetailsFragment extends Fragment {
     }
 
     private void setupClickListeners() {
-        buttonBack.setOnClickListener(v -> handleBackNavigation());
+        if (buttonBack != null) {
+            buttonBack.setOnClickListener(v -> handleBackNavigation());
+        }
         buttonErrorBack.setOnClickListener(v -> handleBackNavigation());
         buttonToggleQr.setOnClickListener(v -> {
             showQr = !showQr;
@@ -452,14 +469,43 @@ public class ViewEventDetailsFragment extends Fragment {
         }
 
         if (!TextUtils.isEmpty(qrCodeValue)) {
-            textQrValue.setVisibility(View.VISIBLE);
-            textQrValue.setText(qrCodeValue);
+            // Generate and display QR code bitmap
+            generateAndDisplayQRCode(qrCodeValue);
+            textQrValue.setVisibility(View.GONE); // Hide text, show bitmap instead
         } else {
+            // No QR code available
+            imageQrCode.setVisibility(View.GONE);
             textQrValue.setVisibility(View.VISIBLE);
             textQrValue.setText(R.string.view_event_qr_not_available);
         }
+    }
 
-        imageQrCode.setVisibility(View.GONE); // Placeholder: no QR bitmap generation yet.
+    private void generateAndDisplayQRCode(String qrValue) {
+        try {
+            BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
+            // Generate QR code bitmap with size 500x500
+            Bitmap bitmap = barcodeEncoder.encodeBitmap(qrValue, BarcodeFormat.QR_CODE, 500, 500);
+            
+            if (bitmap != null && imageQrCode != null) {
+                imageQrCode.setImageBitmap(bitmap);
+                imageQrCode.setVisibility(View.VISIBLE);
+            } else {
+                // Fallback to text if bitmap generation fails
+                imageQrCode.setVisibility(View.GONE);
+                if (textQrValue != null) {
+                    textQrValue.setVisibility(View.VISIBLE);
+                    textQrValue.setText(qrValue);
+                }
+            }
+        } catch (WriterException e) {
+            Log.e("ViewEventDetails", "Failed to generate QR code", e);
+            // Fallback to text if generation fails
+            imageQrCode.setVisibility(View.GONE);
+            if (textQrValue != null) {
+                textQrValue.setVisibility(View.VISIBLE);
+                textQrValue.setText(qrValue);
+            }
+        }
     }
     @SuppressLint("MissingPermission")
     private void joinWaitingList() {
@@ -494,61 +540,75 @@ public class ViewEventDetailsFragment extends Fragment {
 
         setActionEnabled(false);
 
-// Get location first (required for geo events; harmless for others)
-        if (!hasLocationPermission()) {
-            setActionEnabled(true);
+        // Get location if event requires it, otherwise proceed without location
+        if (eventRequiresLocation() && hasLocationPermission()) {
+            // Event requires location and we have permission - get location first
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(loc -> {
+                        pendingJoinLocation = loc;
+                        proceedWithRegistration();
+                    })
+                    .addOnFailureListener(e -> {
+                        if (!isAdded()) return;
+                        setActionEnabled(true);
+                        Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
+                    });
+        } else {
+            // Event doesn't require location - proceed without location
+            pendingJoinLocation = null;
+            proceedWithRegistration();
+        }
+    }
+
+    private void proceedWithRegistration() {
+        if (currentEvent == null || currentUser == null) {
+            if (isAdded()) {
+                requireActivity().runOnUiThread(() -> setActionEnabled(true));
+            }
             return;
         }
-        fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(loc -> {
-                    pendingJoinLocation = loc;
 
+        RegistrationHistory history = new RegistrationHistory(
+                currentEvent.getEventId(),
+                currentUser.getUserId(),
+                constant.EventRegistrationStatus.WAITLIST,
+                new Date()
+        );
                     if (eventRequiresLocation() && pendingJoinLocation == null) {
                         setActionEnabled(true);
                         Toast.makeText(getContext(), "Location required to join this event.", Toast.LENGTH_LONG).show();
                         return;
                     }
 
-                    RegistrationHistory history = new RegistrationHistory(
-                            currentEvent.getEventId(),
-                            currentUser.getUserId(),
-                            constant.EventRegistrationStatus.WAITLIST,
-                            new Date()
-                    );
+        registrationHistoryService.saveRegistrationHistory(history,
+                aVoid -> {
+                    if (currentEvent.getWaitingList() == null) currentEvent.setWaitingList(new ArrayList<>());
+                    if (!currentEvent.getWaitingList().contains(currentUser.getUserId())) {
+                        currentEvent.getWaitingList().add(currentUser.getUserId());
+                        eventService.updateEvent(currentEvent, v -> {}, e -> Log.e("ViewEvent", "Failed to sync waiting list", e));
+                    }
 
-                    registrationHistoryService.saveRegistrationHistory(history,
-                            aVoid -> {
-                                if (currentEvent.getWaitingList() == null) currentEvent.setWaitingList(new ArrayList<>());
-                                if (!currentEvent.getWaitingList().contains(currentUser.getUserId())) {
-                                    currentEvent.getWaitingList().add(currentUser.getUserId());
-                                    eventService.updateEvent(currentEvent, v -> {}, e -> Log.e("ViewEvent", "Failed to sync waiting list", e));
-                                }
+                    // Save real geo only if required and location available
+                    if (eventRequiresLocation() && pendingJoinLocation != null) {
+                        handleGeoLocationJoin(pendingJoinLocation);
+                    }
 
-                                // Save real geo only if required and location available
-                                if (eventRequiresLocation() && pendingJoinLocation != null) {
-                                    handleGeoLocationJoin(pendingJoinLocation);
-                                }
+                    // Send notifications to organizer and user
+                    sendRegistrationNotifications(currentEvent, currentUser);
 
-                                if (!isAdded()) return;
-                                requireActivity().runOnUiThread(() -> {
-                                    Toast.makeText(getContext(), R.string.view_event_toast_join_success, Toast.LENGTH_SHORT).show();
-                                    loadContent();
-                                });
-                            },
-                            e -> {
-                                if (!isAdded()) return;
-                                requireActivity().runOnUiThread(() -> {
-                                    setActionEnabled(true);
-                                    Toast.makeText(getContext(), R.string.view_event_toast_join_failure, Toast.LENGTH_LONG).show();
-                                });
-                            });
-
-                })
-                .addOnFailureListener(e -> {
-                    setActionEnabled(true);
-                    Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
+                    if (!isAdded()) return;
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), R.string.view_event_toast_join_success, Toast.LENGTH_SHORT).show();
+                        loadContent();
+                    });
+                },
+                e -> {
+                    if (!isAdded()) return;
+                    requireActivity().runOnUiThread(() -> {
+                        setActionEnabled(true);
+                        Toast.makeText(getContext(), R.string.view_event_toast_join_failure, Toast.LENGTH_LONG).show();
+                    });
                 });
-
     }
     private boolean eventRequiresLocation() {
         return currentEvent != null && currentEvent.isGeoLocationOn();
@@ -783,5 +843,68 @@ public class ViewEventDetailsFragment extends Fragment {
             return String.valueOf(longValue);
         }
         return String.format(Locale.getDefault(), "%.2f", value);
+    }
+
+    /**
+     * Sends notifications to both the organizer and the user when a user signs up for an event.
+     */
+    private void sendRegistrationNotifications(Event event, User user) {
+        if (event == null || user == null) return;
+
+        String eventId = event.getEventId();
+        String userId = user.getUserId();
+        String organizerId = event.getOrganizerId();
+
+        if (eventId == null || userId == null || organizerId == null) return;
+
+        // Convert String IDs to int for notifications
+        int eventIdInt = Math.abs(eventId.hashCode());
+        int userIdInt = Math.abs(userId.hashCode());
+        int organizerIdInt = Math.abs(organizerId.hashCode());
+
+        String eventName = event.getTitle() != null ? event.getTitle() : "Event";
+        String userName = user.getName() != null && !user.getName().trim().isEmpty() 
+                ? user.getName().trim() 
+                : (user.getUsername() != null && !user.getUsername().trim().isEmpty() 
+                    ? user.getUsername().trim() 
+                    : "User");
+
+        // Notification for the user (GOOD type)
+        String userStatus = "User Waitlist Signup";
+        String userDetails = "Thanks for signing up for the waitlist for Event : " + eventName + ". We will keep you updated.";
+        Notification userNotification = new Notification(
+                0, // Auto-generate ID
+                constant.NotificationType.GOOD,
+                userIdInt,
+                organizerIdInt, // senderId = eventOrganizerId
+                eventIdInt,
+                userStatus,
+                userDetails
+        );
+
+        // Notification for the organizer (GOOD type, senderId = -1 for system generated)
+        String organizerStatus = "User Waitlist Signup";
+        String organizerDetails = "User " + userName + " has signed up for the waitlist for your Event " + eventName;
+        Notification organizerNotification = new Notification(
+                0, // Auto-generate ID
+                constant.NotificationType.GOOD,
+                organizerIdInt,
+                -1, // senderId = -1 means system Generated
+                eventIdInt,
+                organizerStatus,
+                organizerDetails
+        );
+
+        // Save user notification
+        notificationService.saveNotification(userNotification,
+                aVoid -> Log.d("ViewEvent", "Notification sent to user"),
+                e -> Log.e("ViewEvent", "Failed to send notification to user", e)
+        );
+
+        // Save organizer notification
+        notificationService.saveNotification(organizerNotification,
+                aVoid -> Log.d("ViewEvent", "Notification sent to organizer"),
+                e -> Log.e("ViewEvent", "Failed to send notification to organizer", e)
+        );
     }
 }

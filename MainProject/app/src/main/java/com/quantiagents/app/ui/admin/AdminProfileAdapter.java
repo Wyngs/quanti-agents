@@ -19,14 +19,21 @@ import java.util.Objects;
 public class AdminProfileAdapter extends ListAdapter<UserSummary, AdminProfileAdapter.ProfileViewHolder> {
 
     private final OnProfileDeleteListener deleteListener;
+    private final OnItemClickListener itemClickListener;
 
     public interface OnProfileDeleteListener {
         void onDelete(UserSummary profile);
     }
 
-    public AdminProfileAdapter(OnProfileDeleteListener deleteListener) {
+    // added interface for item clicks
+    public interface OnItemClickListener {
+        void onItemClick(UserSummary profile);
+    }
+
+    public AdminProfileAdapter(OnProfileDeleteListener deleteListener, OnItemClickListener itemClickListener) { // ADDED: Second parameter
         super(new ProfileDiffCallback());
         this.deleteListener = deleteListener;
+        this.itemClickListener = itemClickListener;
     }
 
     @NonNull
@@ -40,7 +47,7 @@ public class AdminProfileAdapter extends ListAdapter<UserSummary, AdminProfileAd
     @Override
     public void onBindViewHolder(@NonNull ProfileViewHolder holder, int position) {
         UserSummary profile = getItem(position);
-        holder.bind(profile, deleteListener);
+        holder.bind(profile, deleteListener, itemClickListener);
     }
 
     static class ProfileViewHolder extends RecyclerView.ViewHolder {
@@ -55,10 +62,11 @@ public class AdminProfileAdapter extends ListAdapter<UserSummary, AdminProfileAd
             deleteButton = itemView.findViewById(R.id.item_delete_button);
         }
 
-        void bind(UserSummary profile, OnProfileDeleteListener deleteListener) {
+        void bind(UserSummary profile, OnProfileDeleteListener deleteListener, OnItemClickListener itemClickListener) { // ADDED: Added listener param
             nameView.setText(profile.getName());
             emailView.setText(profile.getEmail());
             deleteButton.setOnClickListener(v -> deleteListener.onDelete(profile));
+            itemView.setOnClickListener(v -> itemClickListener.onItemClick(profile)); // ADDED: Row click listener
         }
     }
 

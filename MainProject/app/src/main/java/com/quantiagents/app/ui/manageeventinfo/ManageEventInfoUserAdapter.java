@@ -3,12 +3,15 @@ package com.quantiagents.app.ui.manageeventinfo;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.quantiagents.app.App;
+import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.RegistrationHistory;
@@ -31,9 +34,19 @@ import java.util.concurrent.Executors;
 public class ManageEventInfoUserAdapter
         extends RecyclerView.Adapter<ManageEventInfoUserAdapter.UserViewHolder> {
 
+    public interface OnCancelClickListener {
+        void onCancelClicked(RegistrationHistory history);
+    }
+
     private final List<RegistrationHistory> registrations = new ArrayList<>();
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private UserService userService;
+
+    // For showing/hiding the trash icon
+    @Nullable
+    private constant.EventRegistrationStatus statusFilter;
+    @Nullable
+    private OnCancelClickListener cancelClickListener;
 
     /** Old code expects a no-arg constructor, so we keep it. */
     public ManageEventInfoUserAdapter() {
@@ -57,6 +70,15 @@ public class ManageEventInfoUserAdapter
         notifyDataSetChanged();
     }
 
+    public void setStatusFilter(@Nullable constant.EventRegistrationStatus status) {
+        this.statusFilter = status;
+        notifyDataSetChanged();
+    }
+
+    public void setOnCancelClickListener(@Nullable OnCancelClickListener listener) {
+        this.cancelClickListener = listener;
+    }
+
     @NonNull
     @Override
     public UserViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -73,13 +95,29 @@ public class ManageEventInfoUserAdapter
 
     @Override
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
-        RegistrationHistory reg = registrations.get(position);
+        final RegistrationHistory reg = registrations.get(position);
 
         final String fallbackId = reg.getUserId() != null ? reg.getUserId() : "Unknown user";
 
         // Temporary placeholders while user lookup happens
         holder.nameText.setText(fallbackId);
         holder.infoText.setText("Username: @" + fallbackId);
+
+        // Show/hide the trash icon based on the current tab
+        if (holder.cancelButton != null) {
+            if (statusFilter == constant.EventRegistrationStatus.SELECTED) {
+                // Only show in SELECTED tab (requirement: move non-confirmers to CANCELLED)
+                holder.cancelButton.setVisibility(View.VISIBLE);
+                holder.cancelButton.setOnClickListener(v -> {
+                    if (cancelClickListener != null) {
+                        cancelClickListener.onCancelClicked(reg);
+                    }
+                });
+            } else {
+                holder.cancelButton.setVisibility(View.GONE);
+                holder.cancelButton.setOnClickListener(null);
+            }
+        }
 
         // Do the user lookup off the main thread
         io.execute(() -> {
@@ -94,7 +132,7 @@ public class ManageEventInfoUserAdapter
                 if (u.getName() != null && !u.getName().trim().isEmpty()) {
                     displayName = u.getName().trim();
                 }
-                // If you later add a proper username field, swap it in here.
+                // Using email as username for now
                 if (u.getEmail() != null && !u.getEmail().trim().isEmpty()) {
                     username = u.getEmail().trim();
                 }
@@ -128,11 +166,13 @@ public class ManageEventInfoUserAdapter
     static class UserViewHolder extends RecyclerView.ViewHolder {
         final TextView nameText;   // Line 1
         final TextView infoText;   // Line 2 + 3
+        final ImageButton cancelButton;
 
         UserViewHolder(@NonNull View itemView) {
             super(itemView);
             nameText = itemView.findViewById(R.id.text_user_name);
             infoText = itemView.findViewById(R.id.text_user_info);
+            cancelButton = itemView.findViewById(R.id.button_cancel_user);
         }
     }
 
@@ -141,10 +181,6 @@ public class ManageEventInfoUserAdapter
      *
      * Right now this returns an empty string so everything compiles even if
      * you haven't decided which field to use.
-     *
-     * TODO: Replace this with your real joined date, e.g. from reg or user:
-     *   Date joined = reg.getJoinedAt();
-     *   return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(joined);
      */
     private String formatJoined(RegistrationHistory reg) {
         return "";

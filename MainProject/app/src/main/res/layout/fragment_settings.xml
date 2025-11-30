@@ -68,12 +68,11 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_delete_profile"
-                    style="@style/Widget.QuantiAgents.Button.Tonal"
+                    style="@style/Widget.QuantiAgents.Button.Red"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="@string/settings_delete_action"
-                    android:textColor="@color/colorAccent" />
+                    android:text="@string/settings_delete_action" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

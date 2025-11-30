@@ -30,7 +30,7 @@ public class ManageEventInfoPagerAdapter extends FragmentStateAdapter {
         final String status = switch (position) {
             case 1 -> "SELECTED";
             case 2 -> "CONFIRMED";
-            case 3 -> "CANCELED";
+            case 3 -> "CANCELLED";
             default -> "WAITLIST";
         };
         return ManageEventInfoListFragment.newInstance(eventId, status);

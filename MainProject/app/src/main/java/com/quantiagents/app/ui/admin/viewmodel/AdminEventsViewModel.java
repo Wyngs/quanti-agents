@@ -14,6 +14,8 @@ import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.User;
 import com.quantiagents.app.models.UserSummary;
+import com.quantiagents.app.Services.NotificationService;
+import com.quantiagents.app.models.Notification;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 public class AdminEventsViewModel extends AndroidViewModel {
 
     private final AdminService adminService;
+    private final NotificationService notificationService;
 
     // Master lists to support Search functionality
     private List<Event> masterEventList = new ArrayList<>();
@@ -37,6 +40,10 @@ public class AdminEventsViewModel extends AndroidViewModel {
     private final MutableLiveData<List<Image>> images = new MutableLiveData<>();
     public LiveData<List<Image>> getImages() { return images; }
 
+    // --- NOTIFICATIONS ---
+    private final MutableLiveData<List<Notification>> notifications = new MutableLiveData<>();
+    public LiveData<List<Notification>> getNotifications() { return notifications; }
+
     private final MutableLiveData<String> toastMessage = new MutableLiveData<>();
     public LiveData<String> getToastMessage() { return toastMessage; }
 
@@ -44,6 +51,7 @@ public class AdminEventsViewModel extends AndroidViewModel {
         super(application);
         App app = (App) application;
         this.adminService = app.locator().adminService();
+        this.notificationService = app.locator().notificationService();
     }
 
     // --- EVENTS ---
@@ -174,4 +182,19 @@ public class AdminEventsViewModel extends AndroidViewModel {
                 .collect(Collectors.toList());
         images.setValue(filtered);
     }
+
+    // --- NOTIFICATIONS ---
+
+    public void loadNotifications() {
+        new Thread(() -> {
+            try {
+                List<Notification> list = notificationService.getAllNotifications();
+                notifications.postValue(list != null ? list : new ArrayList<>());
+            } catch (Exception e) {
+                Log.e("AdminVM", "Error loading notifications", e);
+                toastMessage.postValue("Error loading logs");
+            }
+        }).start();
+    }
+
 }

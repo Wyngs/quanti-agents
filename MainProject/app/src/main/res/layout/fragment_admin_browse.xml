@@ -9,20 +9,23 @@
         android:id="@+id/text_admin_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Admin Browse"
+        android:text="Admin Browse Profiles"
         android:textSize="24sp"
         android:textStyle="bold"
         android:layout_marginBottom="16dp" />
 
-    <androidx.appcompat.widget.SearchView
-        android:id="@+id/admin_search_view"
+    <EditText
+        android:id="@+id/input_search"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="50dp"
         android:layout_marginBottom="12dp"
-        android:background="@android:color/white"
-        android:elevation="2dp"
-        android:queryHint="Search..."
-        android:iconifiedByDefault="false" />
+        android:background="@android:drawable/editbox_background"
+        android:drawableStart="@android:drawable/ic_menu_search"
+        android:drawablePadding="8dp"
+        android:hint="Search Profiles..."
+        android:padding="10dp"
+        android:inputType="text"
+        android:maxLines="1" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/admin_recycler_view"
