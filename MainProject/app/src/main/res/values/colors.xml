@@ -40,7 +40,7 @@
     <color name="dividerColor">#E0E0E0</color>
 
     <!-- Status / System Bars -->
-    <color name="statusBarColor">#303F9F</color>
+    <color name="statusBarColor">#2C2C2C</color>
     <color name="navigationBarColor">#FFFFFF</color>
 
     <!-- Extra Helper Colours-->
