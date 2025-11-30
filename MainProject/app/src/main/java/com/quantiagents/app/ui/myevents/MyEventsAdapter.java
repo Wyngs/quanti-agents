@@ -209,6 +209,7 @@ public class MyEventsAdapter extends RecyclerView.Adapter<MyEventsAdapter.ViewHo
                     primaryAction.setText("Leave Waiting List");
                     primaryAction.setIconResource(R.drawable.ic_cancel_circle);
                     primaryAction.setBackgroundTintList(ColorStateList.valueOf(0xFFF44336)); // Red
+                    primaryAction.setTextColor(ColorStateList.valueOf(0xFFFFFFFF));
                     primaryAction.setOnClickListener(v -> listener.onLeaveWaitlist(e.getEventId()));
                     break;
 

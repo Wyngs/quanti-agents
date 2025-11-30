@@ -192,15 +192,13 @@
             <!-- View Event Button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/single_action_view"
-                style="@style/Widget.QuantiAgents.Button.Tonal"
+                style="@style/Widget.QuantiAgents.Button.Green"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="View Event"
+                android:text="View Ticket"
                 android:layout_marginTop="8dp"
                 android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:backgroundTint="#212121"
-                android:textColor="#FFFFFF"/>
+                android:insetBottom="0dp"/>
 
         </LinearLayout>
 

@@ -50,16 +50,20 @@ public class AdminBrowseEventsFragment extends Fragment {
         recyclerView = view.findViewById(R.id.recycler);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        // UPDATED CONSTRUCTOR CALL
         adapter = new AdminEventAdapter(
                 event -> {
-                    viewModel.deleteEvent(event); // Argument 1: Delete Listener
+                    viewModel.deleteEvent(event);
                 },
-                event -> { // Added second argument for item click details
-                    showEventDetails(event); // Argument 2: Item Click Listener
+                event -> {
+                    // Navigate to event details
+                    Fragment detailsFragment = com.quantiagents.app.ui.ViewEventDetailsFragment.newInstance(event.getEventId());
+                    requireActivity().getSupportFragmentManager()
+                            .beginTransaction()
+                            .replace(R.id.content_container, detailsFragment)
+                            .addToBackStack(null)
+                            .commit();
                 }
         );
-
         recyclerView.setAdapter(adapter);
 
         // Search setup

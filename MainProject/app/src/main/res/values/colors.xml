@@ -53,4 +53,11 @@
     <color name="colorShadow">#1A253399</color>
     <color name="colorBlack">#000000</color>
 
+    <!-- UI Mockup Colors -->
+    <color name="headerLightBlue">#ADD8E6</color> <!-- Light blue for header bars -->
+    <color name="buttonLightBlue">#87CEEB</color> <!-- Light blue for primary buttons -->
+    <color name="buttonRed">#FF4444</color> <!-- Red for cancel/destructive buttons -->
+    <color name="buttonGreen">#4CAF50</color> <!-- Green for view/success buttons -->
+    <color name="textOnLightBlue">#000000</color> <!-- Text color on light blue background -->
+
 </resources>

@@ -48,6 +48,7 @@
     <string name="delete_profile_title">Remove profile?</string>
     <string name="delete_profile_body">This clears your data from the device. No undo.</string>
     <string name="delete_profile_confirm">Delete</string>
+    <string name="delete_event">Delete Event</string>
     <string name="message_profile_deleted">Profile deleted</string>
     <string name="edit_profile_title">Edit profile</string>
     <string name="edit_save_action">Save changes</string>
@@ -93,7 +94,7 @@
     <string name="create_event_geolocation_label">Require Geolocation</string>
     <string name="create_event_geolocation_description">Track where entrants join the waiting list</string>
     <string name="create_event_button">Create Event</string>
-    <string name="view_event_back_button">Back to events</string>
+    <string name="view_event_back_button">Back...</string>
     <string name="view_event_error_title">Event unavailable</string>
     <string name="view_event_error_message">We can\'t load this event right now. Try again later or return to the events list.</string>
     <string name="view_event_show_qr">Show QR</string>

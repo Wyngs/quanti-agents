@@ -14,17 +14,12 @@
         android:gravity="center_horizontal"
         android:orientation="vertical">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_back"
-            style="@style/Widget.QuantiAgents.Button.Tonal"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:insetLeft="0dp"
-            android:insetRight="0dp"
-            android:text="@string/view_event_back_button"
-            app:icon="@drawable/ic_arrow_left"
-            app:iconGravity="textStart"
-            app:iconPadding="8dp" />
+<!--        &lt;!&ndash; Header with back button &ndash;&gt;-->
+        <include
+            android:id="@+id/header_view"
+            layout="@layout/toolbar_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
 
         <ProgressBar
             android:id="@+id/progress_loading"
@@ -381,7 +376,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/button_join_waitlist"
-                        style="@style/Widget.QuantiAgents.Button"
+                        style="@style/Widget.QuantiAgents.Button.Red"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/view_event_join_waitlist"
