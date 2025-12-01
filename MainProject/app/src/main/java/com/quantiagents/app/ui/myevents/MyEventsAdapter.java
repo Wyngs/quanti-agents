@@ -26,20 +26,60 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Adapter for displaying user's registered events in MyEventFragment.
+ * Handles events in different statuses: waiting, selected, confirmed, and past.
+ */
 public class MyEventsAdapter extends RecyclerView.Adapter<MyEventsAdapter.ViewHolder> {
 
+    /**
+     * Interface for handling event action callbacks.
+     */
     public interface OnEventActionListener {
+        /**
+         * Called when user wants to view event details.
+         *
+         * @param eventId The ID of the event to view
+         */
         void onViewEvent(String eventId);
+        
+        /**
+         * Called when user wants to leave a waitlist.
+         *
+         * @param eventId The ID of the event to leave
+         */
         void onLeaveWaitlist(String eventId);
+        
+        /**
+         * Called when user accepts a lottery invitation.
+         *
+         * @param history The registration history to update
+         */
         void onAccept(RegistrationHistory history);
+        
+        /**
+         * Called when user declines a lottery invitation.
+         *
+         * @param history The registration history to update
+         */
         void onDecline(RegistrationHistory history);
     }
 
+    /**
+     * Data class representing a single event item with its registration history and organizer info.
+     */
     public static class MyEventItem {
         public final RegistrationHistory history;
         public final Event event;
         public final String organizerName;
 
+        /**
+         * Constructor for MyEventItem.
+         *
+         * @param history The registration history for this event
+         * @param event The event object
+         * @param organizerName The name of the event organizer
+         */
         public MyEventItem(@NonNull RegistrationHistory history, @NonNull Event event, String organizerName) {
             this.history = history;
             this.event = event;
@@ -51,10 +91,20 @@ public class MyEventsAdapter extends RecyclerView.Adapter<MyEventsAdapter.ViewHo
     private final OnEventActionListener listener;
     private final DateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
+    /**
+     * Constructor that initializes the adapter with an action listener.
+     *
+     * @param listener The callback interface for handling user actions
+     */
     public MyEventsAdapter(OnEventActionListener listener) {
         this.listener = listener;
     }
 
+    /**
+     * Sets new event items and notifies the adapter of the change.
+     *
+     * @param newItems The new list of event items to display
+     */
     public void setItems(List<MyEventItem> newItems) {
         items.clear();
         if (newItems != null) {

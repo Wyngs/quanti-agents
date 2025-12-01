@@ -23,6 +23,10 @@ import com.quantiagents.app.models.Event;
 
 import java.util.ArrayList;
 
+/**
+ * Fragment that displays all events for admin viewing and management.
+ * Supports search functionality and allows admins to view event details or delete events.
+ */
 public class AdminBrowseEventsFragment extends Fragment {
 
     private AdminEventsViewModel viewModel;
@@ -30,6 +34,11 @@ public class AdminBrowseEventsFragment extends Fragment {
     private AdminEventAdapter adapter;
     private EditText searchInput;
 
+    /**
+     * Creates a new instance of AdminBrowseEventsFragment.
+     *
+     * @return A new AdminBrowseEventsFragment instance
+     */
     public static AdminBrowseEventsFragment newInstance() {
         return new AdminBrowseEventsFragment();
     }
@@ -96,7 +105,11 @@ public class AdminBrowseEventsFragment extends Fragment {
         viewModel.loadEvents();
     }
 
-    // helper method to show event details
+    /**
+     * Helper method to show event details.
+     *
+     * @param event The event to display details for
+     */
     private void showEventDetails(Event event) {
         new AlertDialog.Builder(requireContext())
                 .setTitle("Event Details")

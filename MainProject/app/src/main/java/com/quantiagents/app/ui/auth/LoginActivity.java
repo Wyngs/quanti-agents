@@ -69,6 +69,9 @@ public class LoginActivity extends AppCompatActivity {
         );
     }
 
+    /**
+     * Binds all view references from the layout.
+     */
     private void bindViews() {
         emailLayout = findViewById(R.id.login_username_layout);
         passwordLayout = findViewById(R.id.login_password_layout);
@@ -77,11 +80,20 @@ public class LoginActivity extends AppCompatActivity {
         switchUserButton = findViewById(R.id.button_switch_user);
     }
 
+    /**
+     * Preloads the email field with the user's email address.
+     *
+     * @param user The user object containing the email to preload
+     */
     private void preloadInputs(User user) {
         emailField.setText(user.getEmail());
         passwordField.setText("");
     }
 
+    /**
+     * Handles the login button click.
+     * Validates input fields and attempts to authenticate the user.
+     */
     private void handleLogin() {
         emailLayout.setError(null);
         passwordLayout.setError(null);
@@ -141,6 +153,9 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
+    /**
+     * Navigates to the main activity after successful login.
+     */
     private void openHome() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -150,6 +165,12 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
+    /**
+     * Safely extracts text from a TextInputEditText, returning an empty string if null.
+     *
+     * @param field The TextInputEditText to extract text from
+     * @return The trimmed text content, or an empty string if null
+     */
     private String safeText(TextInputEditText field) {
         return field.getText() == null ? "" : field.getText().toString().trim();
     }

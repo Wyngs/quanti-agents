@@ -55,10 +55,18 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
     private UserService userService;
     private QRCodeService qrCodeService;   // new
 
+    /**
+     * Creates a new instance of ManageEventsFragment.
+     *
+     * @return A new ManageEventsFragment instance
+     */
     public static ManageEventsFragment newInstance() {
         return new ManageEventsFragment();
     }
 
+    /**
+     * Required empty public constructor for Fragment instantiation.
+     */
     public ManageEventsFragment() {
         // Required empty public constructor
     }
@@ -96,6 +104,7 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
     /**
      * Loads all events, filters them to ones organized by the current user,
      * then updates the summary box and the list.
+     * Also generates QR codes for events that don't have them.
      */
     private void loadEvents() {
         showLoading(true);

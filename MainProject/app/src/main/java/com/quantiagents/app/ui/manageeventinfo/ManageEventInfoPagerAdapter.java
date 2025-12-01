@@ -23,7 +23,13 @@ public class ManageEventInfoPagerAdapter extends FragmentStateAdapter {
         this.eventId = eventId;
     }
 
-    /** Creates the page fragment for a given position. */
+    /**
+     * Creates the page fragment for a given position.
+     * Position 0 = WAITLIST, 1 = SELECTED, 2 = CONFIRMED, 3 = CANCELLED.
+     *
+     * @param position The position of the page (0-3)
+     * @return A new ManageEventInfoListFragment for the specified status
+     */
     @NonNull
     @Override
     public Fragment createFragment(int position) {
@@ -36,7 +42,11 @@ public class ManageEventInfoPagerAdapter extends FragmentStateAdapter {
         return ManageEventInfoListFragment.newInstance(eventId, status);
     }
 
-    /** @return Fixed page count: 4 statuses. */
+    /**
+     * Returns the fixed page count: 4 statuses (WAITLIST, SELECTED, CONFIRMED, CANCELLED).
+     *
+     * @return The number of pages (4)
+     */
     @Override
     public int getItemCount() { return 4; }
 }

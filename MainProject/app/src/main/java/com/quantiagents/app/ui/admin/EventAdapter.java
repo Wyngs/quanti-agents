@@ -11,13 +11,34 @@ import com.quantiagents.app.R;
 import com.quantiagents.app.models.Event;
 import java.util.List;
 
+/**
+ * Adapter for displaying events in admin management screens.
+ * Allows admins to view event details and delete events.
+ */
 public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHolder> {
 
     private final List<Event> eventList;
     private final OnDeleteClickListener listener;
 
-    public interface OnDeleteClickListener { void onDeleteClick(Event event, int position); }
+    /**
+     * Interface for handling event deletion.
+     */
+    public interface OnDeleteClickListener {
+        /**
+         * Called when admin wants to delete an event.
+         *
+         * @param event The event to delete
+         * @param position The position of the event in the list
+         */
+        void onDeleteClick(Event event, int position);
+    }
 
+    /**
+     * Constructor that initializes the adapter with events and a delete listener.
+     *
+     * @param eventList The list of events to display
+     * @param listener The callback interface for handling event deletion
+     */
     public EventAdapter(List<Event> eventList, OnDeleteClickListener listener) {
         this.eventList = eventList;
         this.listener = listener;
@@ -48,6 +69,12 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
             deleteButton = itemView.findViewById(R.id.button_delete_event);
         }
 
+        /**
+         * Binds an event to the view holder, displaying event details and delete button.
+         *
+         * @param event The event to display
+         * @param listener The listener for delete actions
+         */
         void bind(final Event event, final OnDeleteClickListener listener) {
             eventName.setText(event.getTitle()); // Turn 1 model uses getTitle()
             eventDetails.setText("ID: " + event.getEventId());

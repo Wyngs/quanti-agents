@@ -24,15 +24,29 @@ public class ManageEventsAdapter extends RecyclerView.Adapter<ManageEventsAdapte
      * Listener used to forward row actions.
      */
     public interface OnManageEventInfoClickListener {
+        /**
+         * Called when user clicks the "Manage Event Info" button.
+         *
+         * @param event The event to manage
+         */
         void onManageEventInfoClicked(@NonNull Event event);
 
-        // New callback for "Show QR"
+        /**
+         * Called when user clicks the "Show QR" button.
+         *
+         * @param event The event whose QR code should be displayed
+         */
         void onShowQrClicked(@NonNull Event event);
     }
 
     private final List<Event> data = new ArrayList<>();
     private final OnManageEventInfoClickListener listener;
 
+    /**
+     * Constructor that initializes the adapter with an action listener.
+     *
+     * @param listener The callback interface for handling event actions
+     */
     public ManageEventsAdapter(@NonNull OnManageEventInfoClickListener listener) {
         this.listener = listener;
     }

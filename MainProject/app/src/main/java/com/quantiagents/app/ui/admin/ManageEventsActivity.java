@@ -19,6 +19,10 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Activity for managing events as an admin.
+ * Displays all events and allows admins to delete them.
+ */
 public class ManageEventsActivity extends AppCompatActivity {
 
     private AdminService adminService;
@@ -28,6 +32,11 @@ public class ManageEventsActivity extends AppCompatActivity {
     private View rootView;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    /**
+     * Initializes the activity and sets up the event list with delete functionality.
+     *
+     * @param savedInstanceState The saved instance state bundle
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,6 +63,9 @@ public class ManageEventsActivity extends AppCompatActivity {
         loadEvents();
     }
 
+    /**
+     * Loads all events from the database and updates the adapter.
+     */
     private void loadEvents() {
         progressBar.setVisibility(View.VISIBLE);
 
@@ -79,6 +91,12 @@ public class ManageEventsActivity extends AppCompatActivity {
         );
     }
 
+    /**
+     * Deletes an event and updates the UI.
+     *
+     * @param event The event to delete
+     * @param position The position of the event in the list
+     */
     private void deleteEvent(Event event, int position) {
         adminService.removeEvent(
                 event.getEventId(),

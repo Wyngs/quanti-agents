@@ -30,12 +30,21 @@ public class MessageRepository {
 
     private final CollectionReference context;
 
+    /**
+     * Constructor that initializes the MessageRepository with a FireBaseRepository.
+     *
+     * @param fireBaseRepository The base repository providing access to the Firestore collection
+     */
     public MessageRepository(FireBaseRepository fireBaseRepository) {
         this.context = fireBaseRepository.getMessageCollectionRef();
     }
 
     /**
      * Synchronously retrieves a Message by its unique ID.
+     * This method blocks the calling thread until the database operation completes.
+     *
+     * @param messageId The unique identifier of the message
+     * @return The Message object if found, or null if not found or if an error occurs
      */
     public Message getMessageById(String messageId) {
         if (messageId == null || messageId.trim().isEmpty()) {
@@ -60,6 +69,10 @@ public class MessageRepository {
 
     /**
      * Synchronously retrieves all messages for a chat, ordered by timestamp.
+     * This method blocks the calling thread until the database operation completes.
+     *
+     * @param chatId The unique identifier of the chat
+     * @return List of Message objects for the chat, ordered by timestamp
      */
     public List<Message> getMessagesByChatId(String chatId) {
         if (chatId == null || chatId.trim().isEmpty()) {
@@ -91,6 +104,10 @@ public class MessageRepository {
 
     /**
      * Asynchronously retrieves all messages for a chat, ordered by timestamp.
+     *
+     * @param chatId The unique identifier of the chat
+     * @param onSuccess Callback invoked with the list of Message objects, ordered by timestamp
+     * @param onFailure Callback invoked if an error occurs or chatId is invalid
      */
     public void getMessagesByChatId(String chatId, OnSuccessListener<List<Message>> onSuccess, OnFailureListener onFailure) {
         if (chatId == null || chatId.trim().isEmpty()) {

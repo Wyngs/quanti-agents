@@ -37,6 +37,11 @@ public class ChatService {
     private final UserService userService;
     private final NotificationService notificationService;
 
+    /**
+     * Constructor that initializes the ChatService with required dependencies.
+     *
+     * @param context The Android context used to initialize services
+     */
     public ChatService(Context context) {
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
         this.chatRepository = new ChatRepository(fireBaseRepository);

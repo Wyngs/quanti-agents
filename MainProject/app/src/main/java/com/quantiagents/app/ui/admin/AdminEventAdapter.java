@@ -91,6 +91,13 @@ public class AdminEventAdapter extends ListAdapter<Event, AdminEventAdapter.Even
 
         }
 
+        /**
+         * Binds an event to the view holder, displaying event details and action buttons.
+         *
+         * @param event The event to display
+         * @param deleteListener The listener for delete actions
+         * @param viewListener The listener for view actions
+         */
         void bind(Event event, OnEventDeleteListener deleteListener, OnEventViewListener viewListener) {
             if (progressBar != null) {
                 progressBar.setVisibility(View.GONE);

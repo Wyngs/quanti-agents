@@ -28,6 +28,12 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     private final String currentUserId;
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
+    /**
+     * Constructor that initializes the adapter with messages and current user ID.
+     *
+     * @param messages The list of messages to display
+     * @param currentUserId The ID of the current user (used to determine message alignment)
+     */
     public MessageAdapter(List<Message> messages, String currentUserId) {
         this.messages = messages;
         this.currentUserId = currentUserId;
@@ -79,6 +85,12 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
             spacerReceived = itemView.findViewById(R.id.spacer_received);
         }
 
+        /**
+         * Binds a message to the view holder, configuring layout based on sender.
+         *
+         * @param message The message to display
+         * @param isCurrentUser True if the message is from the current user, false otherwise
+         */
         void bind(Message message, boolean isCurrentUser) {
             // Set message text
             textMessage.setText(message.getText() != null ? message.getText() : "");

@@ -24,21 +24,45 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Adapter for displaying notifications in NotificationCenterFragment.
+ * Shows notification details, associated event information, and allows marking notifications as read.
+ */
 public class NotificationCenterAdapter extends RecyclerView.Adapter<NotificationCenterAdapter.NotificationViewHolder> {
 
     private List<Notification> notifications = new ArrayList<>();
     private List<Event> events = new ArrayList<>();
     private final OnMarkAsReadListener markAsReadListener;
 
+    /**
+     * Interface for handling mark-as-read actions.
+     */
     public interface OnMarkAsReadListener {
+        /**
+         * Called when user wants to mark a notification as read.
+         *
+         * @param notification The notification to mark as read
+         */
         void onMarkAsRead(Notification notification);
     }
 
+    /**
+     * Constructor that initializes the adapter with notifications and a mark-as-read listener.
+     *
+     * @param notifications The initial list of notifications to display
+     * @param markAsReadListener The callback interface for marking notifications as read
+     */
     public NotificationCenterAdapter(List<Notification> notifications, OnMarkAsReadListener markAsReadListener) {
         this.notifications = new ArrayList<>(notifications);
         this.markAsReadListener = markAsReadListener;
     }
 
+    /**
+     * Updates the adapter with new notifications and events.
+     *
+     * @param notifications The new list of notifications to display
+     * @param events The list of events associated with notifications
+     */
     public void updateNotifications(List<Notification> notifications, List<Event> events) {
         this.notifications = new ArrayList<>(notifications);
         this.events = new ArrayList<>(events != null ? events : new ArrayList<>());
@@ -65,6 +89,12 @@ public class NotificationCenterAdapter extends RecyclerView.Adapter<Notification
         return notifications.size();
     }
 
+    /**
+     * Finds an event by its ID (converted from int to string for comparison).
+     *
+     * @param eventId The event ID as an integer
+     * @return The Event object if found, null otherwise
+     */
     private Event findEventById(int eventId) {
         String eventIdStr = String.valueOf(eventId);
         for (Event event : events) {
@@ -93,6 +123,13 @@ public class NotificationCenterAdapter extends RecyclerView.Adapter<Notification
             markAsReadButton = itemView.findViewById(R.id.button_mark_as_read);
         }
 
+        /**
+         * Binds a notification to the view holder, displaying message, event name, timestamp, and read status.
+         *
+         * @param notification The notification to display
+         * @param event The associated event (may be null)
+         * @param listener The listener for mark-as-read actions
+         */
         void bind(Notification notification, Event event, OnMarkAsReadListener listener) {
             // Set message based on notification type
             // Fix: Using the actual details from the notification object

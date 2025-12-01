@@ -11,13 +11,34 @@ import com.quantiagents.app.R;
 import com.quantiagents.app.models.User;
 import java.util.List;
 
+/**
+ * Adapter for displaying user profiles in admin management screens.
+ * Allows admins to view profile details and delete profiles.
+ */
 public class ProfileAdapter extends RecyclerView.Adapter<ProfileAdapter.ProfileViewHolder> {
 
     private final List<User> profileList;
     private final OnDeleteClickListener listener;
 
-    public interface OnDeleteClickListener { void onDeleteClick(User user, int position); }
+    /**
+     * Interface for handling profile deletion.
+     */
+    public interface OnDeleteClickListener {
+        /**
+         * Called when admin wants to delete a profile.
+         *
+         * @param user The user profile to delete
+         * @param position The position of the profile in the list
+         */
+        void onDeleteClick(User user, int position);
+    }
 
+    /**
+     * Constructor that initializes the adapter with profiles and a delete listener.
+     *
+     * @param profileList The list of profiles to display
+     * @param listener The callback interface for handling profile deletion
+     */
     public ProfileAdapter(List<User> profileList, OnDeleteClickListener listener) {
         this.profileList = profileList;
         this.listener = listener;
@@ -48,6 +69,12 @@ public class ProfileAdapter extends RecyclerView.Adapter<ProfileAdapter.ProfileV
             deleteButton = itemView.findViewById(R.id.button_delete_profile);
         }
 
+        /**
+         * Binds a profile to the view holder, displaying user information and delete button.
+         *
+         * @param user The user profile to display
+         * @param listener The listener for delete actions
+         */
         void bind(final User user, final OnDeleteClickListener listener) {
             profileName.setText(user.getName());
             profileDetails.setText("Email: " + user.getEmail());

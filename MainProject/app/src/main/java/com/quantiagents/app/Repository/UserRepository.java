@@ -22,14 +22,17 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Direct Firestore access layer so I keep the SDK details out of the services.
+ * Direct Firestore access layer to keep SDK details out of the services.
+ * Provides data access methods for User entities.
  */
 public class UserRepository {
 
     private final CollectionReference context;
 
     /**
-     * @param fireBaseRepository wrapper I built around the Firebase entry points.
+     * Constructor that initializes the UserRepository with a FireBaseRepository.
+     *
+     * @param fireBaseRepository Wrapper around the Firebase entry points
      */
     public UserRepository(FireBaseRepository fireBaseRepository) {
         this.context = fireBaseRepository.getUserCollectionRef();
@@ -37,6 +40,10 @@ public class UserRepository {
 
     /**
      * Fetches a user document by id. Used sparingly since most flows key off device id.
+     * CRITICAL FIX: Checks for invalid ID before calling Firestore to prevent IllegalArgumentException crash.
+     *
+     * @param userId The unique identifier of the user to retrieve
+     * @return The User object if found, null otherwise
      */
     public User getUserById(String userId) {
         // CRITICAL FIX: Check for invalid ID before calling Firestore to prevent IllegalArgumentException crash
@@ -67,6 +74,10 @@ public class UserRepository {
 
     /**
      * Asynchronously fetches a user by their user ID.
+     *
+     * @param userId The unique identifier of the user to retrieve
+     * @param onSuccess Callback invoked with the User object if found, or null if not found
+     * @param onFailure Callback invoked if an error occurs or userId is invalid
      */
     public void getUserById(String userId, OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
         if (userId == null || userId.trim().isEmpty()) {
@@ -92,6 +103,9 @@ public class UserRepository {
     /**
      * Synchronously fetches a user by their device ID.
      * Efficiently queries Firestore instead of downloading the entire collection.
+     *
+     * @param deviceId The device ID to search for
+     * @return The User object if found, null otherwise
      */
     public User getUserByDeviceId(String deviceId) {
         if (deviceId == null || deviceId.trim().isEmpty()) {

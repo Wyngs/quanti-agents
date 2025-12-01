@@ -33,8 +33,10 @@ public class EventService {
     private final Context context;
 
     /**
-     * Constructs an EventService.
-     * @param context The application context.
+     * Constructs an EventService with required dependencies.
+     * EventService instantiates its own repositories internally.
+     *
+     * @param context The application context
      */
     public EventService(Context context) {
         // EventService instantiates its own repositories internally
@@ -191,6 +193,8 @@ public class EventService {
     /**
      * Sends notifications when an event is updated by organizer.
      * Notifies all users in waiting list, selected list, and confirmed list.
+     *
+     * @param event The event that was updated
      */
     private void sendEventUpdatedNotifications(Event event) {
         if (event == null) return;
@@ -244,6 +248,8 @@ public class EventService {
     /**
      * Sends notifications when an event is deleted by organizer.
      * Notifies all users in waiting list, selected list, and confirmed list.
+     *
+     * @param event The event that was deleted
      */
     private void sendEventDeletedByOrganizerNotifications(Event event) {
         if (event == null) return;

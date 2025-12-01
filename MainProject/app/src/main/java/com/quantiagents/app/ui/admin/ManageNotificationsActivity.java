@@ -15,6 +15,10 @@ import com.quantiagents.app.models.Notification;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Activity for viewing all notifications as an admin.
+ * Displays notification logs for administrative purposes.
+ */
 public class ManageNotificationsActivity extends AppCompatActivity {
 
     private NotificationService notificationService;
@@ -23,6 +27,11 @@ public class ManageNotificationsActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private View rootView;
 
+    /**
+     * Initializes the activity and sets up the notification list.
+     *
+     * @param savedInstanceState The saved instance state bundle
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,6 +58,9 @@ public class ManageNotificationsActivity extends AppCompatActivity {
         loadNotifications();
     }
 
+    /**
+     * Loads all notifications from the database and updates the adapter.
+     */
     private void loadNotifications() {
         progressBar.setVisibility(View.VISIBLE);
 

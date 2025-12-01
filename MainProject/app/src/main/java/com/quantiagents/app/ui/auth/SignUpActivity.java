@@ -61,6 +61,9 @@ public class SignUpActivity extends AppCompatActivity {
         loginButton.setOnClickListener(v -> navigateToLogin());
     }
 
+    /**
+     * Navigates to the LoginActivity and finishes this activity.
+     */
     private void navigateToLogin() {
         startActivity(new Intent(this, LoginActivity.class));
         finish();

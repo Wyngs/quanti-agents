@@ -24,6 +24,11 @@ import com.quantiagents.app.ui.auth.SignUpActivity;
 import java.text.DateFormat;
 import java.util.Date;
 
+/**
+ * Fragment that displays the current user's profile information.
+ * Shows user name, email, phone, device ID, and account creation date.
+ * Provides access to edit profile functionality.
+ */
 public class ProfileFragment extends Fragment {
 
     private UserService userService;
@@ -34,6 +39,11 @@ public class ProfileFragment extends Fragment {
     private TextView deviceView;
     private TextView createdView;
 
+    /**
+     * Creates a new instance of ProfileFragment.
+     *
+     * @return A new ProfileFragment instance
+     */
     public static ProfileFragment newInstance() {
         return new ProfileFragment();
     }
@@ -66,6 +76,10 @@ public class ProfileFragment extends Fragment {
         bindUser();
     }
 
+    /**
+     * Binds user data to the UI.
+     * Checks memory cache first to avoid race conditions, then falls back to database if needed.
+     */
     private void bindUser() {
         // checking memory cache first to avoid race condition with DB update
         User cachedUser = loginService.getActiveUser();
@@ -93,6 +107,11 @@ public class ProfileFragment extends Fragment {
         }
     }
 
+    /**
+     * Populates the UI with user information.
+     *
+     * @param user The user object to display
+     */
     private void populateUI(User user) {
         nameView.setText(user.getName());
         emailView.setText(user.getEmail());
@@ -114,6 +133,9 @@ public class ProfileFragment extends Fragment {
         }
     }
 
+    /**
+     * Opens the EditProfileActivity to allow the user to edit their profile.
+     */
     private void openEdit() {
         startActivity(new Intent(requireContext(), EditProfileActivity.class));
     }
