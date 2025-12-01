@@ -7,8 +7,10 @@ import android.content.Context;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.UserRepository;
+import com.quantiagents.app.Services.NotificationService;
 import com.quantiagents.app.Services.ServiceLocator;
 import com.quantiagents.app.Services.AdminService;
 import com.quantiagents.app.Services.EventService;
@@ -17,6 +19,7 @@ import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.User;
+import com.quantiagents.app.models.Notification;
 import com.quantiagents.app.models.UserSummary;
 
 import org.junit.After;
@@ -28,6 +31,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(AndroidJUnit4.class)
 public class AdminFlowInstrumentedTest {
@@ -43,6 +48,12 @@ public class AdminFlowInstrumentedTest {
     private String testUserId;
     private String testUser2Id;
 
+    private String cascadeOrgId;
+    private String cascadeEvtId;
+    private String notifOrgId;
+    private String notifEvtId;
+    private String notifImgId;
+
     @Before
     public void setUp() {
         context = ApplicationProvider.getApplicationContext();
@@ -56,6 +67,12 @@ public class AdminFlowInstrumentedTest {
         testImg2Id = "test_img2_" + uniqueSuffix;
         testUserId = "test_user_" + uniqueSuffix;
         testUser2Id = "test_user2_" + uniqueSuffix;
+
+        cascadeOrgId = "cascade_org_" + uniqueSuffix;
+        cascadeEvtId = "cascade_evt_" + uniqueSuffix;
+        notifOrgId = "notif_org_" + uniqueSuffix;
+        notifEvtId = "notif_evt_" + uniqueSuffix;
+        notifImgId = "notif_img_" + uniqueSuffix;
 
         seedUniqueData();
     }
@@ -115,6 +132,81 @@ public class AdminFlowInstrumentedTest {
         assertFalse("Image 2 should be deleted", containsImage(allImages, testImg2Id));
     }
 
+    // Testing cascade deletion (Organizer -> Events)
+    @Test
+    public void adminDeleteOrganizerCascades() {
+        AdminService admin = locator.adminService();
+
+        List<User> users = listProfilesSync(admin);
+        List<Event> events = listEventsSync(admin);
+
+        assertTrue("Cascade Organizer should exist before delete", containsUser(users, cascadeOrgId));
+        assertTrue("Cascade Event should exist before delete", containsEvent(events, cascadeEvtId));
+
+        assertTrue("Failed to remove organizer", removeProfileSync(admin, cascadeOrgId, true, "Cascade Test"));
+
+        // Sleep briefly to allow cloud functions/async triggers to complete
+        try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+
+        users = listProfilesSync(admin);
+        events = listEventsSync(admin);
+
+        assertFalse("Organizer should be deleted", containsUser(users, cascadeOrgId));
+        assertFalse("Orphaned Event should be deleted", containsEvent(events, cascadeEvtId));
+    }
+
+    // Testing Event Deletion Notification
+    @Test
+    public void adminEventDeletionGeneratesNotification() {
+        AdminService admin = locator.adminService();
+        NotificationService notifService = locator.notificationService();
+
+        assertTrue(removeEventSync(admin, notifEvtId, true, "Notification Test"));
+
+        // Sleep briefly to allow notification creation
+        try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+
+        List<Notification> notifications = listNotificationsSync(notifService);
+        int expectedRecipient = Math.abs(notifOrgId.hashCode());
+
+        boolean found = false;
+        for (Notification n : notifications) {
+            if (n.getRecipientId() == expectedRecipient &&
+                    n.getType() == constant.NotificationType.BAD &&
+                    n.getStatus().contains("Canceled")) {
+                found = true;
+                break;
+            }
+        }
+        assertTrue("Organizer should receive cancellation notification", found);
+    }
+
+    // Testing Image Deletion Notification
+    @Test
+    public void adminImageDeletionGeneratesNotification() {
+        AdminService admin = locator.adminService();
+        NotificationService notifService = locator.notificationService();
+
+        assertTrue(removeImageSync(admin, notifImgId, true, "Notification Test"));
+
+        // Sleep briefly to allow notification creation
+        try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+
+        List<Notification> notifications = listNotificationsSync(notifService);
+        int expectedRecipient = Math.abs(notifOrgId.hashCode());
+
+        boolean found = false;
+        for (Notification n : notifications) {
+            if (n.getRecipientId() == expectedRecipient &&
+                    n.getType() == constant.NotificationType.BAD &&
+                    n.getStatus().contains("Image removed")) {
+                found = true;
+                break;
+            }
+        }
+        assertTrue("Organizer should receive image removal notification", found);
+    }
+
     //Helper methods for seeding
 
     private void seedUniqueData() {
@@ -142,6 +234,23 @@ public class AdminFlowInstrumentedTest {
 
         saveUserSync(userRepository, user1);
         saveUserSync(userRepository, user2);
+
+        // Seed Cascade Data
+        User orgUser = new User(cascadeOrgId, "device_c", "Cascade Org", "org_c", "org@c.com", "000", "pass");
+        saveUserSync(userRepository, orgUser);
+        Event orgEvt = new Event(cascadeEvtId, "Cascade Event", null);
+        orgEvt.setOrganizerId(cascadeOrgId);
+        saveEventSync(eventService, orgEvt);
+
+        // Seed Notification Data
+        User notifUser = new User(notifOrgId, "device_n", "Notif Org", "org_n", "org@n.com", "000", "pass");
+        saveUserSync(userRepository, notifUser);
+        Event notifEvt = new Event(notifEvtId, "Notif Event", notifImgId);
+        notifEvt.setOrganizerId(notifOrgId);
+        notifEvt.setWaitingList(new java.util.ArrayList<>());
+        saveEventSync(eventService, notifEvt);
+        Image notifImg = new Image(notifImgId, notifEvtId, "uri://notif");
+        saveImageSync(imageService, notifImg);
     }
 
     private void cleanupTestObjects() {
@@ -157,79 +266,106 @@ public class AdminFlowInstrumentedTest {
 
         try { removeImageSync(admin, testImg1Id, true, null); } catch (Exception ignored) {}
         try { removeImageSync(admin, testImg2Id, true, null); } catch (Exception ignored) {}
+
+        try { removeEventSync(admin, cascadeEvtId, true, null); } catch (Exception ignored) {}
+        try { removeProfileSync(admin, cascadeOrgId, true, null); } catch (Exception ignored) {}
+        try { removeEventSync(admin, notifEvtId, true, null); } catch (Exception ignored) {}
+        try { removeProfileSync(admin, notifOrgId, true, null); } catch (Exception ignored) {}
+        try { removeImageSync(admin, notifImgId, true, null); } catch (Exception ignored) {}
     }
 
     // Sync wrappers for async Calls
 
     private boolean removeEventSync(AdminService admin, String eventId, boolean confirmed, String note) {
         CountDownLatch latch = new CountDownLatch(1);
-        final boolean[] result = {false};
+        // Using AtomicBoolean for thread safety
+        AtomicBoolean success = new AtomicBoolean(false);
         admin.removeEvent(eventId, confirmed, note,
-                success -> { result[0] = true; latch.countDown(); },
-                failure -> { result[0] = false; latch.countDown(); }
+                s -> { success.set(true); latch.countDown(); },
+                f -> latch.countDown()
         );
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
-        return result[0];
+        try { latch.await(10, TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
+        return success.get();
     }
 
     private boolean removeProfileSync(AdminService admin, String userId, boolean confirmed, String note) {
         CountDownLatch latch = new CountDownLatch(1);
-        final boolean[] result = {false};
+        AtomicBoolean success = new AtomicBoolean(false);
 
         admin.removeProfile(userId, confirmed, note,
-                success -> { result[0] = true; latch.countDown(); },
-                failure -> { result[0] = false; latch.countDown(); }
+                s -> { success.set(true); latch.countDown(); },
+                f -> latch.countDown()
         );
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
-        return result[0];
+        try { latch.await(10, TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
+        return success.get();
     }
 
     private boolean removeImageSync(AdminService admin, String imageId, boolean confirmed, String note) {
         CountDownLatch latch = new CountDownLatch(1);
-        final boolean[] result = {false};
+        AtomicBoolean success = new AtomicBoolean(false);
         // NEW: Updated to use 5-arg async signature
         admin.removeImage(imageId, confirmed, note,
-                success -> { result[0] = true; latch.countDown(); },
-                failure -> { result[0] = false; latch.countDown(); }
+                s -> { success.set(true); latch.countDown(); },
+                f -> latch.countDown()
         );
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
-        return result[0];
+        try { latch.await(10, TimeUnit.SECONDS); } catch (InterruptedException e) { return false; }
+        return success.get();
     }
 
     private List<Event> listEventsSync(AdminService admin) {
         CountDownLatch latch = new CountDownLatch(1);
-        final List<Event>[] result = new List[]{null};
+        // Usign AtomicReference for thread safety
+        AtomicReference<List<Event>> result = new AtomicReference<>();
 
         admin.getAllEvents(
-                list -> { result[0] = list; latch.countDown(); },
+                list -> { result.set(list); latch.countDown(); },
                 e -> latch.countDown()
         );
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
-        return result[0];
+        try { latch.await(10, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+        return result.get();
     }
 
     private List<User> listProfilesSync(AdminService admin) {
         CountDownLatch latch = new CountDownLatch(1);
-        final List<User>[] result = new List[]{null};
+        // Using AtomicReference for thread safety
+        AtomicReference<List<User>> result = new AtomicReference<>();
 
         admin.listAllProfiles(
-                list -> { result[0] = list; latch.countDown(); },
+                list -> { result.set(list); latch.countDown(); },
                 e -> latch.countDown()
         );
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
-        return result[0];
+        try { latch.await(10, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+        return result.get();
     }
 
     private List<Image> listImagesSync(AdminService admin) {
         CountDownLatch latch = new CountDownLatch(1);
-        final List<Image>[] result = new List[]{null};
+        // Using AtomicReference for thread safety
+        AtomicReference<List<Image>> result = new AtomicReference<>();
 
         admin.listAllImages(
-                list -> { result[0] = list; latch.countDown(); },
+                list -> { result.set(list); latch.countDown(); },
                 e -> latch.countDown()
         );
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
-        return result[0];
+        try { latch.await(10, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+        return result.get();
+    }
+
+    // Helper to fetch notifications synchronously on background thread
+    private List<Notification> listNotificationsSync(NotificationService service) {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<List<Notification>> result = new AtomicReference<>();
+
+        new Thread(() -> {
+            try {
+                List<Notification> list = service.getAllNotifications();
+                result.set(list);
+            } catch (Exception ignored) {}
+            latch.countDown();
+        }).start();
+
+        try { latch.await(10, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+        return result.get() != null ? result.get() : java.util.Collections.emptyList();
     }
 
     // Sync savers
@@ -237,19 +373,19 @@ public class AdminFlowInstrumentedTest {
     private void saveEventSync(EventService service, Event event) {
         CountDownLatch latch = new CountDownLatch(1);
         service.saveEvent(event, id -> latch.countDown(), e -> latch.countDown());
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) {}
+        try { latch.await(10, TimeUnit.SECONDS); } catch (InterruptedException e) {}
     }
 
     private void saveImageSync(ImageService service, Image image) {
         CountDownLatch latch = new CountDownLatch(1);
         service.saveImage(image, id -> latch.countDown(), e -> latch.countDown());
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) {}
+        try { latch.await(10, TimeUnit.SECONDS); } catch (InterruptedException e) {}
     }
 
     private void saveUserSync(UserRepository repo, User user) {
         CountDownLatch latch = new CountDownLatch(1);
         repo.saveUser(user, v -> latch.countDown(), e -> latch.countDown());
-        try { latch.await(5, TimeUnit.SECONDS); } catch (InterruptedException e) {}
+        try { latch.await(10, TimeUnit.SECONDS); } catch (InterruptedException e) {}
     }
 
     // Assertion Helpers

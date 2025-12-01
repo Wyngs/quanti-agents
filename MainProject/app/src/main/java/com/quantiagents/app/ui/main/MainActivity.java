@@ -274,6 +274,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             showFragment(AdminBrowseProfilesFragment.newInstance());
             activeItemId = id;
             navigationView.setCheckedItem(id);
+
+        } else if (id == R.id.navigation_admin_organizers) {
+            showFragment(com.quantiagents.app.ui.admin.AdminBrowseOrganizersFragment.newInstance());
+            activeItemId = id;
+            navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_admin_images) {
             showFragment(AdminBrowseImagesFragment.newInstance());
             activeItemId = id;

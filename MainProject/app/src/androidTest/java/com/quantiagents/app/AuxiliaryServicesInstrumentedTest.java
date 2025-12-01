@@ -16,10 +16,12 @@ import com.quantiagents.app.Services.ImageService;
 import com.quantiagents.app.Services.NotificationService;
 import com.quantiagents.app.Services.QRCodeService;
 import com.quantiagents.app.Services.ServiceLocator;
+import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.GeoLocation;
 import com.quantiagents.app.models.Image;
 import com.quantiagents.app.models.Notification;
 import com.quantiagents.app.models.QRCode;
+import com.quantiagents.app.models.User;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(AndroidJUnit4.class)
 public class AuxiliaryServicesInstrumentedTest {
@@ -65,20 +68,34 @@ public class AuxiliaryServicesInstrumentedTest {
     @Test
     public void notificationLifecycle() {
         NotificationService service = locator.notificationService();
-        int recipientId = 9999;
 
-        Notification note = new Notification(0, constant.NotificationType.GOOD, recipientId, 1, 100, "", "");
+        int recipientId = createTestRecipientId();   // <-- NEW
+
+        Notification note = new Notification(
+                0,
+                constant.NotificationType.GOOD,
+                recipientId,
+                1,
+                100,
+                "Test status",
+                "Test details"
+        );
         saveNotificationSync(service, note);
 
-        List<Notification> unread = service.getUnreadNotificationsByRecipientId(recipientId);
+        List<Notification> unread =
+                service.getUnreadNotificationsByRecipientId(recipientId);
+        assertNotNull(unread);
         assertTrue("Should have unread notification", unread.size() > 0);
+
         int noteId = unread.get(0).getNotificationId();
 
         markReadSync(service, noteId);
 
         Notification updated = service.getNotificationById(noteId);
+        assertNotNull(updated);
         assertTrue("Should be marked read", updated.isHasRead());
     }
+
 
     @Test
     public void qrCodePersistence() {
@@ -140,4 +157,32 @@ public class AuxiliaryServicesInstrumentedTest {
             e.printStackTrace();
         }
     }
+    private int createTestRecipientId() {
+        UserService userService = locator.userService();
+        String suffix = "_" + System.currentTimeMillis();
+
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<User> createdRef = new AtomicReference<>();
+
+        userService.createUser(
+                "Notif Test User" + suffix,
+                "notifUser" + suffix,
+                "notif" + suffix + "@example.com",
+                "5550000000",
+                "pass123",
+                user -> {
+                    createdRef.set(user);
+                    latch.countDown();
+                },
+                e -> latch.countDown()
+        );
+        awaitLatch(latch);
+
+        User user = createdRef.get();
+        assertNotNull("Failed to create test user for notifications", user);
+
+        // This mirrors the logic inside NotificationService.saveNotification
+        return Math.abs(user.getUserId().hashCode());
+    }
+
 }
