@@ -134,7 +134,7 @@ public class AdminService {
 
     /**
      * Removes a user profile after confirmation.
-     * Deletes from Firestore and clears local session if it matches current user.
+     * Deletes from Firestore with full cleanup (events, registration histories) and clears local session if it matches current user.
      * Logs the action to audit log.
      *
      * @param userId The ID of the user profile to remove
@@ -150,22 +150,10 @@ public class AdminService {
             return;
         }
 
-        // 1. Delete from Firestore
-        userRepository.deleteUserById(userId,
+        // Use UserService.deleteUserProfileById which handles cleanup (events, registration histories)
+        // before deleting the user profile
+        userService.deleteUserProfileById(userId,
                 aVoid -> {
-                    // 2. If it matches local user, wipe local session
-                    userService.getCurrentUser(
-                            currentUser -> {
-                                if (currentUser != null && userId.equals(currentUser.getUserId())) {
-                                    userService.deleteUserProfile(
-                                            unused -> {}, // Already deleted from remote, just clearing local
-                                            e -> {}
-                                    );
-                                }
-                            },
-                            e -> {} // Ignore if we can't fetch current user
-                    );
-
                     logAction(AdminActionLog.KIND_PROFILE, userId, note);
                     onSuccess.onSuccess(aVoid);
                 },
