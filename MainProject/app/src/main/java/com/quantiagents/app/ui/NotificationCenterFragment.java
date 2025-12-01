@@ -18,9 +18,11 @@ import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.badge.ExperimentalBadgeUtils;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
+import com.quantiagents.app.Services.BadgeService;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.NotificationService;
 import com.quantiagents.app.Services.UserService;
+import com.quantiagents.app.ui.main.MainActivity;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.Notification;
 import com.quantiagents.app.models.User;
@@ -170,6 +172,15 @@ public class NotificationCenterFragment extends Fragment {
             recyclerView.setVisibility(View.VISIBLE);
             emptyStateView.setVisibility(View.GONE);
         }
+
+        // Update app icon badge
+        BadgeService badgeService = new BadgeService(requireContext());
+        badgeService.updateBadgeCount();
+        
+        // Update navigation menu badges
+        if (requireActivity() instanceof MainActivity) {
+            ((MainActivity) requireActivity()).updateNavigationMenuBadges();
+        }
     }
 
     private void onMarkAsRead(Notification notification) {
@@ -179,6 +190,15 @@ public class NotificationCenterFragment extends Fragment {
                     // Update local state
                     notification.setHasRead(true);
                     updateUI();
+                    
+                    // Update app icon badge
+                    BadgeService badgeService = new BadgeService(requireContext());
+                    badgeService.updateBadgeCount();
+                    
+                    // Update navigation menu badges
+                    if (requireActivity() instanceof MainActivity) {
+                        ((MainActivity) requireActivity()).updateNavigationMenuBadges();
+                    }
                 },
                 e -> {
                     Toast.makeText(requireContext(), "Failed to mark notification as read", Toast.LENGTH_SHORT).show();

@@ -144,5 +144,4 @@ public class User implements Serializable {
     public Date getLastViewedBrowse() { return this.lastViewedBrowse; }
 
     public void setLastViewedBrowse(Date viewedBrowse) { this.lastViewedBrowse = viewedBrowse; }
-
 }

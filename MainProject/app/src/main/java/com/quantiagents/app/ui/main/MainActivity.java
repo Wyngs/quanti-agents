@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.util.Log;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -38,8 +39,10 @@ import com.quantiagents.app.ui.auth.LoginActivity;
 import com.quantiagents.app.ui.manageevents.ManageEventsFragment;
 import com.quantiagents.app.ui.myevents.BrowseEventsFragment;
 import com.quantiagents.app.ui.myevents.MyEventFragment;
+import com.quantiagents.app.ui.messages.MessagesFragment;
 import com.quantiagents.app.ui.profile.ProfileFragment;
 import com.quantiagents.app.ui.profile.SettingsFragment;
+import com.quantiagents.app.Services.BadgeService;
 
 @OptIn(markerClass = {ExperimentalGetImage.class, ExperimentalBadgeUtils.class})
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
@@ -48,7 +51,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private NavigationView navigationView;
     private UserService userService;
     private LoginService loginService;
-    private int activeItemId = R.id.navigation_profile;
+    // changed the landing page from profile details to the browse events page
+    // private int activeItemId = R.id.navigation_profile;
+    private int activeItemId = R.id.navigation_browse_events;
+    
+    // Store original menu item titles
+    private String originalNotificationTitle;
+    private String originalMessageTitle;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -98,10 +107,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         bindHeader(user);
         setupAdminMenu(user);
 
+        // Update app icon badge with unread notification count
+        updateAppIconBadge();
+        
+        // Update navigation menu badges
+        updateNavigationMenuBadges();
+
         if (savedInstanceState == null) {
             navigationView.setCheckedItem(activeItemId);
-            showFragment(ProfileFragment.newInstance());
+            // changed start fragment to BrowseEventsFragment to match activeItemId
+            //showFragment(ProfileFragment.newInstance());
+            showFragment(BrowseEventsFragment.newInstance());
         }
+    }
+
+    /**
+     * Updates the app icon badge with the current unread notification count.
+     */
+    private void updateAppIconBadge() {
+        BadgeService badgeService = new BadgeService(this);
+        badgeService.updateBadgeCount();
     }
 
     private void bindHeader(@NonNull User user) {
@@ -187,6 +212,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             showFragment(NotificationCenterFragment.newInstance());
             activeItemId = id;
             navigationView.setCheckedItem(id);
+        } else if (id == R.id.navigation_messages) {
+            showFragment(MessagesFragment.newInstance());
+            activeItemId = id;
+            navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_manage_events) {
             showFragment(ManageEventsFragment.newInstance());
             activeItemId = id;
@@ -220,6 +249,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 .commit();
     }
 
+
     @Override
     public void onBackPressed() {
         if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
@@ -227,5 +257,107 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
         super.onBackPressed();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Update badge when app resumes (user might have received notifications while app was in background)
+        updateAppIconBadge();
+        // Update navigation menu badges
+        updateNavigationMenuBadges();
+    }
+
+    /**
+     * Updates the navigation menu badges for Notifications and Messages with unread counts.
+     * Can be called from fragments to update badges when notifications/messages change.
+     */
+    public void updateNavigationMenuBadges() {
+        userService.getCurrentUser(
+                user -> {
+                    if (user == null) {
+                        clearNavigationBadges();
+                        return;
+                    }
+
+                    BadgeService badgeService = new BadgeService(this);
+                    
+                    // Get unread notification count
+                    badgeService.getUnreadNotificationCount(user.getUserId(), 
+                            notificationCount -> {
+                                updateNotificationBadge(notificationCount);
+                            });
+                    
+                    // Get unread message count
+                    badgeService.getUnreadMessageCount(user.getUserId(),
+                            messageCount -> {
+                                updateMessageBadge(messageCount);
+                            });
+                },
+                e -> {
+                    Log.e("MainActivity", "Failed to get current user for navigation badges", e);
+                    clearNavigationBadges();
+                }
+        );
+    }
+
+    /**
+     * Updates the notification menu item badge with the unread count.
+     * Must be called on the main thread.
+     */
+    private void updateNotificationBadge(int count) {
+        // Ensure we're on the main thread
+        runOnUiThread(() -> {
+            MenuItem notificationItem = navigationView.getMenu().findItem(R.id.navigation_notifications);
+            if (notificationItem == null) {
+                return;
+            }
+            
+            // Store original title if not already stored
+            if (originalNotificationTitle == null) {
+                originalNotificationTitle = notificationItem.getTitle().toString();
+            }
+            
+            // Update title with count
+            if (count > 0) {
+                notificationItem.setTitle(originalNotificationTitle + " (" + count + ")");
+            } else {
+                notificationItem.setTitle(originalNotificationTitle);
+            }
+        });
+    }
+
+    /**
+     * Updates the messages menu item badge with the unread count.
+     * Must be called on the main thread.
+     */
+    private void updateMessageBadge(int count) {
+        // Ensure we're on the main thread
+        runOnUiThread(() -> {
+            MenuItem messageItem = navigationView.getMenu().findItem(R.id.navigation_messages);
+            if (messageItem == null) {
+                return;
+            }
+            
+            // Store original title if not already stored
+            if (originalMessageTitle == null) {
+                originalMessageTitle = messageItem.getTitle().toString();
+            }
+            
+            // Update title with count
+            if (count > 0) {
+                messageItem.setTitle(originalMessageTitle + " (" + count + ")");
+            } else {
+                messageItem.setTitle(originalMessageTitle);
+            }
+        });
+    }
+
+    /**
+     * Clears all navigation menu badges.
+     */
+    private void clearNavigationBadges() {
+        updateNotificationBadge(0);
+        updateMessageBadge(0);
     }
 }

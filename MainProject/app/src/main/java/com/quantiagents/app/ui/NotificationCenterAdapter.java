@@ -95,13 +95,21 @@ public class NotificationCenterAdapter extends RecyclerView.Adapter<Notification
 
         void bind(Notification notification, Event event, OnMarkAsReadListener listener) {
             // Set message based on notification type
-            String message = getNotificationMessage(notification);
+            // Fix: Using the actual details from the notification object
+            // and if details are empty, fallback to the type-based message
+            String message = notification.getDetails();
+            if (message == null || message.trim().isEmpty()) {
+                message = getNotificationMessage(notification);
+            }
             messageView.setText(message);
 
-            // Set event name if available
+            // Set event name if available, fallback to Notification status (title)
             if (event != null && event.getTitle() != null) {
                 eventNameView.setVisibility(View.VISIBLE);
                 eventNameView.setText("Event: " + event.getTitle());
+            } else if (notification.getStatus() != null && !notification.getStatus().isEmpty()) {
+                eventNameView.setVisibility(View.VISIBLE);
+                eventNameView.setText(notification.getStatus());
             } else {
                 eventNameView.setVisibility(View.GONE);
             }
@@ -138,6 +146,7 @@ public class NotificationCenterAdapter extends RecyclerView.Adapter<Notification
             }
         }
 
+        // Updated fallback messages to be generic and safe
         private String getNotificationMessage(Notification notification) {
             constant.NotificationType type = notification.getType();
             if (type == null) {
@@ -146,9 +155,9 @@ public class NotificationCenterAdapter extends RecyclerView.Adapter<Notification
 
             switch (type) {
                 case GOOD:
-                    return "Congratulations! You won the lottery for this event.";
+                    return "Good news regarding your event status."; // Generic positive
                 case WARNING:
-                    return "You were not selected in the lottery for this event.";
+                    return "Important update regarding your event status.";
                 case REMINDER:
                     return "This event has been updated. Check the details.";
                 case BAD:

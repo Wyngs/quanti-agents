@@ -22,6 +22,8 @@ public class FireBaseRepository {
     private final CollectionReference GeoLocationCollectionRef;
     private final CollectionReference RegistrationHistoryCollectionRef;
     private final CollectionReference DeviceIdCollectionRef;
+    private final CollectionReference ChatCollectionRef;
+    private final CollectionReference MessageCollectionRef;
     public FireBaseRepository() {
         this.db = FirebaseFirestore.getInstance();
 
@@ -34,6 +36,8 @@ public class FireBaseRepository {
         GeoLocationCollectionRef = db.collection(constant.GeoLocationCollectionName);
         RegistrationHistoryCollectionRef = db.collection(constant.RegistrationHistoryCollectionName);
         DeviceIdCollectionRef = db.collection(constant.DeviceIdCollectionName);
+        ChatCollectionRef = db.collection(constant.ChatCollectionName);
+        MessageCollectionRef = db.collection(constant.MessageCollectionName);
     }
 
 
@@ -71,5 +75,13 @@ public class FireBaseRepository {
 
     public CollectionReference getDeviceIdCollectionRef() {
         return DeviceIdCollectionRef;
+    }
+
+    public CollectionReference getChatCollectionRef() {
+        return ChatCollectionRef;
+    }
+
+    public CollectionReference getMessageCollectionRef() {
+        return MessageCollectionRef;
     }
 }
