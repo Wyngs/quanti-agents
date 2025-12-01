@@ -211,6 +211,16 @@ public class User implements Serializable {
     }
 
     /**
+     * Gets whether notifications are enabled for this user.
+     * This method is required for Firestore serialization.
+     *
+     * @return True if notifications are enabled, false otherwise
+     */
+    public boolean getNotificationsOn() {
+        return notificationsOn;
+    }
+
+    /**
      * Sets whether notifications are enabled for this user.
      *
      * @param notificationsOn True to enable notifications, false to disable

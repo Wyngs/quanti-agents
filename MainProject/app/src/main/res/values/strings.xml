@@ -44,8 +44,16 @@
     <string name="profile_edit_action">Edit details</string>
     <string name="settings_title">Preferences</string>
     <string name="settings_notifications">Notifications</string>
+    <string name="settings_notification_title">Notification Settings</string>
+    <string name="settings_notification_subtitle">Manage how you receive notifications</string>
+    <string name="settings_enable_notifications">Enable Notifications</string>
+    <string name="settings_notification_description">Receive updated about lottery draws and event changes</string>
     <string name="settings_delete_header">Danger zone</string>
+    <string name="settings_danger_zone_title">Danger Zone</string>
+    <string name="settings_danger_zone_subtitle">Irreversible Actions</string>
+    <string name="settings_delete_warning">Deleting your profile will remove all your data, including registrations and waiting listsentres. This action cannot be undone</string>
     <string name="settings_delete_action">Delete profile</string>
+    <string name="settings_delete_account">Delete Account</string>
     <string name="delete_profile_title">Remove profile?</string>
     <string name="delete_profile_body">This clears your data from the device. No undo.</string>
     <string name="delete_profile_confirm">Delete</string>

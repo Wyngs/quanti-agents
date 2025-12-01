@@ -59,5 +59,6 @@
     <color name="buttonRed">#FF4444</color> <!-- Red for cancel/destructive buttons -->
     <color name="buttonGreen">#4CAF50</color> <!-- Green for view/success buttons -->
     <color name="textOnLightBlue">#000000</color> <!-- Text color on light blue background -->
+    <color name="colorPurple">#9C27B0</color> <!-- Purple for notification icon -->
 
 </resources>

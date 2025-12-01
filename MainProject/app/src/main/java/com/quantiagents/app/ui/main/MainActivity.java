@@ -48,7 +48,6 @@ import com.quantiagents.app.ui.myevents.BrowseEventsFragment;
 import com.quantiagents.app.ui.myevents.MyEventFragment;
 import com.quantiagents.app.ui.messages.MessagesFragment;
 import com.quantiagents.app.ui.profile.ProfileFragment;
-import com.quantiagents.app.ui.profile.SettingsFragment;
 import com.quantiagents.app.Services.BadgeService;
 
 /**
@@ -249,10 +248,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if (id == R.id.navigation_profile) {
             showFragment(ProfileFragment.newInstance());
-            activeItemId = id;
-            navigationView.setCheckedItem(id);
-        } else if (id == R.id.navigation_settings) {
-            showFragment(SettingsFragment.newInstance());
             activeItemId = id;
             navigationView.setCheckedItem(id);
         } else if (id == R.id.navigation_create_event) {
