@@ -230,5 +230,22 @@
     <string name="manage_events_qr_dialog_title">Event QR</string>
     <string name="manage_events_qr_dialog_title_with_name">QR for %1$s</string>
 
+    <string name="manage_events_delete_event">Delete event</string>
+    <string name="manage_events_delete_dialog_title">Delete this event?</string>
+    <string name="manage_events_delete_dialog_message">
+    This will cancel the event and notify all entrants in the waiting, selected, and confirmed lists. This action cannot be undone.
+</string>
+    <string name="manage_events_delete_dialog_confirm">Delete</string>
+    <string name="manage_events_delete_dialog_cancel">Keep event</string>
+
+    <string name="manage_events_delete_notification_title">Event cancelled</string>
+    <string name="manage_events_delete_notification_body">
+    The event %1$s has been cancelled by the organizer. We’re sorry for the inconvenience.
+</string>
+
+    <string name="manage_events_delete_success">Event cancelled and participants notified.</string>
+    <string name="manage_events_delete_error">Could not cancel this event. Please try again.</string>
+    <string name="manage_events_default_event_name">Event</string>
+
 
 </resources>
