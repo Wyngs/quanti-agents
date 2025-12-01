@@ -1,5 +1,6 @@
 package com.quantiagents.app.ui.manageeventinfo;
 
+import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Pair;
@@ -21,10 +22,14 @@ import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.maps.android.clustering.ClusterItem;
+import com.google.maps.android.clustering.ClusterManager;
+import com.google.maps.android.clustering.view.DefaultClusterRenderer;
 import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
@@ -32,26 +37,21 @@ import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.GeoLocationService;
 import com.quantiagents.app.Services.LotteryResultService;
 import com.quantiagents.app.Services.RegistrationHistoryService;
+import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
 import com.quantiagents.app.models.GeoLocation;
 import com.quantiagents.app.models.RegistrationHistory;
-
-import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.User;
 
-
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import com.google.maps.android.clustering.ClusterManager;
-import com.google.maps.android.clustering.view.DefaultClusterRenderer;
-import com.google.maps.android.clustering.ClusterItem;
-import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
-
-
 
 /**
  * Edit + manage screen for a single Event, including top-level fields
@@ -74,11 +74,30 @@ public class ManageEventInfoFragment extends Fragment {
     private TextInputLayout waitingLayout;
     private TextInputLayout priceLayout;
 
+    // NEW layouts to match CreateEventFragment
+    private TextInputLayout categoryLayout;
+    private TextInputLayout startDateLayout;
+    private TextInputLayout endDateLayout;
+    private TextInputLayout regStartDateLayout;
+    private TextInputLayout regEndDateLayout;
+    private TextInputLayout locationLayout;
+
     private TextInputEditText nameField;
     private TextInputEditText descriptionField;
     private TextInputEditText capacityField;
     private TextInputEditText waitingField;
     private TextInputEditText priceField;
+
+    // NEW input fields
+    private TextInputEditText categoryField;
+    private TextInputEditText startDateField;
+    private TextInputEditText endDateField;
+    private TextInputEditText regStartDateField;
+    private TextInputEditText regEndDateField;
+    private TextInputEditText locationField;
+
+    // Geolocation toggle
+    private SwitchMaterial geolocationSwitch;
 
     // Draw card inputs
     private TextInputLayout drawCountLayout;
@@ -103,6 +122,10 @@ public class ManageEventInfoFragment extends Fragment {
 
     private UserService userService;
 
+    // Date helpers (same format as CreateEvent)
+    private final SimpleDateFormat dateFormat =
+            new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+    private final Calendar calendar = Calendar.getInstance();
 
     /**
      * Factory method to create a new ManageEventInfoFragment.
@@ -156,7 +179,6 @@ public class ManageEventInfoFragment extends Fragment {
         this.geoSvc = app.locator().geoLocationService();
         userService = app.locator().userService();
 
-
         // MapView
         mapView = view.findViewById(R.id.map_join_locations);
         if (mapView != null) {
@@ -179,6 +201,49 @@ public class ManageEventInfoFragment extends Fragment {
         capacityField     = view.findViewById(R.id.input_capacity);
         waitingField      = view.findViewById(R.id.input_waiting_list);
         priceField        = view.findViewById(R.id.input_price);
+
+        // NEW: extra layouts + fields
+        categoryLayout     = view.findViewById(R.id.input_category_layout);
+        startDateLayout    = view.findViewById(R.id.input_start_date_layout);
+        endDateLayout      = view.findViewById(R.id.input_end_date_layout);
+        regStartDateLayout = view.findViewById(R.id.input_reg_start_date_layout);
+        regEndDateLayout   = view.findViewById(R.id.input_reg_end_date_layout);
+        locationLayout     = view.findViewById(R.id.input_location_layout);
+
+        categoryField      = view.findViewById(R.id.input_category);
+        startDateField     = view.findViewById(R.id.input_start_date);
+        endDateField       = view.findViewById(R.id.input_end_date);
+        regStartDateField  = view.findViewById(R.id.input_reg_start_date);
+        regEndDateField    = view.findViewById(R.id.input_reg_end_date);
+        locationField      = view.findViewById(R.id.input_location);
+
+        geolocationSwitch  = view.findViewById(R.id.switch_geolocation);
+
+        // Wire up date pickers (same UX as CreateEventFragment)
+        if (startDateField != null) {
+            startDateField.setOnClickListener(v -> showDatePicker(startDateField));
+        }
+        if (endDateField != null) {
+            endDateField.setOnClickListener(v -> showDatePicker(endDateField));
+        }
+        if (regStartDateField != null) {
+            regStartDateField.setOnClickListener(v -> showDatePicker(regStartDateField));
+        }
+        if (regEndDateField != null) {
+            regEndDateField.setOnClickListener(v -> showDatePicker(regEndDateField));
+        }
+
+        // Optional: stub for poster editing (keeps layout button from being “dead”)
+        MaterialButton posterButton = view.findViewById(R.id.button_edit_poster);
+        if (posterButton != null) {
+            posterButton.setOnClickListener(
+                    v -> Toast.makeText(
+                            getContext(),
+                            "Poster editing TODO – reuse Create Event poster flow.",
+                            Toast.LENGTH_SHORT
+                    ).show()
+            );
+        }
 
         // Draw card inputs
         drawCountLayout   = view.findViewById(R.id.input_draw_count_layout);
@@ -239,16 +304,51 @@ public class ManageEventInfoFragment extends Fragment {
      */
     private void prefill(@Nullable Event ev) {
         if (ev == null) return;
-        if (!TextUtils.isEmpty(ev.getTitle())) {
+
+        // Original fields
+        if (!TextUtils.isEmpty(ev.getTitle()) && nameField != null) {
             nameField.setText(ev.getTitle());
         }
-        if (!TextUtils.isEmpty(ev.getDescription())) {
+        if (!TextUtils.isEmpty(ev.getDescription()) && descriptionField != null) {
             descriptionField.setText(ev.getDescription());
         }
-        capacityField.setText(String.valueOf((long) ev.getEventCapacity()));
-        waitingField.setText(String.valueOf((long) ev.getWaitingListLimit()));
-        if (ev.getCost() != null) {
+        if (capacityField != null) {
+            capacityField.setText(String.valueOf((long) ev.getEventCapacity()));
+        }
+        if (waitingField != null) {
+            waitingField.setText(String.valueOf((long) ev.getWaitingListLimit()));
+        }
+        if (ev.getCost() != null && priceField != null) {
             priceField.setText(String.valueOf(ev.getCost()));
+        }
+
+        // NEW: category
+        if (!TextUtils.isEmpty(ev.getCategory()) && categoryField != null) {
+            categoryField.setText(ev.getCategory());
+        }
+
+        // NEW: dates
+        if (ev.getEventStartDate() != null && startDateField != null) {
+            startDateField.setText(dateFormat.format(ev.getEventStartDate()));
+        }
+        if (ev.getEventEndDate() != null && endDateField != null) {
+            endDateField.setText(dateFormat.format(ev.getEventEndDate()));
+        }
+        if (ev.getRegistrationStartDate() != null && regStartDateField != null) {
+            regStartDateField.setText(dateFormat.format(ev.getRegistrationStartDate()));
+        }
+        if (ev.getRegistrationEndDate() != null && regEndDateField != null) {
+            regEndDateField.setText(dateFormat.format(ev.getRegistrationEndDate()));
+        }
+
+        // NEW: location
+        if (!TextUtils.isEmpty(ev.getLocation()) && locationField != null) {
+            locationField.setText(ev.getLocation());
+        }
+
+        // NEW: geolocation toggle
+        if (geolocationSwitch != null && ev != null) {
+            geolocationSwitch.setChecked(ev.isGeoLocationOn());
         }
     }
 
@@ -261,11 +361,17 @@ public class ManageEventInfoFragment extends Fragment {
             return;
         }
 
-        String name  = safe(nameField);
-        String desc  = safe(descriptionField);
-        String capS  = safe(capacityField);
-        String waitS = safe(waitingField);
-        String priceS = safe(priceField);
+        String name      = safe(nameField);
+        String desc      = safe(descriptionField);
+        String capS      = safe(capacityField);
+        String waitS     = safe(waitingField);
+        String priceS    = safe(priceField);
+        String category  = safe(categoryField);
+        String startS    = safe(startDateField);
+        String endS      = safe(endDateField);
+        String regStartS = safe(regStartDateField);
+        String regEndS   = safe(regEndDateField);
+        String location  = safe(locationField);
 
         if (name.isEmpty() || desc.isEmpty()) {
             Toast.makeText(getContext(), "Name and description are required.", Toast.LENGTH_LONG).show();
@@ -274,6 +380,33 @@ public class ManageEventInfoFragment extends Fragment {
 
         loadedEvent.setTitle(name);
         loadedEvent.setDescription(desc);
+        loadedEvent.setCategory(category);
+        loadedEvent.setLocation(location);
+        if (geolocationSwitch != null) {
+            loadedEvent.setGeoLocationOn(geolocationSwitch.isChecked());
+        }
+
+        try {
+            if (!startS.isEmpty()) {
+                loadedEvent.setEventStartDate(dateFormat.parse(startS));
+            }
+            if (!endS.isEmpty()) {
+                loadedEvent.setEventEndDate(dateFormat.parse(endS));
+            }
+            if (!regStartS.isEmpty()) {
+                loadedEvent.setRegistrationStartDate(dateFormat.parse(regStartS));
+            }
+            if (!regEndS.isEmpty()) {
+                loadedEvent.setRegistrationEndDate(dateFormat.parse(regEndS));
+            }
+        } catch (ParseException e) {
+            Toast.makeText(
+                    getContext(),
+                    "Invalid date format. Use yyyy-mm-dd.",
+                    Toast.LENGTH_LONG
+            ).show();
+            return;
+        }
 
         try {
             if (!capS.isEmpty()) {
@@ -603,6 +736,34 @@ public class ManageEventInfoFragment extends Fragment {
         @Override public Float getZIndex() { return 0f; }
     }
 
+    private void showDatePicker(@NonNull TextInputEditText field) {
+        int year = calendar.get(Calendar.YEAR);
+        int month = calendar.get(Calendar.MONTH);
+        int day = calendar.get(Calendar.DAY_OF_MONTH);
+
+        String existing = safe(field);
+        if (!existing.isEmpty()) {
+            try {
+                Date parsed = dateFormat.parse(existing);
+                if (parsed != null) {
+                    Calendar c = Calendar.getInstance();
+                    c.setTime(parsed);
+                    year = c.get(Calendar.YEAR);
+                    month = c.get(Calendar.MONTH);
+                    day = c.get(Calendar.DAY_OF_MONTH);
+                }
+            } catch (ParseException ignored) { }
+        }
+
+        new DatePickerDialog(
+                requireContext(),
+                (view, y, m, d) -> {
+                    calendar.set(y, m, d);
+                    field.setText(dateFormat.format(calendar.getTime()));
+                },
+                year, month, day
+        ).show();
+    }
 
     // --- Fragment / MapView lifecycle wiring ---
 
