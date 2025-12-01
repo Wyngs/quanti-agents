@@ -18,7 +18,9 @@ import com.quantiagents.app.Services.NotificationService;
 import com.quantiagents.app.models.Notification;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -32,6 +34,7 @@ public class AdminEventsViewModel extends AndroidViewModel {
 
     // Master lists to support Search functionality
     private List<Event> masterEventList = new ArrayList<>();
+    private List<UserSummary> masterOrganizerList = new ArrayList<>();
     private List<UserSummary> masterProfileList = new ArrayList<>();
     private List<Image> masterImageList = new ArrayList<>();
 
@@ -52,6 +55,10 @@ public class AdminEventsViewModel extends AndroidViewModel {
      * @return LiveData containing the list of user profiles
      */
     public LiveData<List<UserSummary>> getProfiles() { return profiles; }
+
+    // ADDED: LiveData for Organizers
+    private final MutableLiveData<List<UserSummary>> organizers = new MutableLiveData<>();
+    public LiveData<List<UserSummary>> getOrganizers() { return organizers; }
 
     private final MutableLiveData<List<Image>> images = new MutableLiveData<>();
     
@@ -173,6 +180,39 @@ public class AdminEventsViewModel extends AndroidViewModel {
         );
     }
 
+    // ADDED: Logic to load ONLY Organizers
+    public void loadOrganizers() {
+        // 1. Get all Events to find organizer IDs
+        adminService.getAllEvents(
+                allEvents -> {
+                    Set<String> organizerIds = new HashSet<>();
+                    if (allEvents != null) {
+                        for (Event e : allEvents) {
+                            if (e.getOrganizerId() != null) organizerIds.add(e.getOrganizerId());
+                        }
+                    }
+
+                    // 2. Get all Users and filter
+                    adminService.listAllProfiles(
+                            allUsers -> {
+                                List<UserSummary> orgSummaries = new ArrayList<>();
+                                if (allUsers != null) {
+                                    for (User user : allUsers) {
+                                        if (organizerIds.contains(user.getUserId())) {
+                                            orgSummaries.add(new UserSummary(user.getUserId(), user.getName(), user.getUsername(), user.getEmail()));
+                                        }
+                                    }
+                                }
+                                masterOrganizerList = new ArrayList<>(orgSummaries);
+                                organizers.postValue(orgSummaries);
+                            },
+                            e -> toastMessage.postValue("Error loading organizers: " + e.getMessage())
+                    );
+                },
+                e -> toastMessage.postValue("Error checking events for organizers")
+        );
+    }
+
     /**
      * Deletes a user profile from the database.
      *
@@ -206,6 +246,24 @@ public class AdminEventsViewModel extends AndroidViewModel {
                         (u.getEmail() != null && u.getEmail().toLowerCase().contains(q)))
                 .collect(Collectors.toList());
         profiles.setValue(filtered);
+    }
+
+    /**
+     * Searches organizers by name or email.
+     *
+     * @param query The search query string
+     */
+    public void searchOrganizers(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            organizers.setValue(new ArrayList<>(masterOrganizerList));
+            return;
+        }
+        String q = query.toLowerCase();
+        List<UserSummary> filtered = masterOrganizerList.stream()
+                .filter(u -> (u.getName() != null && u.getName().toLowerCase().contains(q)) ||
+                        (u.getEmail() != null && u.getEmail().toLowerCase().contains(q)))
+                .collect(Collectors.toList());
+        organizers.setValue(filtered);
     }
 
     // --- IMAGES ---
