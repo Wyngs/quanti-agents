@@ -13,13 +13,34 @@ import com.quantiagents.app.R;
 import com.quantiagents.app.models.Image;
 import java.util.List;
 
+/**
+ * Adapter for displaying images in admin management screens.
+ * Allows admins to view images and delete them.
+ */
 public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHolder> {
 
     private final List<Image> imageList;
     private final OnDeleteClickListener listener;
 
-    public interface OnDeleteClickListener { void onDeleteClick(Image image, int position); }
+    /**
+     * Interface for handling image deletion.
+     */
+    public interface OnDeleteClickListener {
+        /**
+         * Called when admin wants to delete an image.
+         *
+         * @param image The image to delete
+         * @param position The position of the image in the list
+         */
+        void onDeleteClick(Image image, int position);
+    }
 
+    /**
+     * Constructor that initializes the adapter with images and a delete listener.
+     *
+     * @param imageList The list of images to display
+     * @param listener The callback interface for handling image deletion
+     */
     public ImageAdapter(List<Image> imageList, OnDeleteClickListener listener) {
         this.imageList = imageList;
         this.listener = listener;
@@ -51,6 +72,12 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
             deleteButton = itemView.findViewById(R.id.button_delete_image);
         }
 
+        /**
+         * Binds an image to the view holder, displaying the image and delete button.
+         *
+         * @param image The image to display
+         * @param listener The listener for delete actions
+         */
         void bind(final Image image, final OnDeleteClickListener listener) {
             String details = "Image ID: " + image.getImageId();
             posterDetails.setText(details);

@@ -25,6 +25,11 @@ import com.quantiagents.app.ui.ViewEventDetailsFragment;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragment that displays the user's registered events organized by status.
+ * Shows events in tabs: Waiting, Selected, Confirmed, and Past events.
+ * Allows users to view event details, accept/decline lottery invitations, and leave waitlists.
+ */
 public class MyEventFragment extends Fragment implements MyEventsAdapter.OnEventActionListener {
 
     private MyEventsViewModel viewModel;
@@ -35,9 +40,17 @@ public class MyEventFragment extends Fragment implements MyEventsAdapter.OnEvent
     private TextView empty;
     private MyEventsAdapter adapter;
 
+    /**
+     * Enum representing the different event status tabs.
+     */
     private enum Tab { WAITING, SELECTED, CONFIRMED, PAST }
     private Tab currentTab = Tab.WAITING;
 
+    /**
+     * Creates a new instance of MyEventFragment.
+     *
+     * @return A new MyEventFragment instance
+     */
     public static MyEventFragment newInstance() {
         return new MyEventFragment();
     }
@@ -62,6 +75,11 @@ public class MyEventFragment extends Fragment implements MyEventsAdapter.OnEvent
         viewModel.loadData();
     }
 
+    /**
+     * Binds all view references from the layout.
+     *
+     * @param root The root view of the fragment
+     */
     private void bindViews(@NonNull View root) {
         // Binds to the MaterialButtonToggleGroup in XML
         tabs = root.findViewById(R.id.my_events_tabs);
@@ -70,12 +88,18 @@ public class MyEventFragment extends Fragment implements MyEventsAdapter.OnEvent
         empty = root.findViewById(R.id.my_events_empty);
     }
 
+    /**
+     * Sets up the RecyclerView with layout manager and adapter.
+     */
     private void setupRecycler() {
         recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new MyEventsAdapter(this);
         recycler.setAdapter(adapter);
     }
 
+    /**
+     * Sets up the tab toggle group and handles tab selection changes.
+     */
     private void setupTabs() {
         // Listener for ToggleGroup changes
         tabs.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
@@ -105,6 +129,11 @@ public class MyEventFragment extends Fragment implements MyEventsAdapter.OnEvent
         }
     }
 
+    /**
+     * Updates the current tab based on the selected index.
+     *
+     * @param index The tab index (0=WAITING, 1=SELECTED, 2=CONFIRMED, 3=PAST)
+     */
     private void updateCurrentTab(int index) {
         switch (index) {
             case 0: currentTab = Tab.WAITING; break;
@@ -115,6 +144,9 @@ public class MyEventFragment extends Fragment implements MyEventsAdapter.OnEvent
         }
     }
 
+    /**
+     * Observes ViewModel LiveData and updates UI accordingly.
+     */
     private void observeViewModel() {
         viewModel.getIsLoading().observe(getViewLifecycleOwner(), loading -> {
             progress.setVisibility(loading ? View.VISIBLE : View.GONE);

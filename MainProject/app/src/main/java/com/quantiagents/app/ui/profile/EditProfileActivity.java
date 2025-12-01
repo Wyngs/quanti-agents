@@ -50,6 +50,7 @@ public class EditProfileActivity extends AppCompatActivity {
 
     /**
      * Collects all view references in one place to keep onCreate readable.
+     * Binds all TextInputLayout and TextInputEditText fields from the layout.
      */
     private void bindViews() {
         nameLayout = findViewById(R.id.edit_name_layout);
@@ -65,7 +66,8 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     /**
-     * Fetches the active user asynchronously and hydrates the form.
+     * Fetches the active user asynchronously and hydrates the form with current user data.
+     * Disables the save button until user data is loaded.
      */
     private void bindUser() {
         saveButton.setEnabled(false);
@@ -92,6 +94,7 @@ public class EditProfileActivity extends AppCompatActivity {
 
     /**
      * Runs form validation, updates Firestore, and handles optional password changes.
+     * Validates all fields and shows errors if validation fails.
      */
     private void handleSave() {
         clearErrors();

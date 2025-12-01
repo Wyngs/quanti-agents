@@ -48,6 +48,11 @@ import java.util.Locale;
  */
 public class CreateEventFragment extends Fragment {
 
+    /**
+     * Creates a new instance of CreateEventFragment.
+     *
+     * @return A new CreateEventFragment instance
+     */
     public static CreateEventFragment newInstance() {
         return new CreateEventFragment();
     }

@@ -77,6 +77,11 @@ public class ScanQRCodeFragment extends Fragment {
     // Quick Access
     private QRQuickAccessAdapter quickAccessAdapter;
 
+    /**
+     * Creates a new instance of ScanQRCodeFragment.
+     *
+     * @return A new ScanQRCodeFragment instance
+     */
     public static ScanQRCodeFragment newInstance() {
         return new ScanQRCodeFragment();
     }

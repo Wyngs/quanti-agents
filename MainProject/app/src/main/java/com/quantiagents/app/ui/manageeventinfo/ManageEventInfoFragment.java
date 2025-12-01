@@ -106,6 +106,9 @@ public class ManageEventInfoFragment extends Fragment {
 
     /**
      * Factory method to create a new ManageEventInfoFragment.
+     *
+     * @param eventId The unique identifier of the event to manage
+     * @return A new ManageEventInfoFragment instance
      */
     public static ManageEventInfoFragment newInstance(@NonNull String eventId) {
         Bundle b = new Bundle();
@@ -115,6 +118,9 @@ public class ManageEventInfoFragment extends Fragment {
         return f;
     }
 
+    /**
+     * Required empty public constructor for Fragment instantiation.
+     */
     public ManageEventInfoFragment() {
         // Required empty public constructor
     }

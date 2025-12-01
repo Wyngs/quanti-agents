@@ -34,9 +34,18 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-// Kept for compatibility, but logic mirrors Adapter ViewHolder
+/**
+ * Fragment that displays details for a single event.
+ * Kept for compatibility, but logic mirrors Adapter ViewHolder.
+ * Shows event information and registration status with action buttons.
+ */
 public class SingleEventFragment extends Fragment {
 
+    /**
+     * Creates a new instance of SingleEventFragment.
+     *
+     * @return A new SingleEventFragment instance
+     */
     public static SingleEventFragment newInstance() { return new SingleEventFragment(); }
 
     private UserService userService;
@@ -86,6 +95,11 @@ public class SingleEventFragment extends Fragment {
         if (!TextUtils.isEmpty(eventId)) loadAll();
     }
 
+    /**
+     * Binds all view references from the layout.
+     *
+     * @param v The root view of the fragment
+     */
     private void bindViews(View v) {
         progress = v.findViewById(R.id.single_progress);
         title = v.findViewById(R.id.single_title);

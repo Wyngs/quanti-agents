@@ -13,28 +13,63 @@ import com.quantiagents.app.models.QRCode;
 
 import java.util.List;
 
+/**
+ * Service layer for QRCode operations.
+ * Handles business logic for saving, updating, and deleting QR codes.
+ */
 public class QRCodeService {
 
     private final QRCodeRepository repository;
 
+    /**
+     * Constructor that initializes the QRCodeService with required dependencies.
+     * QRCodeService instantiates its own repositories internally.
+     *
+     * @param context The Android context (currently unused but kept for consistency)
+     */
     public QRCodeService(Context context) {
         // QRCodeService instantiates its own repositories internally
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
         this.repository = new QRCodeRepository(fireBaseRepository);
     }
 
+    /**
+     * Retrieves a QR code by its ID synchronously.
+     *
+     * @param qrCodeId The unique identifier of the QR code
+     * @return The QRCode object, or null if not found
+     */
     public QRCode getQRCodeById(int qrCodeId) {
         return repository.getQRCodeById(qrCodeId);
     }
 
+    /**
+     * Retrieves all QR codes synchronously.
+     *
+     * @return List of all QR codes
+     */
     public List<QRCode> getAllQRCodes() {
         return repository.getAllQRCodes();
     }
 
+    /**
+     * Retrieves all QR codes associated with a specific event synchronously.
+     *
+     * @param eventId The unique identifier of the event
+     * @return List of QR codes for the event
+     */
     public List<QRCode> getQRCodesByEventId(String eventId) {
         return repository.getQRCodesByEventId(eventId);
     }
 
+    /**
+     * Validates and saves a new QR code.
+     * If id is 0 or negative, Firebase will auto-generate an ID.
+     *
+     * @param qrCode The QR code to save
+     * @param onSuccess Callback invoked on successful save
+     * @param onFailure Callback receiving validation or database errors
+     */
     public void saveQRCode(QRCode qrCode, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         // Validate QR code before saving
         if (qrCode == null) {
@@ -63,6 +98,13 @@ public class QRCodeService {
                 });
     }
 
+    /**
+     * Validates and updates an existing QR code.
+     *
+     * @param qrCode The QR code to update (must have valid id, value, and eventId)
+     * @param onSuccess Callback invoked on successful update
+     * @param onFailure Callback invoked if update fails or validation fails
+     */
     public void updateQRCode(@NonNull QRCode qrCode,
                              @NonNull OnSuccessListener<Void> onSuccess,
                              @NonNull OnFailureListener onFailure) {
@@ -91,6 +133,13 @@ public class QRCodeService {
                 });
     }
 
+    /**
+     * Deletes a QR code asynchronously.
+     *
+     * @param qrCodeId The ID of the QR code to delete (must be positive)
+     * @param onSuccess Callback invoked on successful deletion
+     * @param onFailure Callback invoked if deletion fails or qrCodeId is invalid
+     */
     public void deleteQRCode(int qrCodeId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (qrCodeId <= 0) {
             onFailure.onFailure(new IllegalArgumentException("QR code ID must be positive"));
@@ -108,6 +157,12 @@ public class QRCodeService {
                 });
     }
 
+    /**
+     * Deletes a QR code synchronously.
+     *
+     * @param qrCodeId The ID of the QR code to delete (must be positive)
+     * @return True if QR code was successfully deleted, false otherwise
+     */
     public boolean deleteQRCode(int qrCodeId) {
         if (qrCodeId <= 0) {
             return false;

@@ -16,29 +16,61 @@ import com.quantiagents.app.models.QRCode;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Adapter for displaying quick access QR codes for events in ScanQRCodeFragment.
+ * Allows users to quickly scan QR codes for events they've recently accessed.
+ */
 public class QRQuickAccessAdapter extends RecyclerView.Adapter<QRQuickAccessAdapter.ViewHolder> {
 
+    /**
+     * Interface for handling event scan actions.
+     */
     public interface OnEventScanListener {
+        /**
+         * Called when user wants to scan a QR code for an event.
+         *
+         * @param event The event associated with the QR code
+         * @param qrCodeValue The QR code value to scan
+         */
         void onScanEvent(Event event, String qrCodeValue);
     }
 
     private final List<EventQRPair> items = new ArrayList<>();
     private final OnEventScanListener listener;
 
+    /**
+     * Data class representing an event and its associated QR code value.
+     */
     public static class EventQRPair {
         public final Event event;
         public final String qrCodeValue;
 
+        /**
+         * Constructor for EventQRPair.
+         *
+         * @param event The event object
+         * @param qrCodeValue The QR code value associated with the event
+         */
         public EventQRPair(Event event, String qrCodeValue) {
             this.event = event;
             this.qrCodeValue = qrCodeValue;
         }
     }
 
+    /**
+     * Constructor that initializes the adapter with a scan listener.
+     *
+     * @param listener The callback interface for handling scan actions
+     */
     public QRQuickAccessAdapter(OnEventScanListener listener) {
         this.listener = listener;
     }
 
+    /**
+     * Sets new event-QR code pairs and notifies the adapter.
+     *
+     * @param newItems The new list of event-QR code pairs to display
+     */
     public void setItems(List<EventQRPair> newItems) {
         items.clear();
         if (newItems != null) {
@@ -78,6 +110,12 @@ public class QRQuickAccessAdapter extends RecyclerView.Adapter<QRQuickAccessAdap
             scanButton = itemView.findViewById(R.id.scanButton);
         }
 
+        /**
+         * Binds an event-QR code pair to the view holder.
+         *
+         * @param pair The event-QR code pair to display
+         * @param listener The scan listener for handling button clicks
+         */
         void bind(EventQRPair pair, OnEventScanListener listener) {
             Event event = pair.event;
             String qrCodeValue = pair.qrCodeValue;

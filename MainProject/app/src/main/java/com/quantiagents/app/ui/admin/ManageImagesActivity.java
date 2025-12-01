@@ -19,6 +19,10 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Activity for managing images as an admin.
+ * Displays all images and allows admins to delete them.
+ */
 public class ManageImagesActivity extends AppCompatActivity {
 
     private AdminService adminService;
@@ -28,6 +32,11 @@ public class ManageImagesActivity extends AppCompatActivity {
     private View rootView;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    /**
+     * Initializes the activity and sets up the image list with delete functionality.
+     *
+     * @param savedInstanceState The saved instance state bundle
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,6 +63,9 @@ public class ManageImagesActivity extends AppCompatActivity {
         loadImages();
     }
 
+    /**
+     * Loads all images from the database and updates the adapter.
+     */
     private void loadImages() {
         progressBar.setVisibility(View.VISIBLE);
         executor.execute(() -> {
@@ -70,6 +82,12 @@ public class ManageImagesActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Deletes an image and updates the UI.
+     *
+     * @param image The image to delete
+     * @param position The position of the image in the list
+     */
     private void deleteImage(Image image, int position) {
         // Call AdminService with callbacks
         adminService.removeImage(

@@ -22,6 +22,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Service layer for administrative operations.
+ * Handles admin-specific actions like deleting events, profiles, and images,
+ * with proper logging and notification handling.
+ */
 public class AdminService {
 
     private final EventService eventService;
@@ -33,6 +38,11 @@ public class AdminService {
     private final NotificationService notificationService;
     private final RegistrationHistoryService registrationHistoryService;
 
+    /**
+     * Constructor that initializes the AdminService with required dependencies.
+     *
+     * @param context The Android context used to initialize services
+     */
     public AdminService(Context context) {
         ServiceLocator locator = new ServiceLocator(context);
         FireBaseRepository fbRepo = new FireBaseRepository();
@@ -49,10 +59,23 @@ public class AdminService {
 
     // --- Events ---
 
+    /**
+     * Retrieves all events asynchronously for admin viewing.
+     *
+     * @param onSuccess Callback receiving the list of events
+     * @param onFailure Callback receiving any error exception
+     */
     public void getAllEvents(OnSuccessListener<List<Event>> onSuccess, OnFailureListener onFailure) {
         eventService.getAllEvents(onSuccess, onFailure);
     }
 
+    /**
+     * Logs an admin action to the audit log.
+     *
+     * @param kind The kind of action (EVENT, PROFILE, or IMAGE)
+     * @param targetId The ID of the item acted upon
+     * @param note Optional note about the action
+     */
     private void logAction(String kind, String targetId, String note) {
         logRepository.append(new AdminActionLog(
                 kind,
@@ -63,6 +86,17 @@ public class AdminService {
         ));
     }
 
+    /**
+     * Removes an event after confirmation.
+     * Sends notifications to affected users and organizer, deletes associated images,
+     * and logs the action.
+     *
+     * @param eventId The ID of the event to remove
+     * @param confirmed Must be true to proceed with deletion
+     * @param note Optional note for the audit log
+     * @param onSuccess Callback invoked on successful deletion
+     * @param onFailure Callback invoked if deletion fails or confirmation is false
+     */
     public void removeEvent(String eventId, boolean confirmed, @Nullable String note,
                             OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (!confirmed) {
@@ -98,8 +132,17 @@ public class AdminService {
 
     // --- Profiles ---
 
-
-
+    /**
+     * Removes a user profile after confirmation.
+     * Deletes from Firestore and clears local session if it matches current user.
+     * Logs the action to audit log.
+     *
+     * @param userId The ID of the user profile to remove
+     * @param confirmed Must be true to proceed with deletion
+     * @param note Optional note for the audit log
+     * @param onSuccess Callback invoked on successful deletion
+     * @param onFailure Callback invoked if deletion fails or confirmation is false
+     */
     public void removeProfile(String userId, boolean confirmed, @Nullable String note,
                               OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (!confirmed) {
@@ -130,6 +173,12 @@ public class AdminService {
         );
     }
 
+    /**
+     * Lists all user profiles asynchronously for admin viewing.
+     *
+     * @param onSuccess Callback receiving the list of all users
+     * @param onFailure Callback receiving any error exception
+     */
     public void listAllProfiles(OnSuccessListener<List<User>> onSuccess, OnFailureListener onFailure) {
         userRepository.getAllUsers(onSuccess, onFailure);
     }
@@ -160,6 +209,17 @@ public class AdminService {
     }
 
 
+    /**
+     * Removes an image after confirmation (async version).
+     * Sends notification to organizer if image is an event poster.
+     * Logs the action to audit log.
+     *
+     * @param imageId The ID of the image to remove
+     * @param confirmed Must be true to proceed with deletion
+     * @param note Optional note for the audit log
+     * @param onSuccess Callback invoked on successful deletion
+     * @param onFailure Callback invoked if deletion fails or confirmation is false
+     */
     public void removeImage(String imageId, boolean confirmed, @Nullable String note,
                             OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (!confirmed) {
@@ -194,7 +254,17 @@ public class AdminService {
 
 
 
-    //us 03.03.01b+c: select an image and confirm deletion
+    /**
+     * Removes an image after confirmation (synchronous version).
+     * US 03.03.01b+c: select an image and confirm deletion.
+     * Logs the action to audit log.
+     *
+     * @param imageId The ID of the image to remove
+     * @param confirmed Must be true to proceed with deletion
+     * @param note Optional note for the audit log
+     * @return True if image was successfully deleted
+     * @throws IllegalArgumentException if confirmation is false
+     */
     public boolean removeImage(String imageId, boolean confirmed, @Nullable String note) {
         if (!confirmed) {
             throw new IllegalArgumentException("confirmation required");
@@ -215,6 +285,8 @@ public class AdminService {
     /**
      * Sends notifications when an event is deleted by admin.
      * Notifies all users in waiting list, selected list, and confirmed list, plus the organizer.
+     *
+     * @param event The event that was deleted
      */
     private void sendEventDeletedByAdminNotifications(Event event) {
         if (event == null) return;
@@ -289,6 +361,8 @@ public class AdminService {
 
     /**
      * Sends notification to organizer when admin removes poster/image from event.
+     *
+     * @param event The event whose poster/image was removed
      */
     private void sendImageRemovedNotification(Event event) {
         if (event == null) return;

@@ -16,21 +16,46 @@ import com.quantiagents.app.models.UserSummary;
 
 import java.util.Objects;
 
+/**
+ * Adapter for displaying user profiles in admin browse screens.
+ * Allows admins to view profile details and delete profiles.
+ */
 public class AdminProfileAdapter extends ListAdapter<UserSummary, AdminProfileAdapter.ProfileViewHolder> {
 
     private final OnProfileDeleteListener deleteListener;
     private final OnItemClickListener itemClickListener;
 
+    /**
+     * Interface for handling profile deletion.
+     */
     public interface OnProfileDeleteListener {
+        /**
+         * Called when admin wants to delete a profile.
+         *
+         * @param profile The profile to delete
+         */
         void onDelete(UserSummary profile);
     }
 
-    // added interface for item clicks
+    /**
+     * Interface for handling item clicks.
+     */
     public interface OnItemClickListener {
+        /**
+         * Called when a profile item is clicked.
+         *
+         * @param profile The profile that was clicked
+         */
         void onItemClick(UserSummary profile);
     }
 
-    public AdminProfileAdapter(OnProfileDeleteListener deleteListener, OnItemClickListener itemClickListener) { // ADDED: Second parameter
+    /**
+     * Constructor that initializes the adapter with delete and click listeners.
+     *
+     * @param deleteListener The callback interface for handling profile deletion
+     * @param itemClickListener The callback interface for handling item clicks
+     */
+    public AdminProfileAdapter(OnProfileDeleteListener deleteListener, OnItemClickListener itemClickListener) {
         super(new ProfileDiffCallback());
         this.deleteListener = deleteListener;
         this.itemClickListener = itemClickListener;
@@ -62,7 +87,14 @@ public class AdminProfileAdapter extends ListAdapter<UserSummary, AdminProfileAd
             deleteButton = itemView.findViewById(R.id.item_delete_button);
         }
 
-        void bind(UserSummary profile, OnProfileDeleteListener deleteListener, OnItemClickListener itemClickListener) { // ADDED: Added listener param
+        /**
+         * Binds a profile to the view holder, displaying user information and action buttons.
+         *
+         * @param profile The profile to display
+         * @param deleteListener The listener for delete actions
+         * @param itemClickListener The listener for item click actions
+         */
+        void bind(UserSummary profile, OnProfileDeleteListener deleteListener, OnItemClickListener itemClickListener) {
             nameView.setText(profile.getName());
             emailView.setText(profile.getEmail());
             deleteButton.setOnClickListener(v -> deleteListener.onDelete(profile));

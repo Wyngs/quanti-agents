@@ -34,7 +34,15 @@ import java.util.concurrent.Executors;
 public class ManageEventInfoUserAdapter
         extends RecyclerView.Adapter<ManageEventInfoUserAdapter.UserViewHolder> {
 
+    /**
+     * Interface for handling cancel/remove actions on registrations.
+     */
     public interface OnCancelClickListener {
+        /**
+         * Called when user wants to cancel/remove a registration.
+         *
+         * @param history The registration history to cancel
+         */
         void onCancelClicked(RegistrationHistory history);
     }
 
@@ -48,19 +56,27 @@ public class ManageEventInfoUserAdapter
     @Nullable
     private OnCancelClickListener cancelClickListener;
 
-    /** Old code expects a no-arg constructor, so we keep it. */
+    /**
+     * Default constructor. Old code expects a no-arg constructor, so we keep it.
+     */
     public ManageEventInfoUserAdapter() {
         // list is already initialised
     }
 
-    /** Optional convenience constructor if someone wants to pass initial data. */
+    /**
+     * Optional convenience constructor if someone wants to pass initial data.
+     *
+     * @param regs The initial list of registration histories to display
+     */
     public ManageEventInfoUserAdapter(List<RegistrationHistory> regs) {
         submit(regs);
     }
 
     /**
-     * Keeps the old API used in ManageEventInfoListFragment:
-     * adapter.submit(list);
+     * Keeps the old API used in ManageEventInfoListFragment.
+     * Replaces the current list with new registration histories.
+     *
+     * @param regs The new list of registration histories to display
      */
     public void submit(List<RegistrationHistory> regs) {
         registrations.clear();
@@ -70,11 +86,21 @@ public class ManageEventInfoUserAdapter
         notifyDataSetChanged();
     }
 
+    /**
+     * Sets the status filter to show/hide cancel buttons based on registration status.
+     *
+     * @param status The registration status to filter by, or null to show all
+     */
     public void setStatusFilter(@Nullable constant.EventRegistrationStatus status) {
         this.statusFilter = status;
         notifyDataSetChanged();
     }
 
+    /**
+     * Sets the listener for cancel/remove actions.
+     *
+     * @param listener The callback interface for handling cancel actions, or null to disable
+     */
     public void setOnCancelClickListener(@Nullable OnCancelClickListener listener) {
         this.cancelClickListener = listener;
     }

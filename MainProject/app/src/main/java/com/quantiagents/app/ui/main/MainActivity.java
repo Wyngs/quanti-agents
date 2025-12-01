@@ -50,6 +50,11 @@ import com.quantiagents.app.ui.profile.ProfileFragment;
 import com.quantiagents.app.ui.profile.SettingsFragment;
 import com.quantiagents.app.Services.BadgeService;
 
+/**
+ * Main activity that serves as the primary navigation hub for the application.
+ * Manages the navigation drawer, fragment switching, and user authentication state.
+ * Supports both admin and entrant user roles with different menu options.
+ */
 @OptIn(markerClass = {ExperimentalGetImage.class, ExperimentalBadgeUtils.class})
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
@@ -64,6 +69,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private String originalNotificationTitle;
     private String originalMessageTitle;
 
+    /**
+     * Initializes the activity, sets up navigation drawer, and loads user data.
+     * Checks if user is logged in and redirects to LoginActivity if not.
+     *
+     * @param savedInstanceState The saved instance state bundle
+     */
     // Permission launcher for Android 13+ Notification permission
     private final ActivityResultLauncher<String> requestNotificationPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
@@ -118,7 +129,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
-    // helper method to setup UI once user is found
+    /**
+     * Helper method to setup UI once user is found.
+     * Binds user data to header, sets up admin menu, updates badges, and shows initial fragment.
+     *
+     * @param user The loaded user object
+     * @param savedInstanceState The saved instance state bundle
+     */
     private void onUserLoaded(@NonNull User user, Bundle savedInstanceState) {
         bindHeader(user);
         setupAdminMenu(user);
@@ -170,6 +187,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         badgeService.updateBadgeCount();
     }
 
+    /**
+     * Binds user information to the navigation drawer header.
+     * Displays user name and role (Admin or Entrant).
+     *
+     * @param user The user object to display
+     */
     private void bindHeader(@NonNull User user) {
         View header = navigationView.getHeaderView(0);
         TextView nameView = header.findViewById(R.id.text_logged_in_name);
@@ -188,6 +211,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    /**
+     * Sets up the navigation menu based on user role.
+     * Shows admin menu items for admin users, entrant menu items for regular users.
+     *
+     * @param user The user object to determine role
+     */
     private void setupAdminMenu(@NonNull User user) {
         Menu menu = navigationView.getMenu();
 
@@ -206,6 +235,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    /**
+     * Handles navigation item selection from the drawer menu.
+     * Switches to the appropriate fragment based on the selected menu item.
+     *
+     * @param item The selected menu item
+     * @return True if the item selection was handled
+     */
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();

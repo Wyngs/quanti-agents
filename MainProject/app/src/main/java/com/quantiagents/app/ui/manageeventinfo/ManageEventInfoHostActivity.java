@@ -21,6 +21,12 @@ public class ManageEventInfoHostActivity extends AppCompatActivity {
     /** Intent extra key for the Firestore Event document id. */
     public static final String EXTRA_EVENT_ID = "eventId";
 
+    /**
+     * Initializes the activity and attaches ManageEventInfoFragment.
+     * Reads eventId from intent extras and passes it to the fragment.
+     *
+     * @param savedInstanceState The saved instance state bundle
+     */
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

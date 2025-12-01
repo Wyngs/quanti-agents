@@ -18,15 +18,22 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.regex.Pattern;
 
-/**
- * Keeps entrant profiles tied to a device id so I can skip usernames and still edit or delete safely.
- */
-public class UserService {
+    /**
+     * Service class that manages user-related operations.
+     * Keeps entrant profiles tied to a device id so usernames can be skipped and still edit or delete safely.
+     */
+    public class UserService {
 
     private final UserRepository repository;
     private final DeviceIdManager deviceIdManager;
     private final Pattern emailPattern = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
 
+    /**
+     * Constructor that initializes the UserService with required dependencies.
+     * Instantiates repositories and dependencies internally.
+     *
+     * @param context The Android context used to initialize the DeviceIdManager
+     */
     public UserService(Context context) {
         // Instantiate repositories and dependencies internally
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
@@ -36,6 +43,9 @@ public class UserService {
 
     /**
      * Synchronous helper for quick calls on background threads; still uses local cache.
+     * Efficiently queries by device ID instead of fetching all users.
+     *
+     * @return The current user associated with the device ID, or null if not found
      */
     public User getCurrentUser() {
         // Efficiently query by device ID instead of fetching all users
@@ -44,7 +54,10 @@ public class UserService {
     }
 
     /**
-     * Forces a server read when I truly need the latest profile info (mainly for tests).
+     * Forces a server read when the latest profile info is truly needed (mainly for tests).
+     * Note: Still using getAllUsersFromServer for test consistency, but ideally could be optimized similarly.
+     *
+     * @return The current user from the server, or null if not found
      */
     public User getCurrentUserFresh() {
         String deviceId = deviceIdManager.ensureDeviceId();
@@ -59,9 +72,15 @@ public class UserService {
     }
 
     /**
-     * Blocking create that I still lean on inside background work or tests.
+     * Blocking create that is used inside background work or tests.
+     * Note: Uniqueness check is not performed here to allow tests to use the same usernames.
      *
-     * @return the created user snapshot (already contains the generated id)
+     * @param name The full name of the user
+     * @param username The username chosen by the user
+     * @param email The email address of the user
+     * @param phone The phone number of the user
+     * @param password The plain text password (will be hashed)
+     * @return The created user snapshot (already contains the generated id)
      */
     public User createUser(String name, String username, String email, String phone, String password) {
         User user = buildUser(name, username, email, phone, password);
@@ -74,7 +93,16 @@ public class UserService {
     }
 
     /**
-     * Async create hook I call from the UI so Firestore work stays off the main thread.
+     * Async create hook called from the UI so Firestore work stays off the main thread.
+     * Checks for unique username and email before creating the user.
+     *
+     * @param name The full name of the user
+     * @param username The username chosen by the user
+     * @param email The email address of the user
+     * @param phone The phone number of the user
+     * @param password The plain text password (will be hashed)
+     * @param onSuccess Callback invoked when user is successfully created
+     * @param onFailure Callback invoked if creation fails or username/email is taken
      */
     public void createUser(String name,
                            String username,
@@ -115,6 +143,11 @@ public class UserService {
 
     /**
      * Simple blocking update for callers that are already off the main thread.
+     *
+     * @param name The updated full name of the user
+     * @param email The updated email address of the user
+     * @param phone The updated phone number of the user (may be null)
+     * @return The updated user object
      */
     public User updateUser(String name, String email, String phone) {
         User current = requireUser();
@@ -132,7 +165,13 @@ public class UserService {
     }
 
     /**
-     * Async update path used by edit profile so I can show success/failure to the user.
+     * Async update path used by edit profile so success/failure can be shown to the user.
+     *
+     * @param name The updated full name of the user
+     * @param email The updated email address of the user
+     * @param phone The updated phone number of the user (may be null)
+     * @param onSuccess Callback invoked when user is successfully updated
+     * @param onFailure Callback invoked if update fails or profile is missing
      */
     public void updateUser(String name,
                            String email,
@@ -177,6 +216,11 @@ public class UserService {
 
     /**
      * Lightweight credential check; used mostly by tests or synchronous flows.
+     * Can authenticate using either email or username.
+     *
+     * @param email The email address or username to authenticate with
+     * @param password The plain text password to check
+     * @return True if credentials are valid, false otherwise
      */
     public boolean authenticate(String email, String password) {
         // Find user by email
@@ -195,7 +239,12 @@ public class UserService {
 
     /**
      * Async credential check. Returns the User object on success so the session can be initialized immediately.
-     * Returns null to onSuccess if credentials fail.
+     * Returns null to onSuccess if credentials fail. Can authenticate using either email or username.
+     *
+     * @param email The email address or username to authenticate with
+     * @param password The plain text password to check
+     * @param onSuccess Callback invoked with the User object if credentials are valid, or null if invalid
+     * @param onFailure Callback invoked if an error occurs during authentication
      */
     public void authenticate(String email, String password, OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
         repository.getAllUsers(
@@ -224,6 +273,9 @@ public class UserService {
 
     /**
      * Synchronous device-id matcher, mainly used before the async login wire-up.
+     *
+     * @param deviceId The device ID to check
+     * @return True if a user exists with this device ID, false otherwise
      */
     public boolean authenticateDevice(String deviceId) {
         User user = repository.getUserByDeviceId(deviceId);
@@ -232,6 +284,10 @@ public class UserService {
 
     /**
      * Async device auth that SplashActivity can await before routing.
+     *
+     * @param deviceId The device ID to check
+     * @param onSuccess Callback invoked with true if a user exists with this device ID, false otherwise
+     * @param onFailure Callback invoked if an error occurs during authentication
      */
     public void authenticateDevice(String deviceId, OnSuccessListener<Boolean> onSuccess, OnFailureListener onFailure) {
         repository.getUserByDeviceId(deviceId,
@@ -243,6 +299,9 @@ public class UserService {
     /**
      * Async getter that backs basically every UI screen needing the active profile.
      * Updated to use efficient query instead of full scan.
+     *
+     * @param onSuccess Callback invoked with the current user object, or null if not found
+     * @param onFailure Callback invoked if an error occurs while fetching the user
      */
     public void getCurrentUser(OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
         String deviceId = deviceIdManager.ensureDeviceId();
@@ -251,6 +310,7 @@ public class UserService {
 
     /**
      * Ensures the stored profile mirrors whatever device id we have right now.
+     * If the current user's device ID doesn't match, updates it.
      */
     public void attachDeviceToCurrentUser() {
         attachDeviceToCurrentUser(null);
@@ -258,6 +318,9 @@ public class UserService {
 
     /**
      * Same as {@link #attachDeviceToCurrentUser()} but lets callers pass a cached user to avoid re-fetches.
+     * If the cached user's device ID doesn't match, updates it.
+     *
+     * @param cachedUser The cached user object to use, or null to fetch the current user
      */
     public void attachDeviceToCurrentUser(@Nullable User cachedUser) {
         User current = cachedUser != null ? cachedUser : getCurrentUser();
@@ -276,6 +339,8 @@ public class UserService {
 
     /**
      * Blocking password update used outside the UI (e.g., tests, migrations).
+     *
+     * @param newPassword The new plain text password (will be hashed)
      */
     public void updatePassword(String newPassword) {
         validatePassword(newPassword);
@@ -290,6 +355,10 @@ public class UserService {
 
     /**
      * Async password update so EditProfileActivity can react via callbacks.
+     *
+     * @param newPassword The new plain text password (will be hashed)
+     * @param onSuccess Callback invoked when password is successfully updated
+     * @param onFailure Callback invoked if update fails or profile is missing
      */
     public void updatePassword(String newPassword,
                                OnSuccessListener<Void> onSuccess,
@@ -329,13 +398,19 @@ public class UserService {
 
     /**
      * Fire-and-forget toggle for callers that don't care about result handling.
+     *
+     * @param enabled True to enable notifications, false to disable
      */
     public void updateNotificationPreference(boolean enabled) {
         updateNotificationPreference(enabled, null, null);
     }
 
     /**
-     * Full toggle variant so I can disable the UI switch until Firestore confirms.
+     * Full toggle variant so the UI switch can be disabled until Firestore confirms.
+     *
+     * @param enabled True to enable notifications, false to disable
+     * @param onSuccess Callback invoked when notification preference is successfully updated
+     * @param onFailure Callback invoked if update fails or profile is missing
      */
     public void updateNotificationPreference(boolean enabled,
                                              @Nullable OnSuccessListener<Void> onSuccess,
@@ -374,7 +449,7 @@ public class UserService {
     }
 
     /**
-     * Background cleanup used when I just need the profile gone without UI callbacks.
+     * Background cleanup used when the profile just needs to be deleted without UI callbacks.
      */
     public void deleteUserProfile() {
         getCurrentUser(
@@ -394,7 +469,11 @@ public class UserService {
     }
 
     /**
-     * Delete helper that surfaces callbacks so I can route success to the UI stack.
+     * Delete helper that surfaces callbacks so success can be routed to the UI stack.
+     * Also resets the device ID after successful deletion.
+     *
+     * @param onSuccess Callback invoked when user profile is successfully deleted
+     * @param onFailure Callback invoked if deletion fails or profile is missing
      */
     public void deleteUserProfile(OnSuccessListener<Void> onSuccess,
                                   OnFailureListener onFailure) {
@@ -433,17 +512,34 @@ public class UserService {
         );
     }
 
+    /**
+     * Synchronously gets a user by their user ID.
+     *
+     * @param userId The unique identifier of the user to retrieve
+     * @return The user object, or null if not found
+     */
     public User getUserById(String userId) {
         return repository.getUserById(userId);
     }
 
     /**
      * Asynchronously gets a user by their user ID.
+     *
+     * @param userId The unique identifier of the user to retrieve
+     * @param onSuccess Callback invoked with the user object, or null if not found
+     * @param onFailure Callback invoked if an error occurs while fetching the user
      */
     public void getUserById(String userId, OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
         repository.getUserById(userId, onSuccess, onFailure);
     }
 
+    /**
+     * Gets the current user and throws an exception if not found.
+     * Used internally to ensure a user exists before operations.
+     *
+     * @return The current user object
+     * @throws IllegalStateException if no user profile is found
+     */
     private User requireUser() {
         User current = getCurrentUser();
         if (current == null) {
@@ -453,9 +549,10 @@ public class UserService {
     }
 
     /**
-     * Verifies that the given string is valid
-     * @param name
-     * String name to check
+     * Verifies that the given name string is valid (not null or empty).
+     *
+     * @param name The name string to check
+     * @throws IllegalArgumentException if name is null or empty
      */
     private void validateName(String name) {
         if (name == null || name.trim().isEmpty()) {
@@ -464,9 +561,11 @@ public class UserService {
     }
 
     /**
-     * Verifies that the given string is valid
-     * @param username
-     * String username to check
+     * Verifies that the given username string is valid.
+     * Username must be at least 4 characters and contain no spaces.
+     *
+     * @param username The username string to check
+     * @throws IllegalArgumentException if username is null, empty, too short, or contains spaces
      */
     private void validateUsername(String username) {
 
@@ -482,9 +581,10 @@ public class UserService {
     }
 
     /**
-     * Verifies that the given string is valid
-     * @param email
-     * String email to check
+     * Verifies that the given email string is valid using regex pattern matching.
+     *
+     * @param email The email string to check
+     * @throws IllegalArgumentException if email is null, empty, or doesn't match email pattern
      */
     private void validateEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
@@ -496,9 +596,10 @@ public class UserService {
     }
 
     /**
-     * Verifies that the given string is valid
-     * @param password
-     * String password to check
+     * Verifies that the given password string is valid (at least 6 characters).
+     *
+     * @param password The password string to check
+     * @throws IllegalArgumentException if password is null or less than 6 characters
      */
     private void validatePassword(String password) {
         if (password == null || password.trim().length() < 6) {
@@ -507,19 +608,15 @@ public class UserService {
     }
 
     /**
-     * Verifies and creates a user from inputs
-     * @param name
-     * String name to use
-     * @param username
-     * String username to use (no spaces and greater than 3 characters)
-     * @param email
-     * String email to use (in form []@[].[])
-     * @param phone
-     * String phone to use
-     * @param password
-     * String password to use (will be hashed)
-     * @return
-     * Returns created User
+     * Verifies and creates a user from inputs.
+     * All inputs are validated and trimmed before creating the user object.
+     *
+     * @param name String name to use
+     * @param username String username to use (no spaces and greater than 3 characters)
+     * @param email String email to use (in form []@[].[])
+     * @param phone String phone to use (may be null)
+     * @param password String password to use (will be hashed)
+     * @return Returns created User object with device ID and hashed password
      * @see User
      */
     private User buildUser(String name, String username, String email, String phone, String password) {
@@ -534,11 +631,11 @@ public class UserService {
     }
 
     /**
-     * Hashes password
-     * @param password
-     * Password to hash
-     * @return
-     * Returns hashed password
+     * Hashes password using SHA-256 algorithm.
+     *
+     * @param password The plain text password to hash
+     * @return Returns the hashed password as a hexadecimal string
+     * @throws IllegalStateException if SHA-256 algorithm is not available
      */
     private String hashPassword(String password) {
         try {

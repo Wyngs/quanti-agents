@@ -37,6 +37,11 @@ public class BadgeService {
     private final ChatService chatService;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    /**
+     * Constructor that initializes the BadgeService with required dependencies.
+     *
+     * @param context The Android context used for badge operations
+     */
     public BadgeService(Context context) {
         // Use application context to avoid memory leaks
         this.context = context.getApplicationContext() != null ? context.getApplicationContext() : context;

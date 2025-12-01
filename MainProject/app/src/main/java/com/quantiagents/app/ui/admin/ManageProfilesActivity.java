@@ -16,6 +16,10 @@ import com.quantiagents.app.models.User;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Activity for managing user profiles as an admin.
+ * Displays all profiles and allows admins to delete them.
+ */
 public class ManageProfilesActivity extends AppCompatActivity {
 
     private AdminService adminService;
@@ -24,6 +28,11 @@ public class ManageProfilesActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private View rootView;
 
+    /**
+     * Initializes the activity and sets up the profile list with delete functionality.
+     *
+     * @param savedInstanceState The saved instance state bundle
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -50,6 +59,9 @@ public class ManageProfilesActivity extends AppCompatActivity {
         loadProfiles();
     }
 
+    /**
+     * Loads all profiles from the database and updates the adapter.
+     */
     private void loadProfiles() {
         progressBar.setVisibility(View.VISIBLE);
         // Using the Async listAllProfiles method we just fixed in AdminService
@@ -72,6 +84,12 @@ public class ManageProfilesActivity extends AppCompatActivity {
         );
     }
 
+    /**
+     * Deletes a profile and updates the UI.
+     *
+     * @param user The user profile to delete
+     * @param position The position of the profile in the list
+     */
     private void deleteProfile(User user, int position) {
         adminService.removeProfile(
                 user.getUserId(),

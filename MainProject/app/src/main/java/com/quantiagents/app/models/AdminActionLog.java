@@ -17,6 +17,15 @@ public class AdminActionLog implements Serializable {
     private final String actorDeviceId;
     private final String note;     //optional message
 
+    /**
+     * Constructor that creates an immutable admin audit entry.
+     *
+     * @param kind The kind of action (EVENT, PROFILE, or IMAGE)
+     * @param targetId The unique identifier of the item that was acted upon
+     * @param timestamp The timestamp when the action occurred (epoch milliseconds)
+     * @param actorDeviceId The device ID of the admin who performed the action
+     * @param note Optional message or note about the action
+     */
     public AdminActionLog(String kind, String targetId, long timestamp, String actorDeviceId, String note) {
         //immutable admin audit entry
         this.kind = kind;
@@ -26,9 +35,38 @@ public class AdminActionLog implements Serializable {
         this.note = note == null ? "" : note;
     }
 
+    /**
+     * Gets the kind of action performed (EVENT, PROFILE, or IMAGE).
+     *
+     * @return The action kind
+     */
     public String getKind() { return kind; }
+    
+    /**
+     * Gets the unique identifier of the item that was acted upon.
+     *
+     * @return The target ID
+     */
     public String getTargetId() { return targetId; }
+    
+    /**
+     * Gets the timestamp when the action occurred.
+     *
+     * @return The timestamp in epoch milliseconds
+     */
     public long getTimestamp() { return timestamp; }
+    
+    /**
+     * Gets the device ID of the admin who performed the action.
+     *
+     * @return The actor's device ID
+     */
     public String getActorDeviceId() { return actorDeviceId; }
+    
+    /**
+     * Gets the optional message or note about the action.
+     *
+     * @return The note string, or empty string if no note was provided
+     */
     public String getNote() { return note; }
 }

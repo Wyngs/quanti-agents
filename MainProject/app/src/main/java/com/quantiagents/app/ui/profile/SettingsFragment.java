@@ -30,6 +30,11 @@ public class SettingsFragment extends Fragment {
     private SwitchMaterial notificationSwitch;
     private boolean suppressSwitchListener;
 
+    /**
+     * Creates a new instance of SettingsFragment.
+     *
+     * @return A new SettingsFragment instance
+     */
     public static SettingsFragment newInstance() {
         return new SettingsFragment();
     }
@@ -90,7 +95,7 @@ public class SettingsFragment extends Fragment {
     }
 
     /**
-     * Shows the confirmation dialog before we wipe the profile.
+     * Shows the confirmation dialog before deleting the profile.
      */
     private void confirmDeletion() {
         new MaterialAlertDialogBuilder(requireContext())

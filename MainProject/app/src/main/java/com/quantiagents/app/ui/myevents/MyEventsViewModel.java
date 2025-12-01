@@ -28,6 +28,10 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * ViewModel for MyEventFragment that manages user's registered events.
+ * Organizes events by registration status: waiting, selected, confirmed, and past.
+ */
 public class MyEventsViewModel extends AndroidViewModel {
 
     private static final String TAG = "MyEventsViewModel";
@@ -47,6 +51,11 @@ public class MyEventsViewModel extends AndroidViewModel {
     private final MutableLiveData<List<MyEventsAdapter.MyEventItem>> confirmedList = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<List<MyEventsAdapter.MyEventItem>> pastList = new MutableLiveData<>(new ArrayList<>());
 
+    /**
+     * Constructor that initializes the ViewModel with required services.
+     *
+     * @param application The application instance
+     */
     public MyEventsViewModel(@NonNull Application application) {
         super(application);
         App app = (App) application;
@@ -58,14 +67,51 @@ public class MyEventsViewModel extends AndroidViewModel {
         this.executor = Executors.newSingleThreadExecutor();
     }
 
+    /**
+     * Gets the loading state LiveData.
+     *
+     * @return LiveData indicating whether data is being loaded
+     */
     public LiveData<Boolean> getIsLoading() { return isLoading; }
+    
+    /**
+     * Gets the error message LiveData.
+     *
+     * @return LiveData containing error messages
+     */
     public LiveData<String> getErrorMessage() { return errorMessage; }
 
+    /**
+     * Gets the waiting list LiveData.
+     *
+     * @return LiveData containing events in waiting status
+     */
     public LiveData<List<MyEventsAdapter.MyEventItem>> getWaitingList() { return waitingList; }
+    
+    /**
+     * Gets the selected list LiveData.
+     *
+     * @return LiveData containing events in selected status
+     */
     public LiveData<List<MyEventsAdapter.MyEventItem>> getSelectedList() { return selectedList; }
+    
+    /**
+     * Gets the confirmed list LiveData.
+     *
+     * @return LiveData containing events in confirmed status
+     */
     public LiveData<List<MyEventsAdapter.MyEventItem>> getConfirmedList() { return confirmedList; }
+    
+    /**
+     * Gets the past list LiveData.
+     *
+     * @return LiveData containing past events
+     */
     public LiveData<List<MyEventsAdapter.MyEventItem>> getPastList() { return pastList; }
 
+    /**
+     * Loads all registration data for the current user and organizes by status.
+     */
     public void loadData() {
         isLoading.setValue(true);
         userService.getCurrentUser(
@@ -84,6 +130,11 @@ public class MyEventsViewModel extends AndroidViewModel {
         );
     }
 
+    /**
+     * Fetches all registrations for a user and organizes them by status.
+     *
+     * @param userId The user ID to fetch registrations for
+     */
     private void fetchRegistrations(String userId) {
         executor.execute(() -> {
             try {

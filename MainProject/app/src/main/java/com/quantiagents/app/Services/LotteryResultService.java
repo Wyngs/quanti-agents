@@ -35,6 +35,11 @@ public class LotteryResultService {
     private final UserService userService;
     private final ChatService chatService;
 
+    /**
+     * Constructor that initializes the LotteryResultService with required dependencies.
+     *
+     * @param context The Android context used to initialize services
+     */
     public LotteryResultService(Context context) {
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
         this.repository = new LotteryResultRepository(fireBaseRepository);
@@ -45,18 +50,43 @@ public class LotteryResultService {
         this.chatService = new ChatService(context);
     }
 
+    /**
+     * Retrieves a lottery result by timestamp and event ID synchronously.
+     *
+     * @param timestamp The timestamp when the lottery was drawn
+     * @param eventId The unique identifier of the event
+     * @return The LotteryResult object, or null if not found
+     */
     public LotteryResult getLotteryResultByTimestampAndEventId(Date timestamp, String eventId) {
         return repository.getLotteryResultByTimestampAndEventId(timestamp, eventId);
     }
 
+    /**
+     * Retrieves all lottery results for a specific event synchronously.
+     *
+     * @param eventId The unique identifier of the event
+     * @return List of lottery results for the event
+     */
     public List<LotteryResult> getLotteryResultsByEventId(String eventId) {
         return repository.getLotteryResultsByEventId(eventId);
     }
 
+    /**
+     * Retrieves all lottery results synchronously.
+     *
+     * @return List of all lottery results
+     */
     public List<LotteryResult> getAllLotteryResults() {
         return repository.getAllLotteryResults();
     }
 
+    /**
+     * Validates and saves a lottery result.
+     *
+     * @param result The lottery result to save
+     * @param onSuccess Callback invoked on successful save
+     * @param onFailure Callback receiving validation or database errors
+     */
     public void saveLotteryResult(LotteryResult result, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         if (result == null) {
             onFailure.onFailure(new IllegalArgumentException("Result cannot be null"));
@@ -65,6 +95,14 @@ public class LotteryResultService {
         repository.saveLotteryResult(result, onSuccess, onFailure);
     }
 
+    /**
+     * Deletes a lottery result by timestamp and event ID asynchronously.
+     *
+     * @param timestamp The timestamp when the lottery was drawn
+     * @param eventId The unique identifier of the event
+     * @param onSuccess Callback invoked on successful deletion
+     * @param onFailure Callback invoked if deletion fails
+     */
     public void deleteLotteryResult(Date timestamp, String eventId, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         repository.deleteLotteryResultByTimestampAndEventId(timestamp, eventId, onSuccess, onFailure);
     }
@@ -167,6 +205,12 @@ public class LotteryResultService {
      * After all RegistrationHistory updates are complete, sync the Event lists,
      * update the Event document, then save the LotteryResult and finally
      * call onSuccess.
+     *
+     * @param event The event for which the lottery was drawn
+     * @param eventId The unique identifier of the event
+     * @param winnerIds List of user IDs who won the lottery
+     * @param onSuccess Callback invoked with the LotteryResult when complete
+     * @param onFailure Callback invoked if finalization fails
      */
     private void finalizeLottery(Event event,
                                  String eventId,
@@ -277,6 +321,9 @@ public class LotteryResultService {
 
     /**
      * Sends lottery win notifications to all winners.
+     *
+     * @param event The event for which the lottery was drawn
+     * @param winnerIds List of user IDs who won the lottery
      */
     private void sendLotteryWinNotifications(Event event, List<String> winnerIds) {
         if (event == null || winnerIds == null || winnerIds.isEmpty()) return;

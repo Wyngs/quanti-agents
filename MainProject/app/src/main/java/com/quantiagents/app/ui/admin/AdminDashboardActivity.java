@@ -7,8 +7,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import com.quantiagents.app.R;
 
+/**
+ * Activity that serves as the main dashboard for admin users.
+ * Provides navigation to manage events, images, notifications, and profiles.
+ */
 public class AdminDashboardActivity extends AppCompatActivity {
 
+    /**
+     * Initializes the activity and sets up navigation buttons to various admin management screens.
+     *
+     * @param savedInstanceState The saved instance state bundle
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
