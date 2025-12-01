@@ -1,5 +1,7 @@
 package com.quantiagents.app.Services;
 
+import android.content.Context;
+
 import androidx.annotation.Nullable;
 
 import com.google.android.gms.tasks.OnFailureListener;
@@ -54,6 +56,7 @@ public class LoginService {
                         // IMPORTANT: Link this device ID to the user profile immediately.
                         // This ensures subsequent startup/splash checks pass.
                         userService.attachDeviceToCurrentUser(user);
+                        
                         onSuccess.onSuccess(true);
                     } else {
                         // Invalid credentials
@@ -124,4 +127,5 @@ public class LoginService {
     public boolean hasActiveSession() {
         return getActiveUser() != null;
     }
+
 }

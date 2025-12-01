@@ -65,6 +65,7 @@
     <string name="nav_item_manage_events">Manage events</string>
     <string name="nav_item_scan_qr">Scan QR code</string>
     <string name="nav_item_notifications">Notifications</string>
+    <string name="nav_item_messages">Messages</string>
     <string name="nav_item_logout">Logout</string>
     <string name="nav_logged_in_as">Logged in as</string>
     <string name="nav_section_browse">Browse events</string>

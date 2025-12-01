@@ -23,6 +23,9 @@
         <item
             android:id="@+id/navigation_notifications"
             android:title="@string/nav_item_notifications" />
+        <item
+            android:id="@+id/navigation_messages"
+            android:title="@string/nav_item_messages" />
     </group>
 
     <group

@@ -33,6 +33,7 @@ public class LotteryResultService {
     private final EventService eventService;
     private final NotificationService notificationService;
     private final UserService userService;
+    private final ChatService chatService;
 
     public LotteryResultService(Context context) {
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
@@ -41,6 +42,7 @@ public class LotteryResultService {
         this.eventService = new EventService(context);
         this.notificationService = new NotificationService(context);
         this.userService = new UserService(context);
+        this.chatService = new ChatService(context);
     }
 
     public LotteryResult getLotteryResultByTimestampAndEventId(Date timestamp, String eventId) {
@@ -201,9 +203,23 @@ public class LotteryResultService {
                             result,
                             v -> {
                                 Log.d("App", "Lottery completed for event: " + eventId);
+                                // Create group chat for the event (organizer will be added automatically)
+                                String eventName = event.getTitle() != null ? event.getTitle() : "Event";
+                                String organizerId = event.getOrganizerId();
+                                chatService.createEventChat(eventId, eventName, organizerId,
+                                        chatId -> {
+                                            Log.d("Lottery", "Group chat created for event: " + eventId + ", chatId: " + chatId);
                                 // Send notifications to all winners
                                 sendLotteryWinNotifications(event, winnerIds);
                                 onSuccess.onSuccess(result);
+                                        },
+                                        e -> {
+                                            Log.e("Lottery", "Failed to create chat, but lottery completed", e);
+                                            // Still send notifications even if chat creation fails
+                                            sendLotteryWinNotifications(event, winnerIds);
+                                            onSuccess.onSuccess(result);
+                                        }
+                                );
                             },
                             onFailure
                     );

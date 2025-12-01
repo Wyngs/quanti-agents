@@ -17,6 +17,7 @@ public class ServiceLocator {
     private GeoLocationService geoLocationService;
     private LotteryResultService lotteryResultService;
     private QRCodeService qrCodeService;
+    private ChatService chatService;
     private DeviceIdManager deviceIdManager;
 
     public ServiceLocator(Context context) {
@@ -102,6 +103,14 @@ public class ServiceLocator {
             qrCodeService = new QRCodeService(appContext);
         }
         return qrCodeService;
+    }
+
+    public synchronized ChatService chatService() {
+        if (chatService == null) {
+            // ChatService instantiates its own repositories internally
+            chatService = new ChatService(appContext);
+        }
+        return chatService;
     }
 
     public synchronized DeviceIdManager deviceIdManager() {
