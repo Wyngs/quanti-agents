@@ -120,9 +120,15 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         notificationService = app.locator().notificationService();
 
         userService.getCurrentUser(user -> {
-            lastView = user.getLastViewedBrowse();
-            user.setLastViewedBrowse(new Date());
-        }, error -> {String lastView = null;});
+            if (user != null) {
+                lastView = user.getLastViewedBrowse();
+                user.setLastViewedBrowse(new Date());
+            } else {
+                lastView = null;
+            }
+        }, error -> {
+            lastView = null;
+        });
 
         geoLocationService = app.locator().geoLocationService();
 

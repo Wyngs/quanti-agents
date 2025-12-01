@@ -33,6 +33,7 @@ import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.LoginService;
 import com.quantiagents.app.Services.UserService;
+import com.quantiagents.app.models.DeviceIdManager;
 import com.quantiagents.app.models.User;
 import com.quantiagents.app.ui.CreateEventFragment;
 import com.quantiagents.app.ui.NotificationCenterFragment;
@@ -313,6 +314,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void handleLogout() {
         loginService.logout();
+        
+        // Clear device ID so that when a new user logs in and clicks "Remember Me",
+        // their device ID will be saved instead of the previous user's device ID
+        DeviceIdManager deviceIdManager = ((App) getApplication()).locator().deviceIdManager();
+        deviceIdManager.reset();
+        
+        // Mark session as inactive and clear "Remember Me" flag so SplashActivity routes to login
+        getSharedPreferences("quanti_agents_prefs", MODE_PRIVATE)
+                .edit()
+                .putBoolean("user_session_active", false)
+                .putBoolean("remember_me", false)
+                .apply();
+        
         Intent intent = new Intent(this, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
