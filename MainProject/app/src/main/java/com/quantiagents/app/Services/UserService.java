@@ -531,6 +531,16 @@ import java.util.regex.Pattern;
     }
 
     /**
+     * Asynchronously gets all users from the database.
+     *
+     * @param onSuccess Callback invoked with the list of all users
+     * @param onFailure Callback invoked if an error occurs while fetching users
+     */
+    public void getAllUsers(OnSuccessListener<List<User>> onSuccess, OnFailureListener onFailure) {
+        repository.getAllUsers(onSuccess, onFailure);
+    }
+
+    /**
      * Asynchronously gets a user by their user ID.
      *
      * @param userId The unique identifier of the user to retrieve
