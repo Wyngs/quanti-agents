@@ -133,7 +133,10 @@ public class ManageEventInfoUserAdapter
                     displayName = u.getName().trim();
                 }
                 // Using email as username for now
-                if (u.getEmail() != null && !u.getEmail().trim().isEmpty()) {
+                // CHANGED NOW: Prioritize username, fallback to email only if username missing
+                if (u.getUsername() != null && !u.getUsername().trim().isEmpty()) {
+                    username = u.getUsername().trim();
+                } else if (u.getEmail() != null && !u.getEmail().trim().isEmpty()) {
                     username = u.getEmail().trim();
                 }
             }

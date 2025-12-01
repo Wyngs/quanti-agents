@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.quantiagents.app.R;
 import com.quantiagents.app.models.Event;
+import com.quantiagents.app.Services.UserService;
 
 import java.text.BreakIterator;
 import java.text.DateFormat;
@@ -30,11 +31,14 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
 
     private final List<Event> data;
     private final OnEventClick cb;
+    private final UserService userService;
     private final DateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
-    public BrowseEventsAdapter(List<Event> initial, OnEventClick cb) {
+    // FIX ADDED: Updated constructor to accept UserService
+    public BrowseEventsAdapter(List<Event> initial, OnEventClick cb, UserService userService) {
         this.data = initial == null ? new ArrayList<>() : new ArrayList<>(initial);
         this.cb = cb;
+        this.userService = userService;
     }
 
     public void setData(List<Event> newEvents) {
@@ -66,7 +70,8 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
 
     @Override
     public void onBindViewHolder(@NonNull EventVH h, int pos) {
-        h.bind(data.get(pos), cb, dateFmt);
+        // Passing userService to bind method
+        h.bind(data.get(pos), cb, dateFmt, userService);
     }
 
     @Override
@@ -102,7 +107,8 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
             progress = itemView.findViewById(R.id.single_progress);
         }
 
-        void bind(final Event e, final OnEventClick cb, DateFormat dateFmt) {
+        // FIXED "Organizer unknown error", added UserService parameter to fetch organizer name
+        void bind(final Event e, final OnEventClick cb, DateFormat dateFmt, UserService userService) {
             if (e == null) {
                 return;
             }
@@ -140,7 +146,21 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
                 textCapacity.setText("Capacity not set");
             }
 
-            textOrganizer.setText("Organizer: Unknown");
+            String organizerId = e.getOrganizerId();
+            if (organizerId != null && !organizerId.isEmpty()) {
+                textOrganizer.setText("Organizer: Loading...");
+                new Thread(() -> {
+                    try {
+                        com.quantiagents.app.models.User orgUser = userService.getUserById(organizerId);
+                        String name = (orgUser != null && orgUser.getName() != null) ? orgUser.getName() : "Unknown";
+                        textOrganizer.post(() -> textOrganizer.setText("Organizer: " + name));
+                    } catch (Exception ex) {
+                        textOrganizer.post(() -> textOrganizer.setText("Organizer: Unknown"));
+                    }
+                }).start();
+            } else {
+                textOrganizer.setText("Organizer: Unknown");
+            }
 
             // Status chip (simple open/closed/new)
             if (BrowseEventsFragment.isNew(e)) {

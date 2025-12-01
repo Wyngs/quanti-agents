@@ -51,7 +51,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private NavigationView navigationView;
     private UserService userService;
     private LoginService loginService;
-    private int activeItemId = R.id.navigation_profile;
+    // changed the landing page from profile details to the browse events page
+    // private int activeItemId = R.id.navigation_profile;
+    private int activeItemId = R.id.navigation_browse_events;
     
     // Store original menu item titles
     private String originalNotificationTitle;
@@ -113,7 +115,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if (savedInstanceState == null) {
             navigationView.setCheckedItem(activeItemId);
-            showFragment(ProfileFragment.newInstance());
+            // changed start fragment to BrowseEventsFragment to match activeItemId
+            //showFragment(ProfileFragment.newInstance());
+            showFragment(BrowseEventsFragment.newInstance());
         }
     }
 

@@ -112,7 +112,7 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         userService.getCurrentUser(user -> {
             lastView = user.getLastViewedBrowse();
             user.setLastViewedBrowse(new Date());
-            }, error -> {String lastView = null;});
+        }, error -> {String lastView = null;});
 
         geoLocationService = app.locator().geoLocationService();
 
@@ -137,7 +137,8 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         search = v.findViewById(R.id.input_search);
         filterButton = v.findViewById(R.id.button_filter);
 
-        adapter = new BrowseEventsAdapter(new ArrayList<>(), this);
+        // Passing userService to the adapter
+        adapter = new BrowseEventsAdapter(new ArrayList<>(), this, userService);
         list.setLayoutManager(new LinearLayoutManager(requireContext()));
         list.setAdapter(adapter);
 
@@ -298,89 +299,89 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
                     String userId = user.getUserId();
                     String eventId = event.getEventId();
                     if (userId.equals(event.getOrganizerId())) {
-                    if (isAdded()) {
-                        requireActivity().runOnUiThread(() -> {
-                            progress.setVisibility(View.GONE);
-                            Toast.makeText(getContext(), "Organizers cannot join their own events.", Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                    return;
-                }
-
-                if (event.isGeoLocationOn()) {
-                    if (!hasLocationPermission()) {
-                        requestLocationThenJoin(event, user);
+                        if (isAdded()) {
+                            requireActivity().runOnUiThread(() -> {
+                                progress.setVisibility(View.GONE);
+                                Toast.makeText(getContext(), "Organizers cannot join their own events.", Toast.LENGTH_SHORT).show();
+                            });
+                        }
                         return;
                     }
-                    fusedLocationClient.getLastLocation()
-                            .addOnSuccessListener(loc -> {
-                                executor.execute(() -> {
-                                    RegistrationHistory existing = regService.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
 
-                                    if (existing != null) {
-                                        if (isAdded()) requireActivity().runOnUiThread(() -> {
-                                            progress.setVisibility(View.GONE);
-                                            Toast.makeText(getContext(), "Already registered!", Toast.LENGTH_SHORT).show();
-                                        });
+                    if (event.isGeoLocationOn()) {
+                        if (!hasLocationPermission()) {
+                            requestLocationThenJoin(event, user);
+                            return;
+                        }
+                        fusedLocationClient.getLastLocation()
+                                .addOnSuccessListener(loc -> {
+                                    executor.execute(() -> {
+                                        RegistrationHistory existing = regService.getRegistrationHistoryByEventIdAndUserId(eventId, userId);
+
+                                        if (existing != null) {
+                                            if (isAdded()) requireActivity().runOnUiThread(() -> {
+                                                progress.setVisibility(View.GONE);
+                                                Toast.makeText(getContext(), "Already registered!", Toast.LENGTH_SHORT).show();
+                                            });
+                                            return;
+                                        }
+
+                                        RegistrationHistory newReg = new RegistrationHistory(
+                                                eventId,
+                                                userId,
+                                                constant.EventRegistrationStatus.WAITLIST,
+                                                new Date()
+                                        );
+
+                                        regService.saveRegistrationHistory(newReg,
+                                                aVoid -> {
+                                                    if (event.getWaitingList() == null) event.setWaitingList(new ArrayList<>());
+                                                    if (!event.getWaitingList().contains(userId)) {
+                                                        event.getWaitingList().add(userId);
+                                                        eventService.updateEvent(event, v -> {}, e -> Log.e("BrowseEvents", "Failed to sync waiting list", e));
+                                                    }
+
+                                                    // NEW: save geo point if required and we have a location
+                                                    if (event.isGeoLocationOn() && loc != null && geoLocationService != null) {
+                                                        GeoLocation geo = new GeoLocation(loc.getLatitude(), loc.getLongitude(), userId, eventId);
+                                                        geoLocationService.saveGeoLocation(geo, id -> {}, err -> {});
+                                                    }
+
+                                                    // Send notifications to organizer and user
+                                                    sendRegistrationNotifications(event, user);
+
+                                                    if (isAdded()) requireActivity().runOnUiThread(() -> {
+                                                        progress.setVisibility(View.GONE);
+                                                        Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
+                                                    });
+                                                },
+                                                e -> {
+                                                    if (isAdded()) requireActivity().runOnUiThread(() -> {
+                                                        progress.setVisibility(View.GONE);
+                                                        Toast.makeText(getContext(), "Failed to join", Toast.LENGTH_SHORT).show();
+                                                    });
+                                                });
+                                    });
+                                    if (loc == null) {
+                                        progress.setVisibility(View.GONE);
+                                        Toast.makeText(getContext(), "Location required to join this event.", Toast.LENGTH_LONG).show();
                                         return;
                                     }
-
-                                    RegistrationHistory newReg = new RegistrationHistory(
-                                            eventId,
-                                            userId,
-                                            constant.EventRegistrationStatus.WAITLIST,
-                                            new Date()
-                                    );
-
-                                    regService.saveRegistrationHistory(newReg,
-                                            aVoid -> {
-                                                if (event.getWaitingList() == null) event.setWaitingList(new ArrayList<>());
-                                                if (!event.getWaitingList().contains(userId)) {
-                                                    event.getWaitingList().add(userId);
-                                                    eventService.updateEvent(event, v -> {}, e -> Log.e("BrowseEvents", "Failed to sync waiting list", e));
-                                                }
-
-                                                // NEW: save geo point if required and we have a location
-                                                if (event.isGeoLocationOn() && loc != null && geoLocationService != null) {
-                                                    GeoLocation geo = new GeoLocation(loc.getLatitude(), loc.getLongitude(), userId, eventId);
-                                                    geoLocationService.saveGeoLocation(geo, id -> {}, err -> {});
-                                                }
-
-                                                // Send notifications to organizer and user
-                                                sendRegistrationNotifications(event, user);
-
-                                                if (isAdded()) requireActivity().runOnUiThread(() -> {
-                                                    progress.setVisibility(View.GONE);
-                                                    Toast.makeText(getContext(), "Joined Waitlist!", Toast.LENGTH_SHORT).show();
-                                                });
-                                            },
-                                            e -> {
-                                                if (isAdded()) requireActivity().runOnUiThread(() -> {
-                                                    progress.setVisibility(View.GONE);
-                                                    Toast.makeText(getContext(), "Failed to join", Toast.LENGTH_SHORT).show();
-                                                });
-                                            });
-                                });
-                                if (loc == null) {
+                                    actuallyJoin(event, user, loc);
+                                })
+                                .addOnFailureListener(err -> {
                                     progress.setVisibility(View.GONE);
-                                    Toast.makeText(getContext(), "Location required to join this event.", Toast.LENGTH_LONG).show();
-                                    return;
-                                }
-                                actuallyJoin(event, user, loc);
-                            })
-                            .addOnFailureListener(err -> {
-                                progress.setVisibility(View.GONE);
-                                Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
-                            });
-                } else {
-                    // Non-geo events can join without location
-                    actuallyJoin(event, user, null);
+                                    Toast.makeText(getContext(), "Could not get location.", Toast.LENGTH_LONG).show();
+                                });
+                    } else {
+                        // Non-geo events can join without location
+                        actuallyJoin(event, user, null);
+                    }
+                },
+                e -> {
+                    progress.setVisibility(View.GONE);
+                    Toast.makeText(getContext(), "Failed to load user profile", Toast.LENGTH_SHORT).show();
                 }
-            },
-            e -> {
-                progress.setVisibility(View.GONE);
-                Toast.makeText(getContext(), "Failed to load user profile", Toast.LENGTH_SHORT).show();
-            }
         );
     }
 
@@ -522,11 +523,11 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         int organizerIdInt = Math.abs(organizerId.hashCode());
 
         String eventName = event.getTitle() != null ? event.getTitle() : "Event";
-        String userName = user.getName() != null && !user.getName().trim().isEmpty() 
-                ? user.getName().trim() 
-                : (user.getUsername() != null && !user.getUsername().trim().isEmpty() 
-                    ? user.getUsername().trim() 
-                    : "User");
+        String userName = user.getName() != null && !user.getName().trim().isEmpty()
+                ? user.getName().trim()
+                : (user.getUsername() != null && !user.getUsername().trim().isEmpty()
+                ? user.getUsername().trim()
+                : "User");
 
         // Notification for the user (GOOD type)
         String userStatus = "User Waitlist Signup";
