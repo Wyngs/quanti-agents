@@ -66,6 +66,30 @@ public class UserRepository {
     }
 
     /**
+     * Asynchronously fetches a user by their user ID.
+     */
+    public void getUserById(String userId, OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
+        if (userId == null || userId.trim().isEmpty()) {
+            onFailure.onFailure(new IllegalArgumentException("User ID cannot be null or empty"));
+            return;
+        }
+        context.document(userId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        User user = documentSnapshot.toObject(User.class);
+                        onSuccess.onSuccess(user);
+                    } else {
+                        Log.d("Firestore", "No user found for ID: " + userId);
+                        onSuccess.onSuccess(null);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("Firestore", "Error getting user", e);
+                    onFailure.onFailure(e);
+                });
+    }
+
+    /**
      * Synchronously fetches a user by their device ID.
      * Efficiently queries Firestore instead of downloading the entire collection.
      */

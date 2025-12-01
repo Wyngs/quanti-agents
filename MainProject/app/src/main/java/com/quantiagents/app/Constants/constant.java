@@ -37,5 +37,7 @@ public class constant {
     public static final String GeoLocationCollectionName = "GEO_LOCATION";
     public static final String RegistrationHistoryCollectionName = "REGISTRATION_HISTORY";
     public static final String DeviceIdCollectionName = "DEVICE_ID";
+    public static final String ChatCollectionName = "CHAT";
+    public static final String MessageCollectionName = "MESSAGE";
 }
 

@@ -16,11 +16,13 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository repository;
+    private final Context context;
 
     public NotificationService(Context context) {
         // NotificationService instantiates its own repositories internally
         FireBaseRepository fireBaseRepository = new FireBaseRepository();
         this.repository = new NotificationRepository(fireBaseRepository);
+        this.context = context;
     }
 
     public Notification getNotificationById(int notificationId) {
@@ -61,6 +63,11 @@ public class NotificationService {
         repository.saveNotification(notification,
                 aVoid -> {
                     Log.d("App", "Notification saved with ID: " + notification.getNotificationId());
+                    
+                    // Update app icon badge
+                    BadgeService badgeService = new BadgeService(context);
+                    badgeService.updateBadgeCount();
+                    
                     onSuccess.onSuccess(aVoid);
                 },
                 e -> {
@@ -68,6 +75,7 @@ public class NotificationService {
                     onFailure.onFailure(e);
                 });
     }
+
 
     public void updateNotification(@NonNull Notification notification,
                                    @NonNull OnSuccessListener<Void> onSuccess,

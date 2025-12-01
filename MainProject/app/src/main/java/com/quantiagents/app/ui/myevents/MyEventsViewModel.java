@@ -11,6 +11,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
+import com.quantiagents.app.Services.ChatService;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.NotificationService;
 import com.quantiagents.app.Services.RegistrationHistoryService;
@@ -35,6 +36,7 @@ public class MyEventsViewModel extends AndroidViewModel {
     private final RegistrationHistoryService regService;
     private final EventService eventService;
     private final NotificationService notificationService;
+    private final ChatService chatService;
     private final ExecutorService executor;
 
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
@@ -52,6 +54,7 @@ public class MyEventsViewModel extends AndroidViewModel {
         this.regService = app.locator().registrationHistoryService();
         this.eventService = app.locator().eventService();
         this.notificationService = new NotificationService(application);
+        this.chatService = app.locator().chatService();
         this.executor = Executors.newSingleThreadExecutor();
     }
 
@@ -206,16 +209,22 @@ public class MyEventsViewModel extends AndroidViewModel {
         // Get event and user info before updating to send notifications
         final String eventId = history.getEventId();
         final String userId = history.getUserId();
-        final Event event = (eventId != null) ? eventService.getEventById(eventId) : null;
-        final User user = (userId != null) ? userService.getUserById(userId) : null;
         final constant.EventRegistrationStatus finalStatus = newStatus;
         
+        // Fetch event and user on background thread
+        executor.execute(() -> {
+            Event event = (eventId != null) ? eventService.getEventById(eventId) : null;
+            User user = (userId != null) ? userService.getUserById(userId) : null;
+            
+            // Update registration history on main thread
         regService.updateRegistrationHistory(history,
                 aVoid -> {
                     // Send notifications based on status change
                     if (event != null && user != null) {
                         if (finalStatus == constant.EventRegistrationStatus.CONFIRMED) {
                             sendAcceptNotification(event, user);
+                                // Add user to chat when they accept
+                                addUserToChat(event.getEventId(), user.getUserId());
                         } else if (finalStatus == constant.EventRegistrationStatus.CANCELLED) {
                             // Only send decline notification if it was previously SELECTED
                             // (not if it was already CANCELLED)
@@ -230,6 +239,7 @@ public class MyEventsViewModel extends AndroidViewModel {
                     errorMessage.postValue("Failed to update status");
                 }
         );
+        });
     }
 
     /**
@@ -302,6 +312,35 @@ public class MyEventsViewModel extends AndroidViewModel {
                 aVoid -> Log.d("MyEventsVM", "Decline notification sent to organizer"),
                 e -> Log.e("MyEventsVM", "Failed to send decline notification", e)
         );
+    }
+
+    /**
+     * Adds user to the event's group chat when they accept the invitation.
+     * If the chat doesn't exist, it will be created.
+     */
+    private void addUserToChat(String eventId, String userId) {
+        if (eventId == null || userId == null) return;
+
+        executor.execute(() -> {
+            try {
+                Event event = eventService.getEventById(eventId);
+                if (event == null) {
+                    Log.w("MyEventsVM", "Event not found: " + eventId);
+                    return;
+                }
+
+                String eventName = event.getTitle() != null ? event.getTitle() : "Event";
+                String organizerId = event.getOrganizerId();
+
+                // Ensure chat exists and add user (creates chat if it doesn't exist)
+                chatService.ensureChatExistsAndAddUser(eventId, eventName, organizerId, userId,
+                        aVoid -> Log.d("MyEventsVM", "User added to chat for event: " + eventId),
+                        e -> Log.e("MyEventsVM", "Failed to add user to chat", e)
+                );
+            } catch (Exception e) {
+                Log.e("MyEventsVM", "Error adding user to chat", e);
+            }
+        });
     }
 
     @Override
