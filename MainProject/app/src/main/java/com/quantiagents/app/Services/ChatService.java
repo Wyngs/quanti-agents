@@ -8,6 +8,10 @@ import androidx.annotation.NonNull;
 
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.Repository.ChatRepository;
 import com.quantiagents.app.Repository.FireBaseRepository;
@@ -410,6 +414,23 @@ public class ChatService {
      */
     public List<Message> getMessages(String chatId) {
         return messageRepository.getMessagesByChatId(chatId);
+    }
+
+    /**
+     * Sets up a real-time listener for messages in a chat.
+     * The listener will be called whenever messages are added, modified, or removed.
+     * 
+     * @param chatId    The chat ID to listen to.
+     * @param listener  Callback that receives the QuerySnapshot whenever messages change.
+     *                 The listener should handle the snapshot and extract messages.
+     * @return ListenerRegistration that can be used to stop listening (call remove() to detach).
+     */
+    public ListenerRegistration listenToMessages(String chatId, EventListener<QuerySnapshot> listener) {
+        if (TextUtils.isEmpty(chatId)) {
+            Log.w("ChatService", "listenToMessages called with empty chatId");
+            return null;
+        }
+        return messageRepository.listenToMessages(chatId, listener);
     }
 
     /**

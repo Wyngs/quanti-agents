@@ -18,6 +18,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.quantiagents.app.App;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.BadgeService;
@@ -64,6 +68,7 @@ public class ChatFragment extends Fragment {
     private List<Message> messages = new ArrayList<>();
     private User currentUser;
     private Chat chat;
+    private ListenerRegistration messagesListener; // Real-time listener for messages
 
     public static ChatFragment newInstance(String eventId) {
         ChatFragment fragment = new ChatFragment();
@@ -218,41 +223,69 @@ public class ChatFragment extends Fragment {
             return;
         }
 
-        chatService.getMessages(chatId,
-                messageList -> {
-                    messages.clear();
-                    if (messageList != null) {
-                        messages.addAll(messageList);
+        // Remove existing listener if any
+        if (messagesListener != null) {
+            messagesListener.remove();
+            messagesListener = null;
+        }
+
+        setLoading(true);
+
+        // Set up real-time listener for messages
+        messagesListener = chatService.listenToMessages(chatId, (querySnapshot, e) -> {
+                if (e != null) {
+                    Log.e("ChatFragment", "Error listening to messages", e);
+                    if (isAdded()) {
+                        requireActivity().runOnUiThread(() -> {
+                            setLoading(false);
+                            Toast.makeText(getContext(), "Error loading messages", Toast.LENGTH_SHORT).show();
+                        });
                     }
-                    adapter.notifyDataSetChanged();
-                    setLoading(false);
-                    updateEmptyState();
-                    scrollToBottom();
-                    
-                    // Mark messages as read when user views the chat
-                    if (currentUser != null && !TextUtils.isEmpty(currentUser.getUserId())) {
-                        chatService.markMessagesAsRead(chatId, currentUser.getUserId(),
-                                aVoid -> {
-                                    Log.d("ChatFragment", "Messages marked as read");
-                                    // Update app icon badge (unread chat messages affect badge)
-                                    BadgeService badgeService = new BadgeService(requireContext());
-                                    badgeService.updateBadgeCount();
-                                    
-                                    // Update navigation menu badges
-                                    if (requireActivity() instanceof MainActivity) {
-                                        ((MainActivity) requireActivity()).updateNavigationMenuBadges();
-                                    }
-                                },
-                                e -> Log.w("ChatFragment", "Failed to mark messages as read", e)
-                        );
-                    }
-                },
-                e -> {
-                    Log.e("ChatFragment", "Failed to load messages", e);
-                    setLoading(false);
-                    Toast.makeText(getContext(), "Failed to load messages", Toast.LENGTH_SHORT).show();
+                    return;
                 }
-        );
+
+                if (querySnapshot != null) {
+                    // Update messages list with real-time data
+                    messages.clear();
+                    for (QueryDocumentSnapshot document : querySnapshot) {
+                        Message message = document.toObject(Message.class);
+                        if (message != null) {
+                            if (message.getMessageId() == null || message.getMessageId().trim().isEmpty()) {
+                                message.setMessageId(document.getId());
+                            }
+                            messages.add(message);
+                        }
+                    }
+
+                    // Update UI on main thread
+                    if (isAdded()) {
+                        requireActivity().runOnUiThread(() -> {
+                            adapter.notifyDataSetChanged();
+                            setLoading(false);
+                            updateEmptyState();
+                            scrollToBottom();
+
+                            // Mark messages as read when user views the chat
+                            if (currentUser != null && !TextUtils.isEmpty(currentUser.getUserId())) {
+                                chatService.markMessagesAsRead(chatId, currentUser.getUserId(),
+                                        aVoid -> {
+                                            Log.d("ChatFragment", "Messages marked as read");
+                                            // Update app icon badge (unread chat messages affect badge)
+                                            BadgeService badgeService = new BadgeService(requireContext());
+                                            badgeService.updateBadgeCount();
+
+                                            // Update navigation menu badges
+                                            if (requireActivity() instanceof MainActivity) {
+                                                ((MainActivity) requireActivity()).updateNavigationMenuBadges();
+                                            }
+                                        },
+                                        err -> Log.w("ChatFragment", "Failed to mark messages as read", err)
+                                );
+                            }
+                        });
+                    }
+                }
+        });
     }
 
     private void sendMessage() {
@@ -277,8 +310,8 @@ public class ChatFragment extends Fragment {
         chatService.sendMessage(chatId, currentUser.getUserId(), text,
                 messageId -> {
                     buttonSend.setEnabled(true);
-                    // Reload messages to show the new one
-                    loadMessages();
+                    // No need to reload - real-time listener will automatically update the UI
+                    Log.d("ChatFragment", "Message sent successfully");
                 },
                 e -> {
                     buttonSend.setEnabled(true);
@@ -314,8 +347,32 @@ public class ChatFragment extends Fragment {
     }
 
     @Override
+    public void onPause() {
+        super.onPause();
+        // Detach listener when fragment is paused to save resources
+        if (messagesListener != null) {
+            messagesListener.remove();
+            messagesListener = null;
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Re-attach listener when fragment resumes
+        if (!TextUtils.isEmpty(chatId) && currentUser != null) {
+            loadMessages();
+        }
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
+        // Clean up listener
+        if (messagesListener != null) {
+            messagesListener.remove();
+            messagesListener = null;
+        }
         executor.shutdownNow();
     }
 }
