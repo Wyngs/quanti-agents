@@ -1,6 +1,9 @@
 package com.quantiagents.app.ui.main;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -11,11 +14,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.ExperimentalGetImage;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
@@ -52,12 +58,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private UserService userService;
     private LoginService loginService;
     // changed the landing page from profile details to the browse events page
-    // private int activeItemId = R.id.navigation_profile;
     private int activeItemId = R.id.navigation_browse_events;
-    
+
     // Store original menu item titles
     private String originalNotificationTitle;
     private String originalMessageTitle;
+
+    // Permission launcher for Android 13+ Notification permission
+    private final ActivityResultLauncher<String> requestNotificationPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    // Permission granted - immediately try to update the badge
+                    updateAppIconBadge();
+                } else {
+                    // Permission denied - badges on Samsung/Android 8+ won't work reliably
+                    Toast.makeText(this, "Notifications required for app icon badges", Toast.LENGTH_LONG).show();
+                }
+            });
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -81,7 +98,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if (cachedUser != null) {
             // If we have a user in memory, use it immediately
-            // prevents fetching the old admin user from the database based on Device ID
             onUserLoaded(cachedUser, savedInstanceState);
         } else {
             // 2.If memory is empty (e.g., App Restart), fetch from DB using Device ID
@@ -107,17 +123,42 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         bindHeader(user);
         setupAdminMenu(user);
 
-        // Update app icon badge with unread notification count
-        updateAppIconBadge();
-        
+        // Check for notification permission (Required for Badges on Android 13+)
+        checkAndRequestNotificationPermission();
+
         // Update navigation menu badges
         updateNavigationMenuBadges();
 
         if (savedInstanceState == null) {
-            navigationView.setCheckedItem(activeItemId);
-            // changed start fragment to BrowseEventsFragment to match activeItemId
-            //showFragment(ProfileFragment.newInstance());
-            showFragment(BrowseEventsFragment.newInstance());
+            // CHECK FOR NOTIFICATION NAVIGATION EXTRA
+            if (getIntent().getBooleanExtra("navigate_to_notifications", false)) {
+                activeItemId = R.id.navigation_notifications;
+                navigationView.setCheckedItem(activeItemId);
+                showFragment(NotificationCenterFragment.newInstance());
+            } else {
+                navigationView.setCheckedItem(activeItemId);
+                showFragment(BrowseEventsFragment.newInstance());
+            }
+        }
+    }
+
+    /**
+     * Checks for POST_NOTIFICATIONS permission on Android 13+ and requests it if missing.
+     * This is critical for Samsung badges to work.
+     */
+    private void checkAndRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED) {
+                // Request the permission
+                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            } else {
+                // Already granted, safe to update badge
+                updateAppIconBadge();
+            }
+        } else {
+            // Android 12 or lower doesn't require runtime permission for notifications
+            updateAppIconBadge();
         }
     }
 
@@ -262,9 +303,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onResume() {
         super.onResume();
-        // Update badge when app resumes (user might have received notifications while app was in background)
-        updateAppIconBadge();
-        // Update navigation menu badges
+        // Check permission again on resume in case user toggled it in settings
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED) {
+                updateAppIconBadge();
+            }
+        } else {
+            updateAppIconBadge();
+        }
+
         updateNavigationMenuBadges();
     }
 
@@ -281,13 +329,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     }
 
                     BadgeService badgeService = new BadgeService(this);
-                    
+
                     // Get unread notification count
-                    badgeService.getUnreadNotificationCount(user.getUserId(), 
+                    badgeService.getUnreadNotificationCount(user.getUserId(),
                             notificationCount -> {
                                 updateNotificationBadge(notificationCount);
                             });
-                    
+
                     // Get unread message count
                     badgeService.getUnreadMessageCount(user.getUserId(),
                             messageCount -> {
@@ -312,12 +360,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (notificationItem == null) {
                 return;
             }
-            
+
             // Store original title if not already stored
             if (originalNotificationTitle == null) {
                 originalNotificationTitle = notificationItem.getTitle().toString();
             }
-            
+
             // Update title with count
             if (count > 0) {
                 notificationItem.setTitle(originalNotificationTitle + " (" + count + ")");
@@ -338,12 +386,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (messageItem == null) {
                 return;
             }
-            
+
             // Store original title if not already stored
             if (originalMessageTitle == null) {
                 originalMessageTitle = messageItem.getTitle().toString();
             }
-            
+
             // Update title with count
             if (count > 0) {
                 messageItem.setTitle(originalMessageTitle + " (" + count + ")");

@@ -8,7 +8,15 @@
     <uses-feature android:name="android.hardware.camera"  android:required="false" />
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32"  tools:ignore="ScopedStorage" />
+
+    <!-- Required for Badge Service on Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- Samsung/Launcher Badge Permissions -->
+    <uses-permission android:name="com.sec.android.provider.badge.permission.READ" />
+    <uses-permission android:name="com.sec.android.provider.badge.permission.WRITE" />
+    <uses-permission android:name="com.htc.launcher.permission.READ_SETTINGS" />
+    <uses-permission android:name="com.htc.launcher.permission.UPDATE_SHORTCUT" />
 
     <application
         android:name=".App"
