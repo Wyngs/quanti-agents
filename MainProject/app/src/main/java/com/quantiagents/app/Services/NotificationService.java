@@ -17,6 +17,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.quantiagents.app.Repository.FireBaseRepository;
 import com.quantiagents.app.Repository.NotificationRepository;
 import com.quantiagents.app.models.Notification;
+import com.quantiagents.app.models.User;
 import com.quantiagents.app.ui.main.MainActivity;
 import com.quantiagents.app.R;
 
@@ -102,6 +103,7 @@ public class NotificationService {
      * Validates and saves a new notification.
      * If notificationId is 0 or negative, Firebase will auto-generate an ID.
      * Updates the app icon badge count after saving.
+     * Only saves notifications for users who have notifications enabled.
      *
      * @param notification The notification to save
      * @param onSuccess Callback invoked on successful save
@@ -113,31 +115,89 @@ public class NotificationService {
             return;
         }
 
-        repository.saveNotification(notification,
-                aVoid -> {
-                    Log.d("App", "Notification saved: " + notification.getNotificationId());
-
-                    // 1. Update BadgeService (Legacy/ShortcutBadger support)
-                    BadgeService badgeService = new BadgeService(context);
-                    badgeService.updateBadgeCount();
-
-                    // 2. SHOW SYSTEM NOTIFICATION (Required for Samsung/Android 8+ badges)
-                    UserService userService = new UserService(context);
-                    userService.getCurrentUser(user -> {
-                        if (user != null) {
-                            // Calculate new unread count asynchronously then post notification
-                            badgeService.getUnreadNotificationCount(user.getUserId(), count -> {
-                                showSystemNotification(notification, count);
-                            });
+        // Check if recipient has notifications enabled before saving
+        UserService userService = new UserService(context);
+        int recipientId = notification.getRecipientId();
+        
+        // Find the recipient user by matching their userId hash to recipientId
+        userService.getAllUsers(
+                users -> {
+                    User recipient = null;
+                    for (User user : users) {
+                        if (user != null && user.getUserId() != null) {
+                            int userIdHash = Math.abs(user.getUserId().hashCode());
+                            if (userIdHash == recipientId) {
+                                recipient = user;
+                                break;
+                            }
                         }
-                    }, e -> Log.e("NotifService", "Failed to get user for system notification"));
+                    }
 
-                    if (onSuccess != null) onSuccess.onSuccess(aVoid);
+                    // Only save notification if recipient has notifications enabled
+                    if (recipient == null) {
+                        Log.d("App", "Recipient not found for notification, skipping save");
+                        // Silently skip if recipient not found (user may have been deleted)
+                        if (onSuccess != null) onSuccess.onSuccess(null);
+                        return;
+                    }
+
+                    if (!recipient.hasNotificationsOn()) {
+                        Log.d("App", "Recipient has notifications disabled, skipping save for notification: " + notification.getNotificationId());
+                        // Silently skip if notifications are disabled
+                        if (onSuccess != null) onSuccess.onSuccess(null);
+                        return;
+                    }
+
+                    // Recipient has notifications enabled, proceed with saving
+                    repository.saveNotification(notification,
+                            aVoid -> {
+                                Log.d("App", "Notification saved: " + notification.getNotificationId());
+
+                                // 1. Update BadgeService (Legacy/ShortcutBadger support)
+                                BadgeService badgeService = new BadgeService(context);
+                                badgeService.updateBadgeCount();
+
+                                // 2. SHOW SYSTEM NOTIFICATION (Required for Samsung/Android 8+ badges)
+                                userService.getCurrentUser(user -> {
+                                    if (user != null) {
+                                        // Calculate new unread count asynchronously then post notification
+                                        badgeService.getUnreadNotificationCount(user.getUserId(), count -> {
+                                            showSystemNotification(notification, count);
+                                        });
+                                    }
+                                }, e -> Log.e("NotifService", "Failed to get user for system notification"));
+
+                                if (onSuccess != null) onSuccess.onSuccess(aVoid);
+                            },
+                            e -> {
+                                Log.e("App", "Failed to save notification", e);
+                                if (onFailure != null) onFailure.onFailure(e);
+                            });
                 },
                 e -> {
-                    Log.e("App", "Failed to save notification", e);
-                    if (onFailure != null) onFailure.onFailure(e);
-                });
+                    Log.e("App", "Failed to fetch users to check notification preference", e);
+                    // If we can't check, we'll save anyway to avoid breaking functionality
+                    // But log the error for debugging
+                    repository.saveNotification(notification,
+                            aVoid -> {
+                                Log.d("App", "Notification saved (preference check failed): " + notification.getNotificationId());
+                                BadgeService badgeService = new BadgeService(context);
+                                badgeService.updateBadgeCount();
+                                userService.getCurrentUser(user -> {
+                                    if (user != null) {
+                                        badgeService.getUnreadNotificationCount(user.getUserId(), count -> {
+                                            showSystemNotification(notification, count);
+                                        });
+                                    }
+                                }, e2 -> Log.e("NotifService", "Failed to get user for system notification"));
+                                if (onSuccess != null) onSuccess.onSuccess(aVoid);
+                            },
+                            e2 -> {
+                                Log.e("App", "Failed to save notification", e2);
+                                if (onFailure != null) onFailure.onFailure(e2);
+                            });
+                }
+        );
     }
 
 
