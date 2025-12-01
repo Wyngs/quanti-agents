@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.SyncStateContract;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -152,6 +153,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 activeItemId = R.id.navigation_notifications;
                 navigationView.setCheckedItem(activeItemId);
                 showFragment(NotificationCenterFragment.newInstance());
+            } else if (user.getRole() == constant.UserRole.ADMIN) {
+                navigationView.setCheckedItem(activeItemId);
+                showFragment(AdminBrowseEventsFragment.newInstance());
             } else {
                 navigationView.setCheckedItem(activeItemId);
                 showFragment(BrowseEventsFragment.newInstance());
