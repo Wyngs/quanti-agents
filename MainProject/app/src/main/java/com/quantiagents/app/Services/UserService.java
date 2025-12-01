@@ -437,6 +437,13 @@ public class UserService {
         return repository.getUserById(userId);
     }
 
+    /**
+     * Asynchronously gets a user by their user ID.
+     */
+    public void getUserById(String userId, OnSuccessListener<User> onSuccess, OnFailureListener onFailure) {
+        repository.getUserById(userId, onSuccess, onFailure);
+    }
+
     private User requireUser() {
         User current = getCurrentUser();
         if (current == null) {

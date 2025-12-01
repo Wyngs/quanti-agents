@@ -30,6 +30,16 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    
+    packaging {
+        resources {
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE"
+            excludes += "/META-INF/LICENSE.txt"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/NOTICE.txt"
+        }
+    }
 }
 
 dependencies {
@@ -66,6 +76,9 @@ dependencies {
 
     // ML Kit Barcode Scanning for CameraX
     implementation ("com.google.mlkit:barcode-scanning:17.3.0")
+
+    // ShortcutBadger for app icon badges
+    implementation("me.leolin:ShortcutBadger:1.1.22@aar")
 
 }
 
