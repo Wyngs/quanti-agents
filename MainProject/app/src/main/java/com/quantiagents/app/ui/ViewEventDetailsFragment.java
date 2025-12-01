@@ -29,6 +29,7 @@ import com.google.android.material.card.MaterialCardView;
 import com.quantiagents.app.App;
 import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
+import com.quantiagents.app.Services.AdminService;
 import com.quantiagents.app.Services.EventService;
 import com.quantiagents.app.Services.GeoLocationService;
 import com.quantiagents.app.Services.ImageService;
@@ -65,6 +66,7 @@ import androidx.core.content.ContextCompat;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import android.annotation.SuppressLint;
+import androidx.appcompat.app.AlertDialog;
 
 
 
@@ -84,6 +86,7 @@ public class ViewEventDetailsFragment extends Fragment {
 
     private EventService eventService;
     private UserService userService;
+    private AdminService adminService;
     private RegistrationHistoryService registrationHistoryService;
     private NotificationService notificationService;
     private QRCodeService qrCodeService;
@@ -98,6 +101,7 @@ public class ViewEventDetailsFragment extends Fragment {
     private MaterialButton buttonLeave;
     private MaterialButton buttonRegistrationClosed;
     private MaterialButton buttonViewPoster;
+    private MaterialButton buttonDeleteEvent;
     private ProgressBar progressBar;
     private View cardContent;
     private View layoutError;
@@ -171,6 +175,7 @@ public class ViewEventDetailsFragment extends Fragment {
         ServiceLocator locator = app.locator();
         eventService = locator.eventService();
         userService = locator.userService();
+        adminService = locator.adminService();
         registrationHistoryService = locator.registrationHistoryService();
         notificationService = locator.notificationService();
         qrCodeService = locator.qrCodeService();
@@ -211,6 +216,7 @@ public class ViewEventDetailsFragment extends Fragment {
         buttonLeave = view.findViewById(R.id.button_leave_waitlist);
         buttonRegistrationClosed = view.findViewById(R.id.button_registration_closed);
         buttonViewPoster = view.findViewById(R.id.button_view_poster);
+        buttonDeleteEvent = view.findViewById(R.id.button_delete_event);
         progressBar = view.findViewById(R.id.progress_loading);
         cardContent = view.findViewById(R.id.card_content);
         layoutError = view.findViewById(R.id.layout_error);
@@ -244,6 +250,7 @@ public class ViewEventDetailsFragment extends Fragment {
         buttonJoin.setOnClickListener(v -> joinWaitingList());
         buttonLeave.setOnClickListener(v -> leaveWaitingList());
         buttonViewPoster.setOnClickListener(v -> showPoster());
+        buttonDeleteEvent.setOnClickListener(v -> showDeleteEventConfirmation());
     }
 
     @Override
@@ -401,6 +408,7 @@ public class ViewEventDetailsFragment extends Fragment {
         // Update status card & action buttons
         updateUserStatusCard(entry);
         updateActionButtons(waitingCount);
+        updateAdminDeleteButton();
         updateQrSection();
     }
 
@@ -446,7 +454,10 @@ public class ViewEventDetailsFragment extends Fragment {
         double waitLimit = currentEvent != null ? currentEvent.getWaitingListLimit() : 0;
         boolean waitListFull = waitLimit > 0 && waitingCount >= waitLimit;
 
-        boolean canJoin = registrationOpen && !hasEntry && !waitListFull;
+        // Check if current user is an admin
+        boolean isAdmin = currentUser != null && currentUser.getRole() == constant.UserRole.ADMIN;
+
+        boolean canJoin = registrationOpen && !hasEntry && !waitListFull && !isAdmin;
         boolean canLeave = status == constant.EventRegistrationStatus.WAITLIST;
 
         buttonJoin.setVisibility(canJoin ? View.VISIBLE : View.GONE);
@@ -458,6 +469,12 @@ public class ViewEventDetailsFragment extends Fragment {
         boolean showClosed = !registrationOpen && !hasEntry;
         buttonRegistrationClosed.setVisibility(showClosed ? View.VISIBLE : View.GONE);
         buttonRegistrationClosed.setEnabled(false);
+    }
+
+    private void updateAdminDeleteButton() {
+        // Show delete button only if current user is an admin
+        boolean isAdmin = currentUser != null && currentUser.getRole() == constant.UserRole.ADMIN;
+        buttonDeleteEvent.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
     }
 
     private void updateQrSection() {
@@ -745,6 +762,9 @@ public class ViewEventDetailsFragment extends Fragment {
         if (buttonViewPoster != null) {
             buttonViewPoster.setEnabled(enabled);
         }
+        if (buttonDeleteEvent != null) {
+            buttonDeleteEvent.setEnabled(enabled);
+        }
     }
 
     private void showError(@Nullable String message) {
@@ -843,6 +863,64 @@ public class ViewEventDetailsFragment extends Fragment {
             return String.valueOf(longValue);
         }
         return String.format(Locale.getDefault(), "%.2f", value);
+    }
+
+    /**
+     * Shows a confirmation dialog before deleting the event.
+     * Only accessible to admins.
+     */
+    private void showDeleteEventConfirmation() {
+        if (currentEvent == null || adminService == null) {
+            return;
+        }
+
+        // Double-check admin status
+        if (currentUser == null || currentUser.getRole() != constant.UserRole.ADMIN) {
+            Toast.makeText(getContext(), "Only administrators can delete events.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.manage_events_delete_dialog_title)
+                .setMessage(R.string.manage_events_delete_dialog_message)
+                .setPositiveButton(R.string.manage_events_delete_dialog_confirm, (dialog, which) -> deleteEvent())
+                .setNegativeButton(R.string.manage_events_delete_dialog_cancel, null)
+                .show();
+    }
+
+    /**
+     * Deletes the current event using AdminService.
+     * Navigates back after successful deletion.
+     */
+    private void deleteEvent() {
+        if (currentEvent == null || adminService == null) {
+            return;
+        }
+
+        setActionEnabled(false);
+        String eventId = currentEvent.getEventId();
+        String eventTitle = currentEvent.getTitle() != null ? currentEvent.getTitle() : "Event";
+
+        adminService.removeEvent(
+                eventId,
+                true,
+                "Admin deleted from event details view",
+                aVoid -> {
+                    if (!isAdded()) return;
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), getString(R.string.manage_events_delete_success), Toast.LENGTH_LONG).show();
+                        // Navigate back after deletion
+                        handleBackNavigation();
+                    });
+                },
+                e -> {
+                    if (!isAdded()) return;
+                    requireActivity().runOnUiThread(() -> {
+                        setActionEnabled(true);
+                        Toast.makeText(getContext(), getString(R.string.manage_events_delete_error), Toast.LENGTH_LONG).show();
+                    });
+                }
+        );
     }
 
     /**
