@@ -29,6 +29,7 @@
     <string name="login_primary_action">Enter</string>
     <string name="login_reset_action">Reset profile on this device</string>
     <string name="login_forgot_password">Forgot password?</string>
+    <string name="login_remember_me">Remember Me</string>
     <string name="error_login_required">Need email and password</string>
     <string name="error_login_invalid">That combo didn\'t work</string>
     <string name="message_password_hint">Still using device sign-in. Reach out to support to reset.</string>

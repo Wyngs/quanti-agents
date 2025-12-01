@@ -338,6 +338,14 @@ import java.util.regex.Pattern;
     }
 
     /**
+     * Clears the device ID from local storage.
+     * This prevents automatic login on next app startup.
+     */
+    public void clearDeviceId() {
+        deviceIdManager.reset();
+    }
+
+    /**
      * Blocking password update used outside the UI (e.g., tests, migrations).
      *
      * @param newPassword The new plain text password (will be hashed)

@@ -10,6 +10,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
@@ -32,6 +33,7 @@ public class LoginActivity extends AppCompatActivity {
     private TextInputEditText emailField;
     private TextInputEditText passwordField;
     private MaterialButton switchUserButton;
+    private MaterialCheckBox rememberMeCheckbox;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -78,6 +80,7 @@ public class LoginActivity extends AppCompatActivity {
         emailField = findViewById(R.id.input_username);
         passwordField = findViewById(R.id.input_password);
         switchUserButton = findViewById(R.id.button_switch_user);
+        rememberMeCheckbox = findViewById(R.id.checkbox_remember_me);
     }
 
     /**
@@ -104,15 +107,18 @@ public class LoginActivity extends AppCompatActivity {
             passwordLayout.setError(getString(R.string.error_login_required));
             return;
         }
+        boolean rememberMe = rememberMeCheckbox.isChecked();
         loginService.login(
                 email,
                 password,
+                rememberMe,
                 success -> {
                     if (success) {
-                        // Mark session as active
+                        // Mark session as active and save "Remember Me" preference
                         getSharedPreferences("quanti_agents_prefs", MODE_PRIVATE)
                                 .edit()
                                 .putBoolean("user_session_active", true)
+                                .putBoolean("remember_me", rememberMe)
                                 .apply();
                         openHome();
                     } else {
@@ -132,6 +138,7 @@ public class LoginActivity extends AppCompatActivity {
         getSharedPreferences("quanti_agents_prefs", MODE_PRIVATE)
                 .edit()
                 .putBoolean("user_session_active", false)
+                .putBoolean("remember_me", false)
                 .apply();
 
         // Reset local device ID. Next time the app needs an ID, it generates a new one,

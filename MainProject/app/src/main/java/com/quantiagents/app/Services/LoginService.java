@@ -35,9 +35,24 @@ public class LoginService {
      * @return true if the credentials matched an existing profile
      */
     public boolean login(String email, String password) {
+        return login(email, password, true);
+    }
+
+    /**
+     * Quick synchronous login used in tests and blocking flows with remember me option.
+     *
+     * @param email The email address or username to authenticate with
+     * @param password The plain text password
+     * @param rememberMe Whether to save the device ID for automatic login
+     * @return true if the credentials matched an existing profile
+     */
+    public boolean login(String email, String password, boolean rememberMe) {
         boolean success = userService.authenticate(email, password);
         if (success) {
             current = userService.getCurrentUser();
+            // Always attach device ID to user for the current session to work properly.
+            // This ensures fragments can retrieve the user by device ID.
+            // The "Remember Me" preference is tracked separately to control auto-login.
             userService.attachDeviceToCurrentUser(current);
         }
         return success;
@@ -59,13 +74,35 @@ public class LoginService {
                       String password,
                       OnSuccessListener<Boolean> onSuccess,
                       OnFailureListener onFailure) {
+        login(email, password, true, onSuccess, onFailure);
+    }
+
+    /**
+     * Async login tied to the UI; allows showing loading states without blocking.
+     * <p>
+     * Fixed to capture the User object from authentication directly, avoiding
+     * issues where 'getCurrentUser' (by device ID) would return null if logging
+     * in on a new device.
+     *
+     * @param email The email address or username to authenticate with
+     * @param password The plain text password
+     * @param rememberMe Whether to save the device ID for automatic login
+     * @param onSuccess Callback that emits true when logged in, false when credentials were invalid
+     * @param onFailure Callback invoked if an error occurs during authentication
+     */
+    public void login(String email,
+                      String password,
+                      boolean rememberMe,
+                      OnSuccessListener<Boolean> onSuccess,
+                      OnFailureListener onFailure) {
         userService.authenticate(email, password,
                 user -> {
                     if (user != null) {
                         // Credentials match. Set the current session.
                         current = user;
-                        // IMPORTANT: Link this device ID to the user profile immediately.
-                        // This ensures subsequent startup/splash checks pass.
+                        // Always attach device ID to user for the current session to work properly.
+                        // This ensures fragments can retrieve the user by device ID.
+                        // The "Remember Me" preference is tracked separately to control auto-login.
                         userService.attachDeviceToCurrentUser(user);
                         
                         onSuccess.onSuccess(true);
