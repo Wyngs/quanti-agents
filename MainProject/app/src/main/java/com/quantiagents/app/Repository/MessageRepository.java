@@ -11,9 +11,11 @@ import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
+import com.google.firebase.firestore.EventListener;
 import com.quantiagents.app.models.Message;
 
 import java.util.ArrayList;
@@ -171,6 +173,25 @@ public class MessageRepository {
                 .delete()
                 .addOnSuccessListener(onSuccess)
                 .addOnFailureListener(onFailure);
+    }
+
+    /**
+     * Sets up a real-time listener for messages in a chat.
+     * The listener will be called whenever messages are added, modified, or removed.
+     *
+     * @param chatId    The chat ID to listen to.
+     * @param listener  Callback that receives the list of messages whenever they change.
+     * @return ListenerRegistration that can be used to stop listening.
+     */
+    public ListenerRegistration listenToMessages(String chatId, EventListener<QuerySnapshot> listener) {
+        if (chatId == null || chatId.trim().isEmpty()) {
+            Log.w("MessageRepository", "listenToMessages called with null or empty chatId");
+            return null;
+        }
+
+        return context.whereEqualTo("chatId", chatId)
+                .orderBy("timestamp")
+                .addSnapshotListener(listener);
     }
 }
 
