@@ -21,3 +21,7 @@ CMPUT 301 project
 ## Second 50% (Project Part 4)
 
 [**Part4 User-stories**](https://github.com/CMPUT301F25quanti/quanti-agents/blob/main/Part4%3AUser%20stories.md)
+
+## UML
+[**UML**](https://github.com/CMPUT301F25quanti/quanti-agents/wiki/UML)
+
