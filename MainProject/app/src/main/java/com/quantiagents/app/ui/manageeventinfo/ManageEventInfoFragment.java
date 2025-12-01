@@ -52,6 +52,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import android.net.Uri;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
+
+import com.quantiagents.app.Services.ImageService;
+import com.quantiagents.app.models.Image;
+
 
 /**
  * Edit + manage screen for a single Event, including top-level fields
@@ -127,6 +136,12 @@ public class ManageEventInfoFragment extends Fragment {
             new SimpleDateFormat("yyyy-MM-dd", Locale.US);
     private final Calendar calendar = Calendar.getInstance();
 
+    // Poster editing
+    private ImageService imageService;
+    private Uri selectedPosterUri;
+    private ActivityResultLauncher<PickVisualMediaRequest> pickPosterLauncher;
+
+
     /**
      * Factory method to create a new ManageEventInfoFragment.
      *
@@ -178,6 +193,8 @@ public class ManageEventInfoFragment extends Fragment {
         this.regSvc = regSvcLocal;
         this.geoSvc = app.locator().geoLocationService();
         userService = app.locator().userService();
+        imageService = app.locator().imageService();
+
 
         // MapView
         mapView = view.findViewById(R.id.map_join_locations);
@@ -236,14 +253,15 @@ public class ManageEventInfoFragment extends Fragment {
         // Optional: stub for poster editing (keeps layout button from being “dead”)
         MaterialButton posterButton = view.findViewById(R.id.button_edit_poster);
         if (posterButton != null) {
-            posterButton.setOnClickListener(
-                    v -> Toast.makeText(
-                            getContext(),
-                            "Poster editing TODO – reuse Create Event poster flow.",
-                            Toast.LENGTH_SHORT
-                    ).show()
+            posterButton.setOnClickListener(v ->
+                    pickPosterLauncher.launch(
+                            new PickVisualMediaRequest.Builder()
+                                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                                    .build()
+                    )
             );
         }
+
 
         // Draw card inputs
         drawCountLayout   = view.findViewById(R.id.input_draw_count_layout);
@@ -426,12 +444,17 @@ public class ManageEventInfoFragment extends Fragment {
         evtSvc.updateEvent(
                 loadedEvent,
                 aVoid -> {
-                    Toast.makeText(getContext(), "Saved", Toast.LENGTH_SHORT).show();
-                    getParentFragmentManager().setFragmentResult(RESULT_REFRESH, new Bundle());
-                    updateTabCounts();
+                    if (selectedPosterUri != null && imageService != null && loadedEvent.getEventId() != null) {
+                        savePosterAndAttach(selectedPosterUri, loadedEvent, evtSvc);
+                    } else {
+                        Toast.makeText(getContext(), "Saved", Toast.LENGTH_SHORT).show();
+                        getParentFragmentManager().setFragmentResult(RESULT_REFRESH, new Bundle());
+                        updateTabCounts();
+                    }
                 },
                 e -> Toast.makeText(getContext(), "Error saving", Toast.LENGTH_SHORT).show()
         );
+
     }
 
     /**
@@ -791,4 +814,68 @@ public class ManageEventInfoFragment extends Fragment {
         super.onDestroyView();
         io.shutdownNow();
     }
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        pickPosterLauncher = registerForActivityResult(
+                new ActivityResultContracts.PickVisualMedia(),
+                uri -> {
+                    if (uri != null) {
+                        selectedPosterUri = uri;
+
+                        // If view is already created, update the button UI
+                        View root = getView();
+                        if (root != null) {
+                            MaterialButton posterButton = root.findViewById(R.id.button_edit_poster);
+                            if (posterButton != null) {
+                                posterButton.setText("Poster Selected");
+                                posterButton.setIconResource(R.drawable.ic_check);
+                            }
+                        }
+                    }
+                }
+        );
+    }
+    private void savePosterAndAttach(@NonNull Uri uri,
+                                     @NonNull Event event,
+                                     @NonNull EventService evtSvc) {
+
+        if (imageService == null || event.getEventId() == null) {
+            return;
+        }
+
+        Image img = new Image();
+        img.setUri(uri.toString());
+        img.setEventId(event.getEventId());
+        // Optional: track who uploaded it – fall back to organizer id
+        img.setUploadedBy(event.getOrganizerId());
+
+        imageService.saveImage(
+                img,
+                imageId -> {
+                    event.setPosterImageId(imageId);
+                    evtSvc.updateEvent(
+                            event,
+                            v -> {
+                                Toast.makeText(getContext(), "Saved", Toast.LENGTH_SHORT).show();
+                                getParentFragmentManager().setFragmentResult(RESULT_REFRESH, new Bundle());
+                                updateTabCounts();
+                            },
+                            e -> Toast.makeText(
+                                    getContext(),
+                                    "Poster upload failed after save.",
+                                    Toast.LENGTH_SHORT
+                            ).show()
+                    );
+                },
+                e -> Toast.makeText(
+                        getContext(),
+                        "Event saved, but poster upload failed.",
+                        Toast.LENGTH_SHORT
+                ).show()
+        );
+    }
+
+
 }
