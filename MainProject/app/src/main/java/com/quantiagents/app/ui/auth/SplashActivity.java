@@ -39,19 +39,21 @@ public class SplashActivity extends AppCompatActivity {
         App app = (App) getApplication();
         DeviceIdManager deviceIdManager = app.locator().deviceIdManager();
         LoginService loginService = app.locator().loginService();
-        String deviceId = deviceIdManager.ensureDeviceId();
-
-        // Check if the user explicitly logged out previously.
+        
         SharedPreferences prefs = getSharedPreferences("quanti_agents_prefs", MODE_PRIVATE);
         boolean sessionActive = prefs.getBoolean("user_session_active", true);
+        boolean rememberMe = prefs.getBoolean("remember_me", true);
 
-        if (!sessionActive) {
-            // User logged out. Go to Login (which handles Create vs Reset logic).
+        // Check if the user explicitly logged out previously or "Remember Me" was not checked.
+        if (!sessionActive || !rememberMe) {
+            // User logged out or didn't opt for auto-login. Go to Login.
             launchLogin();
             finish();
             return;
         }
 
+        // "Remember Me" was checked, attempt auto-login
+        String deviceId = deviceIdManager.ensureDeviceId();
         loginService.loginWithDevice(
                 deviceId,
                 success -> {

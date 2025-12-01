@@ -31,15 +31,34 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ChatVi
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d, yyyy", Locale.getDefault());
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
+    /**
+     * Interface for handling chat click events.
+     */
     public interface OnChatClickListener {
+        /**
+         * Called when a chat item is clicked.
+         *
+         * @param chat The chat that was clicked
+         */
         void onChatClick(Chat chat);
     }
 
+    /**
+     * Constructor that initializes the adapter with chats and click listener.
+     *
+     * @param chats The list of chats to display
+     * @param listener The callback interface for handling chat clicks
+     */
     public ChatListAdapter(List<Chat> chats, OnChatClickListener listener) {
         this.chats = chats;
         this.listener = listener;
     }
 
+    /**
+     * Sets the unread message counts for chats.
+     *
+     * @param unreadCounts Map of chat ID to unread message count
+     */
     public void setUnreadCounts(Map<String, Integer> unreadCounts) {
         this.unreadCounts = unreadCounts != null ? unreadCounts : new HashMap<>();
     }
@@ -81,6 +100,13 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ChatVi
             textUnreadBadge = itemView.findViewById(R.id.text_unread_badge);
         }
 
+        /**
+         * Binds a chat to the view holder, displaying event name, last message time, member count, and unread badge.
+         *
+         * @param chat The chat to display
+         * @param unreadCount The number of unread messages in this chat
+         * @param listener The click listener for handling chat selection
+         */
         void bind(Chat chat, int unreadCount, OnChatClickListener listener) {
             // Set event name
             String eventName = chat.getEventName();

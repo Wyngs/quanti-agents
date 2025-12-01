@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Top row: title + status on the left, Show QR button on the right -->
+        <!-- Top row: title + status on the left, Show QR + delete on the right -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -41,17 +41,35 @@
                     android:textSize="12sp" />
             </LinearLayout>
 
-            <!-- Show QR button styled like button_toggle_qr -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/button_show_qr"
-                style="@style/Widget.QuantiAgents.Button.Tonal"
+            <!-- Right side: Show QR chip + red trash icon -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:text="@string/manage_events_show_qr"
-                app:icon="@drawable/ic_qr_code"
-                app:iconPadding="8dp"
-                app:iconGravity="textStart" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Show QR button styled like button_toggle_qr -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_show_qr"
+                    style="@style/Widget.QuantiAgents.Button.Tonal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="@string/manage_events_show_qr"
+                    app:icon="@drawable/ic_qr_code"
+                    app:iconPadding="8dp"
+                    app:iconGravity="textStart" />
+
+                <!-- Delete event trash icon -->
+                <ImageButton
+                    android:id="@+id/button_delete_event"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_delete_red_24dp"
+                    android:contentDescription="@string/manage_events_delete_event" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Info lines under the header row -->

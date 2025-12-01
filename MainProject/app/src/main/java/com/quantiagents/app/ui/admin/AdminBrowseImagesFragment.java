@@ -20,11 +20,20 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.quantiagents.app.R;
 import com.quantiagents.app.ui.admin.viewmodel.AdminEventsViewModel;
 
+/**
+ * Fragment that displays all images for admin viewing and management.
+ * Supports search functionality and allows admins to delete images.
+ */
 public class AdminBrowseImagesFragment extends Fragment {
 
     private AdminEventsViewModel viewModel;
     private AdminImageAdapter adapter;
 
+    /**
+     * Creates a new instance of AdminBrowseImagesFragment.
+     *
+     * @return A new AdminBrowseImagesFragment instance
+     */
     public static AdminBrowseImagesFragment newInstance() {
         return new AdminBrowseImagesFragment();
     }

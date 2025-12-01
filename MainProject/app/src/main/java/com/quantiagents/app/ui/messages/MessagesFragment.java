@@ -60,6 +60,11 @@ public class MessagesFragment extends Fragment implements ChatListAdapter.OnChat
     private List<Chat> chats = new ArrayList<>();
     private User currentUser;
 
+    /**
+     * Creates a new instance of MessagesFragment.
+     *
+     * @return A new MessagesFragment instance
+     */
     public static MessagesFragment newInstance() {
         return new MessagesFragment();
     }
@@ -87,6 +92,11 @@ public class MessagesFragment extends Fragment implements ChatListAdapter.OnChat
         loadUser();
     }
 
+    /**
+     * Binds all view references from the layout.
+     *
+     * @param view The root view of the fragment
+     */
     private void bindViews(@NonNull View view) {
         swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
         recyclerView = view.findViewById(R.id.recycler_chats);
@@ -94,6 +104,9 @@ public class MessagesFragment extends Fragment implements ChatListAdapter.OnChat
         emptyState = view.findViewById(R.id.empty_state);
     }
 
+    /**
+     * Sets up the RecyclerView with layout manager and adapter.
+     */
     private void setupRecyclerView() {
         adapter = new ChatListAdapter(chats, this);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));

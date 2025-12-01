@@ -105,12 +105,19 @@ afterEvaluate {
             // Apply Classpath
             classpath = files(pathList)
 
+            // Output directory - use file() to create the directory path
+            setDestinationDir(file("${layout.buildDirectory.get().asFile}/docs/javadoc"))
+
             // Javadoc Options
             options {
                 this as StandardJavadocDocletOptions
-                // Explicitly passing classpath to the tool ensures dependencies are found
-                this.classpath = pathList
+                // Classpath is already set above, no need to reassign
 
+                encoding = "UTF-8"
+                docEncoding = "UTF-8"
+                memberLevel = JavadocMemberLevel.PROTECTED
+                
+                addStringOption("charset", "UTF-8")
                 addStringOption("Xdoclint:none", "-quiet")
                 links("https://docs.oracle.com/javase/8/docs/api/")
                 links("https://d.android.com/reference/")

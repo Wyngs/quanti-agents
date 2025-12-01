@@ -18,11 +18,20 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.quantiagents.app.R;
 import com.quantiagents.app.ui.admin.viewmodel.AdminEventsViewModel;
 
+/**
+ * Fragment that displays all notifications for admin viewing.
+ * Shows notification logs for administrative purposes.
+ */
 public class AdminBrowseNotificationsFragment extends Fragment {
 
     private AdminEventsViewModel viewModel;
     private NotificationAdapter adapter;
 
+    /**
+     * Creates a new instance of AdminBrowseNotificationsFragment.
+     *
+     * @return A new AdminBrowseNotificationsFragment instance
+     */
     public static AdminBrowseNotificationsFragment newInstance() {
         return new AdminBrowseNotificationsFragment();
     }

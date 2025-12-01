@@ -10,6 +10,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.quantiagents.app.App;
@@ -32,6 +33,7 @@ public class LoginActivity extends AppCompatActivity {
     private TextInputEditText emailField;
     private TextInputEditText passwordField;
     private MaterialButton switchUserButton;
+    private MaterialCheckBox rememberMeCheckbox;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -69,19 +71,32 @@ public class LoginActivity extends AppCompatActivity {
         );
     }
 
+    /**
+     * Binds all view references from the layout.
+     */
     private void bindViews() {
         emailLayout = findViewById(R.id.login_username_layout);
         passwordLayout = findViewById(R.id.login_password_layout);
         emailField = findViewById(R.id.input_username);
         passwordField = findViewById(R.id.input_password);
         switchUserButton = findViewById(R.id.button_switch_user);
+        rememberMeCheckbox = findViewById(R.id.checkbox_remember_me);
     }
 
+    /**
+     * Preloads the email field with the user's email address.
+     *
+     * @param user The user object containing the email to preload
+     */
     private void preloadInputs(User user) {
         emailField.setText(user.getEmail());
         passwordField.setText("");
     }
 
+    /**
+     * Handles the login button click.
+     * Validates input fields and attempts to authenticate the user.
+     */
     private void handleLogin() {
         emailLayout.setError(null);
         passwordLayout.setError(null);
@@ -92,15 +107,18 @@ public class LoginActivity extends AppCompatActivity {
             passwordLayout.setError(getString(R.string.error_login_required));
             return;
         }
+        boolean rememberMe = rememberMeCheckbox.isChecked();
         loginService.login(
                 email,
                 password,
+                rememberMe,
                 success -> {
                     if (success) {
-                        // Mark session as active
+                        // Mark session as active and save "Remember Me" preference
                         getSharedPreferences("quanti_agents_prefs", MODE_PRIVATE)
                                 .edit()
                                 .putBoolean("user_session_active", true)
+                                .putBoolean("remember_me", rememberMe)
                                 .apply();
                         openHome();
                     } else {
@@ -120,6 +138,7 @@ public class LoginActivity extends AppCompatActivity {
         getSharedPreferences("quanti_agents_prefs", MODE_PRIVATE)
                 .edit()
                 .putBoolean("user_session_active", false)
+                .putBoolean("remember_me", false)
                 .apply();
 
         // Reset local device ID. Next time the app needs an ID, it generates a new one,
@@ -141,6 +160,9 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
+    /**
+     * Navigates to the main activity after successful login.
+     */
     private void openHome() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -150,6 +172,12 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
+    /**
+     * Safely extracts text from a TextInputEditText, returning an empty string if null.
+     *
+     * @param field The TextInputEditText to extract text from
+     * @return The trimmed text content, or an empty string if null
+     */
     private String safeText(TextInputEditText field) {
         return field.getText() == null ? "" : field.getText().toString().trim();
     }

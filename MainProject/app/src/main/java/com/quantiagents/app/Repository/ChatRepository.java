@@ -28,12 +28,21 @@ public class ChatRepository {
 
     private final CollectionReference context;
 
+    /**
+     * Constructor that initializes the ChatRepository with a FireBaseRepository.
+     *
+     * @param fireBaseRepository The base repository providing access to the Firestore collection
+     */
     public ChatRepository(FireBaseRepository fireBaseRepository) {
         this.context = fireBaseRepository.getChatCollectionRef();
     }
 
     /**
      * Synchronously retrieves a Chat by its unique ID.
+     * This method blocks the calling thread until the database operation completes.
+     *
+     * @param chatId The unique identifier of the chat
+     * @return The Chat object if found, or null if not found or if an error occurs
      */
     public Chat getChatById(String chatId) {
         if (chatId == null || chatId.trim().isEmpty()) {
@@ -61,6 +70,10 @@ public class ChatRepository {
 
     /**
      * Asynchronously retrieves a Chat by its unique ID.
+     *
+     * @param chatId The unique identifier of the chat
+     * @param onSuccess Callback invoked with the Chat object if found, or null if not found
+     * @param onFailure Callback invoked if an error occurs or chatId is invalid
      */
     public void getChatById(String chatId, OnSuccessListener<Chat> onSuccess, OnFailureListener onFailure) {
         if (chatId == null || chatId.trim().isEmpty()) {
@@ -86,6 +99,10 @@ public class ChatRepository {
 
     /**
      * Synchronously retrieves a Chat by event ID.
+     * This method blocks the calling thread until the database operation completes.
+     *
+     * @param eventId The unique identifier of the event
+     * @return The Chat object if found, or null if not found or if an error occurs
      */
     public Chat getChatByEventId(String eventId) {
         if (eventId == null || eventId.trim().isEmpty()) {

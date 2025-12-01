@@ -80,6 +80,15 @@
                     android:textColorHint="@color/hintColor"/>
             </com.google.android.material.textfield.TextInputLayout>
 
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/checkbox_remember_me"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/login_remember_me"
+                android:textSize="14sp"
+                android:checked="true"/>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="85dp"

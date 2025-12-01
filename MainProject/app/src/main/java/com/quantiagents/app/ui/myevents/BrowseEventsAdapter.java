@@ -21,11 +21,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Adapter for BrowseEvents list. */
+/**
+ * Adapter for displaying events in a RecyclerView within BrowseEventsFragment.
+ * Handles event item rendering and user interaction callbacks.
+ */
 public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapter.EventVH> {
 
+    /**
+     * Interface for handling event click events.
+     */
     public interface OnEventClick {
+        /**
+         * Called when user wants to join the waitlist for an event.
+         *
+         * @param event The event to join
+         */
         void onJoinWaitlist(@NonNull Event event);
+        
+        /**
+         * Called when user wants to view event details.
+         *
+         * @param event The event to view
+         */
         void onViewEvent(@NonNull Event event);
     }
 
@@ -34,18 +51,35 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
     private final UserService userService;
     private final DateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
-    // FIX ADDED: Updated constructor to accept UserService
+    /**
+     * Constructor that initializes the adapter with event data and callbacks.
+     * Updated to accept UserService for user-related operations.
+     *
+     * @param initial The initial list of events to display
+     * @param cb The callback interface for handling event clicks
+     * @param userService The UserService instance for user operations
+     */
     public BrowseEventsAdapter(List<Event> initial, OnEventClick cb, UserService userService) {
         this.data = initial == null ? new ArrayList<>() : new ArrayList<>(initial);
         this.cb = cb;
         this.userService = userService;
     }
 
+    /**
+     * Sets new event data, replacing the existing list.
+     *
+     * @param newEvents The new list of events to display
+     */
     public void setData(List<Event> newEvents) {
         data.clear();
         data.addAll(newEvents);
     }
 
+    /**
+     * Replaces the current event list with a new one and notifies the adapter.
+     *
+     * @param next The new list of events to display
+     */
     public void replace(List<Event> next) {
         data.clear();
         if (next != null) data.addAll(next);
@@ -107,7 +141,15 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
             progress = itemView.findViewById(R.id.single_progress);
         }
 
-        // FIXED "Organizer unknown error", added UserService parameter to fetch organizer name
+        /**
+         * Binds an event to the view holder, displaying event details and action buttons.
+         * Fetches organizer name asynchronously to fix "Organizer unknown" error.
+         *
+         * @param e The event to display
+         * @param cb The callback interface for handling event clicks
+         * @param dateFmt The date formatter for displaying event dates
+         * @param userService The UserService instance for fetching organizer information
+         */
         void bind(final Event e, final OnEventClick cb, DateFormat dateFmt, UserService userService) {
             if (e == null) {
                 return;
@@ -187,6 +229,13 @@ public class BrowseEventsAdapter extends RecyclerView.Adapter<BrowseEventsAdapte
             itemView.setOnClickListener(v -> cb.onViewEvent(e));
         }
 
+        /**
+         * Returns the string if not null/empty, otherwise returns the fallback.
+         *
+         * @param s The string to check
+         * @param fallback The fallback string to return if s is null or empty
+         * @return s if not null/empty, otherwise fallback
+         */
         private static String nullSafe(String s, String fallback) {
             return s == null || s.isEmpty() ? fallback : s;
         }

@@ -21,6 +21,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * ViewModel for admin management screens that handles events, profiles, images, and notifications.
+ * Supports search functionality and CRUD operations for admin entities.
+ */
 public class AdminEventsViewModel extends AndroidViewModel {
 
     private final AdminService adminService;
@@ -32,21 +36,56 @@ public class AdminEventsViewModel extends AndroidViewModel {
     private List<Image> masterImageList = new ArrayList<>();
 
     private final MutableLiveData<List<Event>> events = new MutableLiveData<>();
+    
+    /**
+     * Gets the events LiveData.
+     *
+     * @return LiveData containing the list of events
+     */
     public LiveData<List<Event>> getEvents() { return events; }
 
     private final MutableLiveData<List<UserSummary>> profiles = new MutableLiveData<>();
+    
+    /**
+     * Gets the profiles LiveData.
+     *
+     * @return LiveData containing the list of user profiles
+     */
     public LiveData<List<UserSummary>> getProfiles() { return profiles; }
 
     private final MutableLiveData<List<Image>> images = new MutableLiveData<>();
+    
+    /**
+     * Gets the images LiveData.
+     *
+     * @return LiveData containing the list of images
+     */
     public LiveData<List<Image>> getImages() { return images; }
 
     // --- NOTIFICATIONS ---
     private final MutableLiveData<List<Notification>> notifications = new MutableLiveData<>();
+    
+    /**
+     * Gets the notifications LiveData.
+     *
+     * @return LiveData containing the list of notifications
+     */
     public LiveData<List<Notification>> getNotifications() { return notifications; }
 
     private final MutableLiveData<String> toastMessage = new MutableLiveData<>();
+    
+    /**
+     * Gets the toast message LiveData.
+     *
+     * @return LiveData containing toast messages to display
+     */
     public LiveData<String> getToastMessage() { return toastMessage; }
 
+    /**
+     * Constructor that initializes the ViewModel with required services.
+     *
+     * @param application The application instance
+     */
     public AdminEventsViewModel(@NonNull Application application) {
         super(application);
         App app = (App) application;
@@ -55,6 +94,9 @@ public class AdminEventsViewModel extends AndroidViewModel {
     }
 
     // --- EVENTS ---
+    /**
+     * Loads all events from the database.
+     */
     public void loadEvents() {
         adminService.getAllEvents(
                 eventList -> {
@@ -68,6 +110,11 @@ public class AdminEventsViewModel extends AndroidViewModel {
         );
     }
 
+    /**
+     * Deletes an event from the database.
+     *
+     * @param event The event to delete
+     */
     public void deleteEvent(Event event) {
         adminService.removeEvent(event.getEventId(), true, "Admin deletion",
                 aVoid -> {
@@ -81,6 +128,11 @@ public class AdminEventsViewModel extends AndroidViewModel {
         );
     }
 
+    /**
+     * Searches events by title or ID.
+     *
+     * @param query The search query string
+     */
     public void searchEvents(String query) {
         if (query == null || query.trim().isEmpty()) {
             events.setValue(new ArrayList<>(masterEventList));
@@ -95,6 +147,9 @@ public class AdminEventsViewModel extends AndroidViewModel {
     }
 
     // --- PROFILES ---
+    /**
+     * Loads all user profiles from the database.
+     */
     public void loadProfiles() {
         adminService.listAllProfiles(
                 userList -> {
@@ -118,6 +173,11 @@ public class AdminEventsViewModel extends AndroidViewModel {
         );
     }
 
+    /**
+     * Deletes a user profile from the database.
+     *
+     * @param profile The profile to delete
+     */
     public void deleteProfile(UserSummary profile) {
         adminService.removeProfile(profile.getUserId(), true, "Admin deletion",
                 success -> {
@@ -130,6 +190,11 @@ public class AdminEventsViewModel extends AndroidViewModel {
                 }
         );
     }
+    /**
+     * Searches profiles by name or email.
+     *
+     * @param query The search query string
+     */
     public void searchProfiles(String query) {
         if (query == null || query.trim().isEmpty()) {
             profiles.setValue(new ArrayList<>(masterProfileList));
@@ -145,6 +210,9 @@ public class AdminEventsViewModel extends AndroidViewModel {
 
     // --- IMAGES ---
 
+    /**
+     * Loads all images from the database.
+     */
     public void loadImages() {
         adminService.listAllImages(
                 imageList -> {
@@ -158,6 +226,11 @@ public class AdminEventsViewModel extends AndroidViewModel {
         );
     }
 
+    /**
+     * Deletes an image from the database.
+     *
+     * @param image The image to delete
+     */
     public void deleteImage(Image image) {
         adminService.removeImage(image.getImageId(), true, "Admin deletion",
                 success -> {
@@ -171,6 +244,11 @@ public class AdminEventsViewModel extends AndroidViewModel {
         );
     }
 
+    /**
+     * Searches images by image ID.
+     *
+     * @param query The search query string
+     */
     public void searchImages(String query) {
         if (query == null || query.trim().isEmpty()) {
             images.setValue(new ArrayList<>(masterImageList));
@@ -185,6 +263,9 @@ public class AdminEventsViewModel extends AndroidViewModel {
 
     // --- NOTIFICATIONS ---
 
+    /**
+     * Loads all notifications from the database.
+     */
     public void loadNotifications() {
         new Thread(() -> {
             try {

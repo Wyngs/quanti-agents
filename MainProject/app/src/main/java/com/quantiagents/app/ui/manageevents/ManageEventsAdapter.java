@@ -4,6 +4,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -24,10 +25,15 @@ public class ManageEventsAdapter extends RecyclerView.Adapter<ManageEventsAdapte
      * Listener used to forward row actions.
      */
     public interface OnManageEventInfoClickListener {
+
+        /** "Manage Event Info" pressed. */
         void onManageEventInfoClicked(@NonNull Event event);
 
-        // New callback for "Show QR"
+        /** "Show QR" pressed. */
         void onShowQrClicked(@NonNull Event event);
+
+        /** Trash icon pressed to delete/cancel the event. */
+        void onDeleteEventClicked(@NonNull Event event);
     }
 
     private final List<Event> data = new ArrayList<>();
@@ -43,7 +49,8 @@ public class ManageEventsAdapter extends RecyclerView.Adapter<ManageEventsAdapte
         final TextView waitingLine;
         final TextView capacityLine;
         final Button manageInfoButton;
-        final Button showQrButton;   // new
+        final Button showQrButton;
+        final ImageButton deleteEventButton;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -53,6 +60,7 @@ public class ManageEventsAdapter extends RecyclerView.Adapter<ManageEventsAdapte
             capacityLine = itemView.findViewById(R.id.text_capacity);
             manageInfoButton = itemView.findViewById(R.id.button_manage_event_info);
             showQrButton = itemView.findViewById(R.id.button_show_qr);
+            deleteEventButton = itemView.findViewById(R.id.button_delete_event);
         }
     }
 
@@ -89,6 +97,12 @@ public class ManageEventsAdapter extends RecyclerView.Adapter<ManageEventsAdapte
         holder.showQrButton.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onShowQrClicked(event);
+            }
+        });
+
+        holder.deleteEventButton.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onDeleteEventClicked(event);
             }
         });
     }

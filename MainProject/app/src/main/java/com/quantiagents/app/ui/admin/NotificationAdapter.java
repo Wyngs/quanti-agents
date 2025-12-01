@@ -10,10 +10,19 @@ import com.quantiagents.app.R;
 import com.quantiagents.app.models.Notification;
 import java.util.List;
 
+/**
+ * Adapter for displaying notifications in admin management screens.
+ * Shows notification type, ID, and recipient information.
+ */
 public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapter.NotificationViewHolder> {
 
     private final List<Notification> notificationList;
 
+    /**
+     * Constructor that initializes the adapter with notifications.
+     *
+     * @param notificationList The list of notifications to display
+     */
     public NotificationAdapter(List<Notification> notificationList) {
         this.notificationList = notificationList;
     }
@@ -42,6 +51,11 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
             detailsTextView = itemView.findViewById(R.id.text_view_notification_details);
         }
 
+        /**
+         * Binds a notification to the view holder, displaying notification type and details.
+         *
+         * @param notification The notification to display
+         */
         void bind(final Notification notification) {
             String type = notification.getType() != null ? notification.getType().toString() : "UNKNOWN";
             titleTextView.setText(type);

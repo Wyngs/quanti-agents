@@ -20,12 +20,17 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.journeyapps.barcodescanner.BarcodeEncoder;
 import com.quantiagents.app.App;
+import com.quantiagents.app.Constants.constant;
 import com.quantiagents.app.R;
 import com.quantiagents.app.Services.EventService;
+import com.quantiagents.app.Services.NotificationService;
 import com.quantiagents.app.Services.QRCodeService;
+import com.quantiagents.app.Services.RegistrationHistoryService;
 import com.quantiagents.app.Services.UserService;
 import com.quantiagents.app.models.Event;
+import com.quantiagents.app.models.Notification;
 import com.quantiagents.app.models.QRCode;
+import com.quantiagents.app.models.RegistrationHistory;
 import com.quantiagents.app.models.User;
 import com.quantiagents.app.ui.manageeventinfo.ManageEventInfoHostActivity;
 
@@ -41,9 +46,10 @@ import java.util.List;
  * Flow:
  *   MainActivity navigation → ManageEventsFragment
  *   → list of "My Organized Events"
- *   → "Manage Event Info" button launches ManageEventInfoHostActivity.
+ *   → buttons per row: Show QR / Manage Event Info / Delete event.
  */
-public class ManageEventsFragment extends Fragment implements ManageEventsAdapter.OnManageEventInfoClickListener {
+public class ManageEventsFragment extends Fragment
+        implements ManageEventsAdapter.OnManageEventInfoClickListener {
 
     private TextView totalEventsValue;
     private ProgressBar progressBar;
@@ -53,7 +59,9 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
 
     private EventService eventService;
     private UserService userService;
-    private QRCodeService qrCodeService;   // new
+    private QRCodeService qrCodeService;
+    private RegistrationHistoryService registrationHistoryService;
+    private NotificationService notificationService;
 
     public static ManageEventsFragment newInstance() {
         return new ManageEventsFragment();
@@ -79,7 +87,9 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
         App app = (App) requireActivity().getApplication();
         eventService = app.locator().eventService();
         userService = app.locator().userService();
-        qrCodeService = app.locator().qrCodeService();   // new
+        qrCodeService = app.locator().qrCodeService();
+        registrationHistoryService = app.locator().registrationHistoryService();
+        notificationService = app.locator().notificationService();
 
         totalEventsValue = view.findViewById(R.id.text_total_events_value);
         progressBar = view.findViewById(R.id.progress_manage_events);
@@ -127,6 +137,9 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
         );
     }
 
+    /**
+     * Keep only events for this organizer, and drop ones already CANCELLED.
+     */
     private static List<Event> filterByOrganizer(@Nullable List<Event> events, @NonNull String organizerId) {
         List<Event> out = new ArrayList<>();
         if (events == null) {
@@ -134,9 +147,9 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
         }
         for (Event ev : events) {
             if (ev == null) continue;
-            if (organizerId.equals(ev.getOrganizerId())) {
-                out.add(ev);
-            }
+            if (!organizerId.equals(ev.getOrganizerId())) continue;
+            if (ev.getStatus() == constant.EventStatus.CANCELLED) continue;
+            out.add(ev);
         }
         return out;
     }
@@ -169,9 +182,12 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
         emptyView.setText(message);
     }
 
+    // ------------------------------------------------------------------------
+    // Row callbacks
+    // ------------------------------------------------------------------------
+
     /**
-     * Callback from adapter when the row button "Manage Event Info" is pressed.
-     * This launches the existing ManageEventInfoHostActivity with the event id.
+     * "Manage Event Info" pressed → launch ManageEventInfoHostActivity.
      */
     @Override
     public void onManageEventInfoClicked(@NonNull Event event) {
@@ -185,7 +201,7 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
     }
 
     /**
-     * Callback from adapter when "Show QR" is pressed.
+     * "Show QR" pressed → fetch QR for this event and show dialog.
      */
     @Override
     public void onShowQrClicked(@NonNull Event event) {
@@ -199,7 +215,6 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
             return;
         }
 
-        // Load QR off the main thread
         new Thread(() -> {
             List<QRCode> codes;
             try {
@@ -228,6 +243,130 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
         }).start();
     }
 
+    /**
+     * Trash icon pressed → confirm, then cancel event + notify entrants.
+     */
+    @Override
+    public void onDeleteEventClicked(@NonNull Event event) {
+        String eventId = event.getEventId();
+        if (eventId == null || eventId.trim().isEmpty()) {
+            Toast.makeText(requireContext(), R.string.manage_events_delete_error, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String eventName = (event.getTitle() != null && !event.getTitle().trim().isEmpty())
+                ? event.getTitle().trim()
+                : getString(R.string.manage_events_default_event_name);
+
+        String notificationTitle = getString(R.string.manage_events_delete_notification_title);
+        String notificationBodyTemplate = getString(R.string.manage_events_delete_notification_body);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.manage_events_delete_dialog_title)
+                .setMessage(R.string.manage_events_delete_dialog_message)
+                .setNegativeButton(R.string.manage_events_delete_dialog_cancel, null)
+                .setPositiveButton(R.string.manage_events_delete_dialog_confirm,
+                        (dialog, which) ->
+                                performDeleteEvent(event, eventName, notificationTitle, notificationBodyTemplate))
+                .show();
+    }
+
+    /**
+     * Runs on background thread: notify entrants + mark histories CANCELLED,
+     * then on main thread mark the Event as CANCELLED and refresh list.
+     */
+    private void performDeleteEvent(@NonNull Event event,
+                                    @NonNull String eventName,
+                                    @NonNull String notificationTitle,
+                                    @NonNull String notificationBodyTemplate) {
+
+        showLoading(true);
+
+        new Thread(() -> {
+            try {
+                String eventId = event.getEventId();
+                String organizerId = event.getOrganizerId();
+
+                // 1) Notify WAITLIST / SELECTED / CONFIRMED entrants + mark them CANCELLED
+                if (registrationHistoryService != null && notificationService != null &&
+                        eventId != null && organizerId != null) {
+
+                    List<RegistrationHistory> regs =
+                            registrationHistoryService.getRegistrationHistoriesByEventId(eventId);
+
+                    if (regs != null) {
+                        int eventIdInt = Math.abs(eventId.hashCode());
+                        int organizerIdInt = Math.abs(organizerId.hashCode());
+
+                        for (RegistrationHistory r : regs) {
+                            if (r == null || r.getUserId() == null) continue;
+
+                            constant.EventRegistrationStatus status = r.getEventRegistrationStatus();
+                            if (status != constant.EventRegistrationStatus.WAITLIST &&
+                                    status != constant.EventRegistrationStatus.SELECTED &&
+                                    status != constant.EventRegistrationStatus.CONFIRMED) {
+                                continue;
+                            }
+
+                            int recipientIdInt = Math.abs(r.getUserId().hashCode());
+                            String details = String.format(notificationBodyTemplate, eventName);
+
+                            Notification notification = new Notification(
+                                    0,
+                                    constant.NotificationType.BAD,
+                                    recipientIdInt,
+                                    organizerIdInt,
+                                    eventIdInt,
+                                    notificationTitle,
+                                    details
+                            );
+
+                            // Fire-and-forget notifications + history updates
+                            notificationService.saveNotification(notification, aVoid -> { }, e -> { });
+
+                            r.setEventRegistrationStatus(constant.EventRegistrationStatus.CANCELLED);
+                            registrationHistoryService.updateRegistrationHistory(r, aVoid -> { }, e -> { });
+                        }
+                    }
+                }
+
+                if (!isAdded()) return;
+
+                // 2) On main thread: mark Event CANCELLED and refresh
+                requireActivity().runOnUiThread(() -> {
+                    event.setStatus(constant.EventStatus.CANCELLED);
+                    eventService.updateEvent(
+                            event,
+                            aVoid -> {
+                                Toast.makeText(requireContext(),
+                                        R.string.manage_events_delete_success,
+                                        Toast.LENGTH_SHORT).show();
+                                loadEvents();
+                            },
+                            e -> {
+                                showLoading(false);
+                                Toast.makeText(requireContext(),
+                                        R.string.manage_events_delete_error,
+                                        Toast.LENGTH_LONG).show();
+                            }
+                    );
+                });
+            } catch (Exception e) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    showLoading(false);
+                    Toast.makeText(requireContext(),
+                            R.string.manage_events_delete_error,
+                            Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
+    }
+
+    // ------------------------------------------------------------------------
+    // QR dialog helpers
+    // ------------------------------------------------------------------------
+
     private void showQrDialog(@NonNull String qrValue, @Nullable String eventTitle) {
         if (!isAdded()) return;
 
@@ -244,7 +383,7 @@ public class ManageEventsFragment extends Fragment implements ManageEventsAdapte
                 .setView(imageView)
                 .setPositiveButton(android.R.string.ok, null);
 
-        String title = eventTitle == null || eventTitle.trim().isEmpty()
+        String title = (eventTitle == null || eventTitle.trim().isEmpty())
                 ? getString(R.string.manage_events_qr_dialog_title)
                 : getString(R.string.manage_events_qr_dialog_title_with_name, eventTitle);
         builder.setTitle(title);

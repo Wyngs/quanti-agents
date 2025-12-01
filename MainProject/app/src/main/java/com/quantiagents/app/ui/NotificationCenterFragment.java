@@ -38,6 +38,10 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Fragment that displays all notifications for the current user.
+ * Supports marking notifications as read, swipe-to-refresh, and shows unread badge count.
+ */
 @ExperimentalBadgeUtils
 public class NotificationCenterFragment extends Fragment {
 
@@ -59,6 +63,11 @@ public class NotificationCenterFragment extends Fragment {
     private List<Event> allEvents = new ArrayList<>();
     private User currentUser;
 
+    /**
+     * Creates a new instance of NotificationCenterFragment.
+     *
+     * @return A new NotificationCenterFragment instance
+     */
     public static NotificationCenterFragment newInstance() {
         return new NotificationCenterFragment();
     }

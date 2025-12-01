@@ -21,6 +21,10 @@ import com.quantiagents.app.R;
 import com.quantiagents.app.ui.admin.viewmodel.AdminEventsViewModel;
 import com.quantiagents.app.models.UserSummary;
 
+/**
+ * Fragment that displays all user profiles for admin viewing and management.
+ * Supports search functionality and allows admins to view profile details or delete profiles.
+ */
 public class AdminBrowseProfilesFragment extends Fragment {
 
     private AdminEventsViewModel viewModel;
@@ -28,6 +32,11 @@ public class AdminBrowseProfilesFragment extends Fragment {
     private AdminProfileAdapter adapter;
     private EditText searchInput;
 
+    /**
+     * Creates a new instance of AdminBrowseProfilesFragment.
+     *
+     * @return A new AdminBrowseProfilesFragment instance
+     */
     public static AdminBrowseProfilesFragment newInstance() {
         return new AdminBrowseProfilesFragment();
     }
@@ -85,7 +94,11 @@ public class AdminBrowseProfilesFragment extends Fragment {
         viewModel.loadProfiles();
     }
 
-    // helper method to show profile details
+    /**
+     * Helper method to show profile details in a dialog.
+     *
+     * @param profile The profile to display details for
+     */
     private void showProfileDetails(UserSummary profile) {
         new AlertDialog.Builder(requireContext())
                 .setTitle("Profile Details")

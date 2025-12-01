@@ -58,8 +58,18 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Fragment that displays a browseable list of events with search and filter capabilities.
+ * Allows users to join waitlists, view event details, and filter events by category, date, and availability.
+ * Supports geolocation-based event joining when required.
+ */
 public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapter.OnEventClick {
 
+    /**
+     * Creates a new instance of BrowseEventsFragment.
+     *
+     * @return A new BrowseEventsFragment instance
+     */
     public static BrowseEventsFragment newInstance() {
         return new BrowseEventsFragment();
     }
@@ -110,9 +120,15 @@ public class BrowseEventsFragment extends Fragment implements BrowseEventsAdapte
         notificationService = app.locator().notificationService();
 
         userService.getCurrentUser(user -> {
-            lastView = user.getLastViewedBrowse();
-            user.setLastViewedBrowse(new Date());
-        }, error -> {String lastView = null;});
+            if (user != null) {
+                lastView = user.getLastViewedBrowse();
+                user.setLastViewedBrowse(new Date());
+            } else {
+                lastView = null;
+            }
+        }, error -> {
+            lastView = null;
+        });
 
         geoLocationService = app.locator().geoLocationService();
 

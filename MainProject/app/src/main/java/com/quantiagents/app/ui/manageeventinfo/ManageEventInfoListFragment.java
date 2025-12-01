@@ -64,6 +64,13 @@ public class ManageEventInfoListFragment extends Fragment {
     // The registrations currently displayed in this tab
     private final List<RegistrationHistory> currentRegistrations = new ArrayList<>();
 
+    /**
+     * Creates a new instance of ManageEventInfoListFragment with event ID and status filter.
+     *
+     * @param eventId The unique identifier of the event
+     * @param status The registration status to filter by (WAITING, SELECTED, CONFIRMED, or CANCELLED)
+     * @return A new ManageEventInfoListFragment instance
+     */
     public static ManageEventInfoListFragment newInstance(@NonNull String eventId,
                                                           @NonNull String status) {
         Bundle b = new Bundle();
@@ -74,6 +81,9 @@ public class ManageEventInfoListFragment extends Fragment {
         return f;
     }
 
+    /**
+     * Required empty constructor for Fragment instantiation.
+     */
     public ManageEventInfoListFragment() {
         // Required empty constructor
     }

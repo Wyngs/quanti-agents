@@ -70,6 +70,12 @@ public class ChatFragment extends Fragment {
     private Chat chat;
     private ListenerRegistration messagesListener; // Real-time listener for messages
 
+    /**
+     * Creates a new instance of ChatFragment with an event ID.
+     *
+     * @param eventId The unique identifier of the event for which to display the chat
+     * @return A new ChatFragment instance
+     */
     public static ChatFragment newInstance(String eventId) {
         ChatFragment fragment = new ChatFragment();
         Bundle args = new Bundle();
@@ -78,6 +84,12 @@ public class ChatFragment extends Fragment {
         return fragment;
     }
 
+    /**
+     * Creates a new instance of ChatFragment with a chat ID.
+     *
+     * @param chatId The unique identifier of the chat to display
+     * @return A new ChatFragment instance
+     */
     public static ChatFragment newInstanceWithChatId(String chatId) {
         ChatFragment fragment = new ChatFragment();
         Bundle args = new Bundle();
